@@ -1,0 +1,90 @@
+build:
+  maxIssues: 0
+  excludeCorrectable: false
+
+config:
+  validation: true
+  warningsAsErrors: false
+
+complexity:
+  active: true
+  LongParameterList:
+    active: true
+    functionThreshold: 8
+    constructorThreshold: 12   # constructor injection in adapters
+    ignoreDefaultParameters: true
+  TooManyFunctions:
+    active: true
+    thresholdInClasses: 20
+    thresholdInFiles: 20
+    ignorePrivate: true
+    ignoreOverridden: true
+  LongMethod:
+    active: true
+    threshold: 70
+  CyclomaticComplexMethod:
+    active: true
+    threshold: 18
+
+exceptions:
+  active: true
+  TooGenericExceptionCaught:
+    active: true
+    # Adapter boundaries legitimately catch broadly to map onto ProblemDetail.
+    excludes: ['**/adapter/**']
+  SwallowedException:
+    active: true
+  ThrowingExceptionsWithoutMessageOrCause:
+    active: true
+
+naming:
+  active: true
+  FunctionNaming:
+    active: true
+    excludes: ['**/test/**', '**/integrationTest/**']
+  TopLevelPropertyNaming:
+    active: true
+
+style:
+  active: true
+  MaxLineLength:
+    active: true
+    maxLineLength: 140
+    excludeCommentStatements: true
+  MagicNumber:
+    active: true
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+    ignoreAnnotation: true
+    ignoreNamedArgument: true
+    excludes: ['**/test/**', '**/integrationTest/**', '**/crypto/**']
+  ReturnCount:
+    active: true
+    max: 4
+  ForbiddenComment:
+    active: true
+    comments:
+      - reason: "Unresolved work must be an issue, not a comment."
+        value: 'FIXME:'
+      - reason: "Unresolved work must be an issue, not a comment."
+        value: 'STOPSHIP:'
+  UnusedPrivateMember:
+    active: true
+  WildcardImport:
+    active: true
+    excludeImports: ['java.util.*']
+
+potential-bugs:
+  active: true
+  UnsafeCallOnNullableType:
+    active: true
+  ImplicitDefaultLocale:
+    active: true
+  LateinitUsage:
+    active: true
+    excludes: ['**/test/**', '**/integrationTest/**']
+
+coroutines:
+  active: true
+  GlobalCoroutineUsage:
+    active: true
