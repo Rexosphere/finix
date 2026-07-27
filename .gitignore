@@ -1,0 +1,49 @@
+# Build output
+build/
+out/
+bin/
+target/
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Node
+node_modules/
+.next/
+.turbo/
+dist/
+*.tsbuildinfo
+.pnpm-store/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Go
+vendor/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Secrets & runtime state (never commit)
+.env
+.env.local
+*.pem
+*.key
+!infra/compose/pki/dev-ca.key.EXAMPLE
+secrets/
+infra/compose/data/
+
+# Test & tooling reports
+coverage/
+playwright-report/
+test-results/
+.scannerwork/
+*.log
