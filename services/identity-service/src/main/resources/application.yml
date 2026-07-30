@@ -1,0 +1,59 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: identity-service
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: jdbc:postgresql://localhost:5432/identity
+    username: identity
+    password: identity
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    # Service migrations plus the shared-kernel outbox (classpath:db/kernel).
+    locations: classpath:db/migration,classpath:db/kernel
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  kafka:
+    bootstrap-servers: localhost:9092
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8081/realms/finix
+      client:
+        # Public PKCE client used by the BFF token exchange — no client secret.
+        registration:
+          finix-web:
+            provider: keycloak
+            client-id: finix-web
+            client-authentication-method: none
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/api/v1/auth/callback"
+            scope: openid,profile,email
+        provider:
+          keycloak:
+            issuer-uri: http://localhost:8081/realms/finix
+
+finix:
+  keycloak:
+    base-url: http://localhost:8081
+    realm: finix
+    client-id: finix-web
+  # Local demo: allow unauthenticated calls until the web BFF wires cookies end-to-end.
+  # Production compose overrides this to false.
+  security:
+    permit-all: true
+  dpop:
+    enabled: true
+    required: false

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Shipped by shared-kernel so every FINIX service logs identically without configuring anything.
+
+  Two profiles, because the two audiences are different:
+   * local  — human-readable console output, colourised, one line per event.
+   * default (compose/k8s) — structured JSON on stdout, which Loki/Promtail can index by field.
+     A JSON log is the difference between "grep the logs" and "show me every failed transfer for
+     account X in the last hour, with its trace".
+
+  MDC keys traceId/spanId are written by the OpenTelemetry bridge and by CorrelationFilter, so
+  every line is joinable against a trace in Tempo without any logging call being changed.
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <springProperty scope="context" name="serviceName" source="spring.application.name" defaultValue="finix"/>
+
+    <springProfile name="local">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{HH:mm:ss.SSS} %highlight(%-5level) %cyan(%-24.24logger{24}) %X{correlationId:-} %msg%n</pattern>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="!local">
+        <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <includeMdcKeyName>traceId</includeMdcKeyName>
+                <includeMdcKeyName>spanId</includeMdcKeyName>
+                <includeMdcKeyName>correlationId</includeMdcKeyName>
+                <includeMdcKeyName>userId</includeMdcKeyName>
+                <customFields>{"service":"${serviceName}"}</customFields>
+                <fieldNames>
+                    <timestamp>@timestamp</timestamp>
+                    <version>[ignore]</version>
+                    <levelValue>[ignore]</levelValue>
+                </fieldNames>
+                <!--
+                  Stack traces are truncated: an unbounded trace from a deep reactive frame can be
+                  hundreds of lines, which costs more in log ingest than it ever returns in insight.
+                -->
+                <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                    <maxDepthPerThrowable>30</maxDepthPerThrowable>
+                    <maxLength>4096</maxLength>
+                    <shortenedClassNameLength>40</shortenedClassNameLength>
+                    <rootCauseFirst>true</rootCauseFirst>
+                </throwableConverter>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="JSON"/>
+        </root>
+    </springProfile>
+
+    <!-- Framework noise that says nothing about the banking system's behaviour. -->
+    <logger name="org.apache.kafka" level="WARN"/>
+    <logger name="org.springframework.web.servlet.mvc.method.annotation" level="WARN"/>
+    <logger name="org.hibernate.orm.deprecation" level="ERROR"/>
+
+    <!-- FINIX code is verbose by default in development, INFO everywhere else. -->
+    <springProfile name="local">
+        <logger name="org.finix" level="DEBUG"/>
+    </springProfile>
+</configuration>

@@ -30,8 +30,8 @@ exceptions:
   active: true
   TooGenericExceptionCaught:
     active: true
-    # Adapter boundaries legitimately catch broadly to map onto ProblemDetail.
-    excludes: ['**/adapter/**']
+    # Adapters map transport faults; saga use cases compensate on any step failure.
+    excludes: ['**/adapter/**', '**/usecase/**']
   SwallowedException:
     active: true
   ThrowingExceptionsWithoutMessageOrCause:
@@ -44,6 +44,12 @@ naming:
     excludes: ['**/test/**', '**/integrationTest/**']
   TopLevelPropertyNaming:
     active: true
+  MatchingDeclarationName:
+    active: true
+  # Soft keyword `in` in hexagonal path `adapter/in/rest` confuses path↔package matching.
+  InvalidPackageDeclaration:
+    active: true
+    excludes: ['**/adapter/in/**']
 
 style:
   active: true
@@ -57,10 +63,15 @@ style:
     ignoreCompanionObjectPropertyDeclaration: true
     ignoreAnnotation: true
     ignoreNamedArgument: true
+    ignoreNumbers: ['-1', '0', '1', '2', '64']
     excludes: ['**/test/**', '**/integrationTest/**', '**/crypto/**']
   ReturnCount:
     active: true
     max: 4
+  ThrowsCount:
+    active: true
+    max: 5
+    excludes: ['**/adapter/**']
   ForbiddenComment:
     active: true
     comments:
@@ -73,6 +84,12 @@ style:
   WildcardImport:
     active: true
     excludeImports: ['java.util.*']
+
+performance:
+  SpreadOperator:
+    active: true
+    # Spring Boot's runApplication takes vararg — *args is idiomatic here.
+    excludes: ['**/*Application.kt']
 
 potential-bugs:
   active: true

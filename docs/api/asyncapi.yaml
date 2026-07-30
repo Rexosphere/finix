@@ -1,0 +1,155 @@
+asyncapi: 2.6.0
+info:
+  title: FINIX Event Plane
+  version: 0.1.0
+  description: |
+    Kafka topics published by FINIX services via the transactional outbox.
+    Every message is wrapped in an EventEnvelope so consumers can deduplicate
+    (eventId), correlate across the async boundary (correlationId / traceId),
+    and evolve payloads with schemaVersion.
+  contact:
+    name: Team Rexosphere
+
+defaultContentType: application/json
+
+channels:
+  transaction.initiated:
+    description: Emitted when a transfer saga is persisted in INITIATED.
+    publish:
+      operationId: onTransactionInitiated
+      message:
+        $ref: '#/components/messages/TransactionEvent'
+
+  transaction.committed:
+    description: Emitted when a transfer saga reaches COMPLETED.
+    publish:
+      operationId: onTransactionCommitted
+      message:
+        $ref: '#/components/messages/TransactionEvent'
+
+  transaction.failed:
+    description: |
+      Emitted when a transfer saga ends in COMPENSATED or FAILED
+      (including after successful compensation).
+    publish:
+      operationId: onTransactionFailed
+      message:
+        $ref: '#/components/messages/TransactionEvent'
+
+components:
+  messages:
+    TransactionEvent:
+      name: TransactionEvent
+      title: Transaction saga lifecycle event
+      contentType: application/json
+      headers:
+        type: object
+        properties:
+          finix-event-id:
+            type: string
+            format: uuid
+          finix-event-type:
+            type: string
+            enum:
+              - transaction.initiated
+              - transaction.committed
+              - transaction.failed
+          finix-schema-version:
+            type: string
+          finix-correlation-id:
+            type: string
+          finix-trace-id:
+            type: string
+          finix-source:
+            type: string
+            example: transaction-orchestrator
+      payload:
+        $ref: '#/components/schemas/EventEnvelopeTransaction'
+
+  schemas:
+    EventEnvelopeTransaction:
+      type: object
+      required:
+        - eventType
+        - aggregateType
+        - aggregateId
+        - payload
+        - eventId
+        - occurredAt
+        - schemaVersion
+      properties:
+        eventType:
+          type: string
+          enum:
+            - transaction.initiated
+            - transaction.committed
+            - transaction.failed
+        aggregateType:
+          type: string
+          const: transaction
+        aggregateId:
+          type: string
+          format: uuid
+          description: Transfer / saga id (also the ledger transactionId).
+        eventId:
+          type: string
+          format: uuid
+          description: Consumer deduplication key (outbox delivers at-least-once).
+        occurredAt:
+          type: string
+          format: date-time
+        schemaVersion:
+          type: integer
+          minimum: 1
+        correlationId:
+          type: string
+          nullable: true
+        traceId:
+          type: string
+          nullable: true
+        source:
+          type: string
+          nullable: true
+        payload:
+          $ref: '#/components/schemas/TransactionEventPayload'
+
+    TransactionEventPayload:
+      type: object
+      required:
+        - transferId
+        - fromAccountId
+        - toAccountId
+        - amount
+        - state
+        - holdId
+      properties:
+        transferId:
+          type: string
+          format: uuid
+        fromAccountId:
+          type: string
+          format: uuid
+        toAccountId:
+          type: string
+          format: uuid
+        amount:
+          type: string
+          description: Canonical Money wire form, e.g. "LKR 100.00"
+          example: "LKR 100.00"
+        state:
+          type: string
+          enum:
+            - INITIATED
+            - FUNDS_RESERVED
+            - LEDGER_POSTED
+            - CREDIT_APPLIED
+            - COMPLETED
+            - COMPENSATING
+            - COMPENSATED
+            - FAILED
+        holdId:
+          type: string
+          format: uuid
+        failureReason:
+          type: string
+          nullable: true

@@ -1,0 +1,215 @@
+# FINIX core compose — default profile fits ~8GB RAM.
+# Usage: docker compose -f infra/compose/docker-compose.yml --profile core up -d
+
+name: finix
+
+x-jvm-service: &jvm-service
+  restart: unless-stopped
+  environment: &jvm-env
+    SPRING_THREADS_VIRTUAL_ENABLED: "true"
+    JAVA_TOOL_OPTIONS: >-
+      -XX:+UseSerialGC
+      -Xms64m
+      -Xmx192m
+      -XX:MaxMetaspaceSize=128m
+      -Djava.security.egd=file:/dev./urandom
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    redpanda:
+      condition: service_healthy
+    keycloak:
+      condition: service_healthy
+  networks: [finix]
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    profiles: [core, full]
+    environment:
+      POSTGRES_USER: finix
+      POSTGRES_PASSWORD: finix
+      POSTGRES_DB: postgres
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-databases.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finix"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [finix]
+
+  redis:
+    image: redis:7-alpine
+    profiles: [core, full]
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [finix]
+
+  redpanda:
+    image: redpandadata/redpanda:v24.2.4
+    profiles: [core, full]
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --memory=512M
+      - --overprovisioned
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+      - --pandaproxy-addr=internal://0.0.0.0:8082,external://0.0.0.0:18082
+      - --advertise-pandaproxy-addr=internal://redpanda:8082,external://localhost:18082
+    ports:
+      - "19092:19092"
+      - "18082:18082"
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy'"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+    networks: [finix]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    profiles: [core, full]
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HTTP_PORT: "8080"
+      KC_HEALTH_ENABLED: "true"
+      KC_HOSTNAME_STRICT: "false"
+    volumes:
+      - ../keycloak/finix-realm.json:/opt/keycloak/data/import/finix-realm.json:ro
+    ports: ["8081:8080"]
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+    networks: [finix]
+
+  vault:
+    image: hashicorp/vault:1.17
+    profiles: [security, full]
+    cap_add: [IPC_LOCK]
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: finix-root
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    ports: ["8200:8200"]
+    volumes:
+      - ./vault-init.sh:/vault-init.sh:ro
+    networks: [finix]
+
+  opa:
+    image: openpolicyagent/opa:0.68.0
+    profiles: [security, full]
+    command: ["run", "--server", "--addr", "0.0.0.0:8181", "/policies"]
+    volumes:
+      - ../../policies:/policies:ro
+    ports: ["8181:8181"]
+    networks: [finix]
+
+  identity-service:
+    <<: *jvm-service
+    profiles: [core, full]
+    build:
+      context: ../..
+      dockerfile: services/identity-service/Dockerfile
+    environment:
+      <<: *jvm-env
+      SPRING_APPLICATION_NAME: identity-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/identity
+      SPRING_DATASOURCE_USERNAME: identity
+      SPRING_DATASOURCE_PASSWORD: identity
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/finix
+      FINIX_KEYCLOAK_BASE_URL: http://keycloak:8080
+      SERVER_PORT: "8082"
+    ports: ["8082:8082"]
+
+  account-service:
+    <<: *jvm-service
+    profiles: [core, full]
+    build:
+      context: ../..
+      dockerfile: services/account-service/Dockerfile
+    environment:
+      <<: *jvm-env
+      SPRING_APPLICATION_NAME: account-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/account
+      SPRING_DATASOURCE_USERNAME: account
+      SPRING_DATASOURCE_PASSWORD: account
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/finix
+      SERVER_PORT: "8083"
+    ports: ["8083:8083"]
+
+  ledger-service:
+    <<: *jvm-service
+    profiles: [core, full]
+    build:
+      context: ../..
+      dockerfile: services/ledger-service/Dockerfile
+    environment:
+      <<: *jvm-env
+      SPRING_APPLICATION_NAME: ledger-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ledger
+      SPRING_DATASOURCE_USERNAME: ledger
+      SPRING_DATASOURCE_PASSWORD: ledger
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/finix
+      SERVER_PORT: "8084"
+    ports: ["8084:8084"]
+
+  transaction-orchestrator:
+    <<: *jvm-service
+    profiles: [core, full]
+    build:
+      context: ../..
+      dockerfile: services/transaction-orchestrator/Dockerfile
+    environment:
+      <<: *jvm-env
+      SPRING_APPLICATION_NAME: transaction-orchestrator
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/orchestrator
+      SPRING_DATASOURCE_USERNAME: orchestrator
+      SPRING_DATASOURCE_PASSWORD: orchestrator
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/finix
+      FINIX_ACCOUNT_BASE_URL: http://account-service:8083
+      FINIX_LEDGER_BASE_URL: http://ledger-service:8084
+      SERVER_PORT: "8085"
+    ports: ["8085:8085"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      account-service:
+        condition: service_started
+      ledger-service:
+        condition: service_started
+
+networks:
+  finix:
+    driver: bridge
+
+volumes:
+  pgdata:

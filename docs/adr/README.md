@@ -10,3 +10,4 @@ if a decision changes, a new ADR supersedes it rather than editing history.
 | [0002](0002-native-platform-bom-over-dependency-management-plugin.md) | Gradle native `platform()` BOM, not `io.spring.dependency-management` | Accepted |
 | [0003](0003-logical-database-per-service.md) | Logical database-per-service by default, physical under a profile | Accepted |
 | [0004](0004-ml-dsa-anchor-signatures-instead-of-bls.md) | ML-DSA-65 anchor signatures instead of BLS aggregation | Accepted |
+| [0005](0005-transactional-outbox-over-debezium.md) | Transactional outbox poller over Debezium CDC | Accepted |

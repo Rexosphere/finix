@@ -93,10 +93,10 @@ target architecture.
 
 | Milestone | Scope | Status |
 |---|---|---|
-| **M0** | Build system, convention plugins, shared kernel, quality gates | ✅ Complete |
-| **M1** | Identity + auth: Keycloak realm-as-code, PKCE, MFA, DPoP, mTLS, OPA | ⬜ Planned |
-| **M2** | Money core: account service, append-only double-entry ledger | 🚧 In progress |
-| **M3** | Saga orchestrator, transactional outbox, Kafka event plane | ⬜ Planned |
+| **M0** | Build system, convention plugins, shared kernel, compose skeleton, CI, ADRs | ✅ Complete |
+| **M1** | Identity + auth: Keycloak realm-as-code, PKCE BFF, DPoP, OPA, Vault PKI profile | ✅ Complete |
+| **M2** | Money core: account-service, append-only double-entry ledger + hash chain | ✅ Complete |
+| **M3** | Saga orchestrator, transactional outbox → Redpanda, AsyncAPI, chaos script | ✅ Complete |
 | **M4** | Vault: Shamir + Feldman VSS, custodians, enclave, ceremony UI | ⬜ Planned |
 | **M5** | Merkle anchor, proof API, in-browser verification, tamper demo | ⬜ Planned |
 | **M6** | PWA, offline vouchers, USSD gateway, `/lite` under 50 KB | ⬜ Planned |
@@ -106,17 +106,14 @@ target architecture.
 
 ### What works today
 
-The shared kernel is complete and tested — the primitives everything else is built on:
+**M0–M3** are in tree and pass `./gradlew verify`:
 
-- **`Money`** — exact minor-unit arithmetic. Overflow-checked, no floating point, and
-  remainder-preserving allocation so splitting 100 cents three ways gives `34/33/33` rather than
-  quietly destroying a cent.
-- **`CanonicalJson`** — RFC 8785 JCS. The ledger hash must be reproducible by the Kotlin services,
-  a shell script and the browser, which is only meaningful if all three serialise identically.
-- **`MerkleTree`** — RFC 6962 domain separation, odd-node promotion (avoids the CVE-2012-2459
-  duplicate-leaf malleability), inclusion proofs verifiable without database access.
-- **`PostQuantum`** — ML-KEM-768 (FIPS 203) and ML-DSA-65 (FIPS 204) via BouncyCastle, verified
-  against JDK 21.
+- **shared-kernel** — Money, JCS, Merkle, PQC, outbox, DPoP, OAuth2 resource-server defaults
+- **identity-service** — profiles, devices, login-risk scoring, PKCE authorize/token BFF cookies
+- **account-service** — open/list accounts, reserve/commit/release holds, seed personas
+- **ledger-service** — balanced double-entry journals, SHA-256 hash chain, append-only DB triggers, `/verify`
+- **transaction-orchestrator** — internal-transfer saga with compensation + outbox events
+- **infra** — compose core profile (Postgres / Redis / Redpanda / Keycloak + four services), OPA Rego, Keycloak realm JSON
 
 ---
 

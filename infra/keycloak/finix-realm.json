@@ -1,0 +1,206 @@
+{
+  "realm": "finix",
+  "enabled": true,
+  "displayName": "FINIX Banking",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
+  "accessTokenLifespan": 300,
+  "accessTokenLifespanForImplicitFlow": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "offlineSessionIdleTimeout": 2592000,
+  "accessCodeLifespan": 60,
+  "accessCodeLifespanUserAction": 300,
+  "accessCodeLifespanLogin": 1800,
+  "actionTokenGeneratedByAdminLifespan": 43200,
+  "actionTokenGeneratedByUserLifespan": 300,
+  "oauth2DeviceCodeLifespan": 600,
+  "oauth2DevicePollingInterval": 5,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "passwordPolicy": "length(12) and digits(1) and upperCase(1) and lowerCase(1) and specialChars(1) and notUsername",
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyDigits": 6,
+  "otpPolicyPeriod": 30,
+  "otpPolicyLookAheadWindow": 1,
+  "webAuthnPolicyRpEntityName": "FINIX",
+  "webAuthnPolicyRpId": "localhost",
+  "webAuthnPolicySignatureAlgorithms": ["ES256", "RS256"],
+  "webAuthnPolicyAttestationConveyancePreference": "not specified",
+  "webAuthnPolicyAuthenticatorAttachment": "not specified",
+  "webAuthnPolicyRequireResidentKey": "No",
+  "webAuthnPolicyUserVerificationRequirement": "preferred",
+  "roles": {
+    "realm": [
+      { "name": "customer", "description": "Retail banking customer" },
+      { "name": "sme", "description": "SME merchant" },
+      { "name": "teller", "description": "Branch teller — view + limited transfer" },
+      { "name": "compliance", "description": "Compliance officer — read-only across accounts" },
+      { "name": "regulator", "description": "External regulator — audit read" },
+      { "name": "admin", "description": "Platform operator" },
+      { "name": "service-account", "description": "Machine identity for service-to-service calls" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "finix-web",
+      "name": "FINIX Web PWA",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect",
+      "rootUrl": "http://localhost:3000",
+      "baseUrl": "http://localhost:3000",
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://localhost:8082/api/v1/auth/callback"
+      ],
+      "webOrigins": ["http://localhost:3000", "http://localhost:8082"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "client.use.lightweight.access.token.enabled": "false",
+        "dpop.bound.access.tokens": "optional",
+        "post.logout.redirect.uris": "http://localhost:3000/*"
+      },
+      "defaultClientScopes": ["web-origins", "acr", "profile", "roles", "email"],
+      "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"]
+    },
+    {
+      "clientId": "finix-admin",
+      "name": "FINIX Admin Console",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect",
+      "rootUrl": "http://localhost:3001",
+      "redirectUris": ["http://localhost:3001/*"],
+      "webOrigins": ["http://localhost:3001"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "dpop.bound.access.tokens": "optional"
+      }
+    },
+    {
+      "clientId": "finix-services",
+      "name": "FINIX Service Mesh",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "finix-service-secret-change-me",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "300"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "farmer@finix.lk",
+      "email": "farmer@finix.lk",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Sunil",
+      "lastName": "Perera",
+      "credentials": [{ "type": "password", "value": "Finix!2026", "temporary": false }],
+      "realmRoles": ["customer"],
+      "attributes": {
+        "persona": ["rural-farmer"],
+        "locale": ["si"],
+        "nic": ["198512345678"]
+      }
+    },
+    {
+      "username": "sme@finix.lk",
+      "email": "sme@finix.lk",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Nimali",
+      "lastName": "Fernando",
+      "credentials": [{ "type": "password", "value": "Finix!2026", "temporary": false }],
+      "realmRoles": ["customer", "sme"],
+      "attributes": {
+        "persona": ["moratuwa-sme"],
+        "locale": ["en"],
+        "nic": ["199012345679"]
+      }
+    },
+    {
+      "username": "elder@finix.lk",
+      "email": "elder@finix.lk",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Kamala",
+      "lastName": "Silva",
+      "credentials": [{ "type": "password", "value": "Finix!2026", "temporary": false }],
+      "realmRoles": ["customer"],
+      "attributes": {
+        "persona": ["elderly-sinhala"],
+        "locale": ["si"],
+        "nic": ["195012345680"]
+      }
+    },
+    {
+      "username": "regulator@finix.lk",
+      "email": "regulator@finix.lk",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "CBSL",
+      "lastName": "Auditor",
+      "credentials": [{ "type": "password", "value": "Finix!2026", "temporary": false }],
+      "realmRoles": ["regulator", "compliance"],
+      "attributes": {
+        "persona": ["regulator"],
+        "locale": ["en"]
+      }
+    },
+    {
+      "username": "admin@finix.lk",
+      "email": "admin@finix.lk",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Ops",
+      "lastName": "Admin",
+      "credentials": [{ "type": "password", "value": "Finix!2026", "temporary": false }],
+      "realmRoles": ["admin"]
+    }
+  ],
+  "browserFlow": "browser",
+  "authenticationFlows": [],
+  "requiredActions": [
+    {
+      "alias": "CONFIGURE_TOTP",
+      "name": "Configure OTP",
+      "providerId": "CONFIGURE_TOTP",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 10
+    },
+    {
+      "alias": "webauthn-register",
+      "name": "Webauthn Register",
+      "providerId": "webauthn-register",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 20
+    }
+  ]
+}
