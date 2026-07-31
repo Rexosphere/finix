@@ -1,5 +1,8 @@
 # FINIX core compose — default profile fits ~8GB RAM.
-# Usage: docker compose -f infra/compose/docker-compose.yml --profile core up -d
+# Usage:
+#   Local build:  docker compose -f infra/compose/docker-compose.yml --profile core up -d --build
+#   Prebuilt:     FINIX_IMAGE_TAG=latest docker compose -f … --profile core pull && … up -d
+# Images publish to ghcr.io/rexosphere/finix/<service> via .github/workflows/publish-images.yml
 
 name: finix
 
@@ -122,6 +125,7 @@ services:
   identity-service:
     <<: *jvm-service
     profiles: [core, full]
+    image: ${FINIX_IMAGE_PREFIX:-ghcr.io/rexosphere/finix}/identity-service:${FINIX_IMAGE_TAG:-latest}
     build:
       context: ../..
       dockerfile: services/identity-service/Dockerfile
@@ -141,6 +145,7 @@ services:
   account-service:
     <<: *jvm-service
     profiles: [core, full]
+    image: ${FINIX_IMAGE_PREFIX:-ghcr.io/rexosphere/finix}/account-service:${FINIX_IMAGE_TAG:-latest}
     build:
       context: ../..
       dockerfile: services/account-service/Dockerfile
@@ -159,6 +164,7 @@ services:
   ledger-service:
     <<: *jvm-service
     profiles: [core, full]
+    image: ${FINIX_IMAGE_PREFIX:-ghcr.io/rexosphere/finix}/ledger-service:${FINIX_IMAGE_TAG:-latest}
     build:
       context: ../..
       dockerfile: services/ledger-service/Dockerfile
@@ -177,6 +183,7 @@ services:
   transaction-orchestrator:
     <<: *jvm-service
     profiles: [core, full]
+    image: ${FINIX_IMAGE_PREFIX:-ghcr.io/rexosphere/finix}/transaction-orchestrator:${FINIX_IMAGE_TAG:-latest}
     build:
       context: ../..
       dockerfile: services/transaction-orchestrator/Dockerfile
@@ -212,6 +219,7 @@ services:
 
   risk-ai-service:
     profiles: [core, full]
+    image: ${FINIX_IMAGE_PREFIX:-ghcr.io/rexosphere/finix}/risk-ai-service:${FINIX_IMAGE_TAG:-latest}
     build:
       context: ../..
       dockerfile: services/risk-ai-service/Dockerfile
@@ -228,6 +236,7 @@ services:
 
   enclave-runtime:
     profiles: [core, full]
+    image: ${FINIX_IMAGE_PREFIX:-ghcr.io/rexosphere/finix}/enclave-runtime:${FINIX_IMAGE_TAG:-latest}
     build:
       context: ../..
       dockerfile: services/enclave-runtime/Dockerfile
@@ -252,6 +261,7 @@ services:
   vault-service:
     <<: *jvm-service
     profiles: [core, full]
+    image: ${FINIX_IMAGE_PREFIX:-ghcr.io/rexosphere/finix}/vault-service:${FINIX_IMAGE_TAG:-latest}
     build:
       context: ../..
       dockerfile: services/vault-service/Dockerfile
@@ -290,6 +300,7 @@ services:
   ussd-gateway:
     <<: *jvm-service
     profiles: [core, full]
+    image: ${FINIX_IMAGE_PREFIX:-ghcr.io/rexosphere/finix}/ussd-gateway:${FINIX_IMAGE_TAG:-latest}
     build:
       context: ../..
       dockerfile: services/ussd-gateway/Dockerfile
@@ -331,6 +342,7 @@ services:
   loan-service:
     <<: *jvm-service
     profiles: [core, full]
+    image: ${FINIX_IMAGE_PREFIX:-ghcr.io/rexosphere/finix}/loan-service:${FINIX_IMAGE_TAG:-latest}
     build:
       context: ../..
       dockerfile: services/loan-service/Dockerfile
@@ -348,6 +360,7 @@ services:
   compliance-service:
     <<: *jvm-service
     profiles: [core, full]
+    image: ${FINIX_IMAGE_PREFIX:-ghcr.io/rexosphere/finix}/compliance-service:${FINIX_IMAGE_TAG:-latest}
     build:
       context: ../..
       dockerfile: services/compliance-service/Dockerfile
@@ -364,6 +377,7 @@ services:
 
   payment-hub:
     profiles: [core, full]
+    image: ${FINIX_IMAGE_PREFIX:-ghcr.io/rexosphere/finix}/payment-hub:${FINIX_IMAGE_TAG:-latest}
     build:
       context: ../..
       dockerfile: services/payment-hub/Dockerfile
@@ -373,6 +387,7 @@ services:
 
   notification-service:
     profiles: [core, full]
+    image: ${FINIX_IMAGE_PREFIX:-ghcr.io/rexosphere/finix}/notification-service:${FINIX_IMAGE_TAG:-latest}
     build:
       context: ../..
       dockerfile: services/notification-service/Dockerfile

@@ -129,6 +129,18 @@ target architecture.
 
 Judges: `make demo` then follow [docs/DEMO.md](docs/DEMO.md).
 
+Prebuilt service images publish to GHCR on every push to `master` / `main`
+(`ghcr.io/rexosphere/finix/<service>:latest`). After the first publish (and making
+packages public if the org defaults to private), you can skip local Gradle/Docker
+builds:
+
+```bash
+make up-pull   # docker compose pull + up --no-build
+make seed
+```
+
+Pin a commit build with `FINIX_IMAGE_TAG=sha-<shortsha> make up-pull`.
+
 ---
 
 ## Quick start
