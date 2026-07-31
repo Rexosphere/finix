@@ -10,6 +10,8 @@ import org.finix.orchestrator.application.JournalSide
 import org.finix.orchestrator.application.SagaPersistence
 import org.finix.orchestrator.application.port.AccountClient
 import org.finix.orchestrator.application.port.LedgerClient
+import org.finix.orchestrator.application.port.RiskClient
+import org.finix.orchestrator.application.port.SagaRepository
 import org.finix.orchestrator.domain.SagaState
 import org.finix.orchestrator.domain.TransferSaga
 import org.springframework.stereotype.Service
@@ -18,31 +20,33 @@ import java.time.Instant
 import java.util.UUID
 
 /**
- * Runs the internal-transfer saga end-to-end.
+ * Runs the internal-transfer saga with risk gating (M7).
  *
- * Happy path:
- *  1. Persist INITIATED + outbox `transaction.initiated`
- *  2. Reserve funds on the source account
- *  3. Persist FUNDS_RESERVED
- *  4. Post balanced DEBIT/CREDIT journal
- *  5. Persist LEDGER_POSTED
- *  6. Commit hold + credit destination
- *  7. Persist COMPLETED + outbox `transaction.committed`
- *
- * On failure after reserve: compensate (release hold; reverse journal if posted) and emit
- * `transaction.failed`.
+ * After INITIATED:
+ *  - score &lt; 40 → continue (allow)
+ *  - 40–70 → persist AWAITING_STEP_UP and return (client completes MFA then /step-up)
+ *  - &gt; 70 → BLOCKED terminal + fraud case opened in risk-ai
  */
 @Service
 class RunTransferSagaUseCase(
     private val persistence: SagaPersistence,
+    private val sagas: SagaRepository,
     private val accounts: AccountClient,
     private val ledger: LedgerClient,
+    private val risk: RiskClient,
     private val clock: Clock,
 ) {
 
     private val log = KotlinLogging.logger {}
 
-    fun execute(fromAccountId: UUID, toAccountId: UUID, amount: Money): TransferSaga {
+    fun execute(
+        fromAccountId: UUID,
+        toAccountId: UUID,
+        amount: Money,
+        newDevice: Boolean = false,
+        velocity1h: Int = 0,
+        offlineVoucher: Boolean = false,
+    ): TransferSaga {
         domainRequire(fromAccountId != toAccountId) {
             DomainError.Invalid("from and to accounts must differ")
         }
@@ -58,36 +62,93 @@ class RunTransferSagaUseCase(
         )
         saga = persistence.saveInitiated(saga)
 
-        return try {
-            accounts.reserve(saga.fromAccountId, saga.amount, saga.holdId)
-            saga = persistence.save(saga.markReserved(Instant.now(clock)))
-
-            ledger.postJournal(saga.id, transferLines(saga))
-            saga = persistence.save(saga.markLedgerPosted(Instant.now(clock)))
-
-            accounts.commitHold(saga.fromAccountId, saga.holdId)
-            accounts.credit(saga.toAccountId, saga.amount, reference = saga.id.toString())
-            saga = saga
-                .markCreditApplied(Instant.now(clock))
-                .markCompleted(Instant.now(clock))
-            persistence.saveCompleted(saga)
+        val assessment = try {
+            risk.scoreTransfer(
+                transactionId = saga.id.toString(),
+                fromAccountId = fromAccountId.toString(),
+                toAccountId = toAccountId.toString(),
+                amountMinor = amount.minorUnits,
+                currency = amount.currency.currencyCode,
+                velocity1h = velocity1h,
+                newDevice = newDevice,
+                offlineVoucher = offlineVoucher,
+            )
         } catch (ex: Exception) {
-            log.warn(ex) { "Transfer saga ${saga.id} failed in state ${saga.state}: ${ex.message}" }
-            compensate(saga, reasonOf(ex), ledgerWasPosted = saga.ledgerPosted)
+            log.warn(ex) { "Risk scoring unavailable for saga ${saga.id}; failing closed to step-up" }
+            null
         }
+
+        if (assessment != null) {
+            saga = persistence.save(
+                saga.withRisk(assessment.score, assessment.decision, Instant.now(clock)),
+            )
+            when (assessment.decision.lowercase()) {
+                "block" -> {
+                    val reason = "risk blocked score=${assessment.score} case=${assessment.caseId} reasons=${assessment.reasons}"
+                    return persistence.saveTerminalFailure(saga.markBlocked(reason, Instant.now(clock)))
+                }
+                "step_up" -> {
+                    return persistence.save(saga.markAwaitingStepUp(Instant.now(clock)))
+                }
+            }
+        }
+
+        return continueAfterRisk(saga)
     }
 
     /**
-     * Compensates a non-terminal saga. [ledgerWasPosted] defaults to [TransferSaga.ledgerPosted]
-     * so admin replay after a crash mid-compensate still reverses only when a forward journal ran.
+     * Completes a saga suspended in [SagaState.AWAITING_STEP_UP] after the caller verified MFA.
+     * Demo accepts any non-blank [otpCode]; production would validate WebAuthn/TOTP via identity.
      */
+    fun completeStepUp(sagaId: UUID, otpCode: String): TransferSaga {
+        domainRequire(otpCode.isNotBlank()) {
+            DomainError.Invalid("otpCode required for step-up")
+        }
+        val saga = sagas.findById(sagaId)
+            ?: DomainError.NotFound("TransferSaga", sagaId.toString()).raise()
+        domainRequire(saga.state == SagaState.AWAITING_STEP_UP) {
+            DomainError.Conflict(
+                detail = "saga ${saga.id} is ${saga.state}, expected AWAITING_STEP_UP",
+                properties = mapOf("sagaId" to saga.id.toString(), "state" to saga.state.name),
+            )
+        }
+        return continueAfterRisk(saga)
+    }
+
+    private fun continueAfterRisk(saga: TransferSaga): TransferSaga {
+        var current = saga
+        return try {
+            accounts.reserve(current.fromAccountId, current.amount, current.holdId)
+            current = persistence.save(current.markReserved(Instant.now(clock)))
+
+            ledger.postJournal(current.id, transferLines(current))
+            current = persistence.save(current.markLedgerPosted(Instant.now(clock)))
+
+            accounts.commitHold(current.fromAccountId, current.holdId)
+            accounts.credit(current.toAccountId, current.amount, reference = current.id.toString())
+            current = current
+                .markCreditApplied(Instant.now(clock))
+                .markCompleted(Instant.now(clock))
+            persistence.saveCompleted(current)
+        } catch (ex: Exception) {
+            log.warn(ex) { "Transfer saga ${current.id} failed in state ${current.state}: ${ex.message}" }
+            compensate(current, reasonOf(ex), ledgerWasPosted = current.ledgerPosted)
+        }
+    }
+
     fun compensate(
         saga: TransferSaga,
         reason: String,
         ledgerWasPosted: Boolean = saga.ledgerPosted,
     ): TransferSaga {
-        if (saga.state == SagaState.INITIATED) {
+        if (saga.state == SagaState.INITIATED || saga.state == SagaState.AWAITING_STEP_UP) {
             return persistence.saveTerminalFailure(saga.markFailed(reason, Instant.now(clock)))
+        }
+        if (saga.state == SagaState.BLOCKED) {
+            DomainError.Conflict(
+                detail = "saga ${saga.id} is BLOCKED and cannot be compensated",
+                properties = mapOf("sagaId" to saga.id.toString(), "state" to saga.state.name),
+            ).raise()
         }
         if (saga.state in TERMINAL) {
             DomainError.Conflict(
@@ -107,7 +168,6 @@ class RunTransferSagaUseCase(
                 try {
                     ledger.postJournal(reversalTransactionId(compensating.id), reversalLines(compensating))
                 } catch (ex: Exception) {
-                    // Append-only ledger + deterministic reversal id: a replay may already have reversed.
                     log.warn(ex) {
                         "Ledger reversal for saga ${compensating.id} failed; continuing with hold release"
                     }
@@ -141,6 +201,7 @@ class RunTransferSagaUseCase(
             SagaState.COMPLETED,
             SagaState.COMPENSATED,
             SagaState.FAILED,
+            SagaState.BLOCKED,
         )
 
         fun reversalTransactionId(sagaId: UUID): UUID =

@@ -14,9 +14,11 @@ import org.finix.kernel.domain.DomainException
 import org.finix.kernel.domain.lkr
 import org.finix.kernel.messaging.EventEnvelope
 import org.finix.kernel.messaging.Topics
+import org.finix.orchestrator.application.RiskAssessment
 import org.finix.orchestrator.application.port.AccountClient
 import org.finix.orchestrator.application.port.LedgerClient
 import org.finix.orchestrator.application.port.OutboxPort
+import org.finix.orchestrator.application.port.RiskClient
 import org.finix.orchestrator.application.port.SagaRepository
 import org.finix.orchestrator.application.usecase.RunTransferSagaUseCase
 import org.finix.orchestrator.domain.SagaState
@@ -54,6 +56,7 @@ class RunTransferSagaUseCaseTest {
 
     private val accounts = mockk<AccountClient>()
     private val ledger = mockk<LedgerClient>()
+    private val risk = mockk<RiskClient>()
     private lateinit var persistence: SagaPersistence
     private lateinit var useCase: RunTransferSagaUseCase
 
@@ -61,9 +64,12 @@ class RunTransferSagaUseCaseTest {
     fun setUp() {
         store.clear()
         outboxTopics.clear()
-        clearMocks(accounts, ledger)
+        clearMocks(accounts, ledger, risk)
+        every {
+            risk.scoreTransfer(any(), any(), any(), any(), any(), any(), any(), any())
+        } returns RiskAssessment(score = 10, decision = "allow", reasons = emptyList())
         persistence = SagaPersistence(sagas, outbox)
-        useCase = RunTransferSagaUseCase(persistence, accounts, ledger, clock)
+        useCase = RunTransferSagaUseCase(persistence, sagas, accounts, ledger, risk, clock)
     }
 
     @Test
@@ -131,6 +137,41 @@ class RunTransferSagaUseCaseTest {
         result.state shouldBe SagaState.FAILED
         verify { ledger wasNot Called }
         verify(exactly = 0) { accounts.releaseHold(any(), any()) }
+        outboxTopics shouldBe listOf(Topics.TRANSACTION_INITIATED, Topics.TRANSACTION_FAILED)
+    }
+
+    @Test
+    fun `step_up decision suspends before reserve`() {
+        every {
+            risk.scoreTransfer(any(), any(), any(), any(), any(), any(), any(), any())
+        } returns RiskAssessment(score = 55, decision = "step_up", reasons = listOf("new_device"))
+
+        val result = useCase.execute(from, to, "100.00".lkr(), newDevice = true)
+
+        result.state shouldBe SagaState.AWAITING_STEP_UP
+        result.riskScore shouldBe 55
+        verify { accounts wasNot Called }
+        verify { ledger wasNot Called }
+
+        every { accounts.reserve(any(), any(), any()) } just runs
+        every { ledger.postJournal(any(), any()) } just runs
+        every { accounts.commitHold(any(), any()) } just runs
+        every { accounts.credit(any(), any(), any()) } just runs
+
+        val resumed = useCase.completeStepUp(result.id, "123456")
+        resumed.state shouldBe SagaState.COMPLETED
+    }
+
+    @Test
+    fun `block decision is terminal without touching accounts`() {
+        every {
+            risk.scoreTransfer(any(), any(), any(), any(), any(), any(), any(), any())
+        } returns RiskAssessment(score = 88, decision = "block", reasons = listOf("amount"), caseId = "case-1")
+
+        val result = useCase.execute(from, to, "600000.00".lkr())
+
+        result.state shouldBe SagaState.BLOCKED
+        verify { accounts wasNot Called }
         outboxTopics shouldBe listOf(Topics.TRANSACTION_INITIATED, Topics.TRANSACTION_FAILED)
     }
 }

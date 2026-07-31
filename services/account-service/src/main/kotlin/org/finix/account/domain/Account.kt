@@ -141,6 +141,24 @@ class Account(
         availableBalance += amount
     }
 
+    /**
+     * Debits available balance directly — used for offline voucher settlement where the hold
+     * lifecycle already happened on-device (deviceSeq + signed voucher) rather than via saga holds.
+     */
+    fun debit(amount: Money) {
+        requireActive()
+        requirePositive(amount)
+        requireSameCurrency(amount)
+        domainRequire(availableBalance >= amount) {
+            DomainError.InsufficientFunds(
+                accountId = id.toString(),
+                requested = amount,
+                available = availableBalance,
+            )
+        }
+        availableBalance -= amount
+    }
+
     fun freeze() {
         domainRequire(status == AccountStatus.ACTIVE) {
             DomainError.Conflict("Account '$id' cannot be frozen from status $status")

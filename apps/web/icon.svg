@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="FINIX">
+  <rect width="128" height="128" fill="#0f1c18"/>
+  <path d="M24 96V32h28c18 0 28 10 28 24s-10 24-28 24H48v16H24zm24-40h4c6 0 10-3 10-8s-4-8-10-8h-4v16z" fill="#3dd68c"/>
+  <circle cx="96" cy="88" r="12" fill="#e8b84a"/>
+</svg>

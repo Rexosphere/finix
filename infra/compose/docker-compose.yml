@@ -191,6 +191,7 @@ services:
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/finix
       FINIX_ACCOUNT_BASE_URL: http://account-service:8083
       FINIX_LEDGER_BASE_URL: http://ledger-service:8084
+      FINIX_RISK_BASE_URL: http://risk-ai-service:8091
       SERVER_PORT: "8085"
     ports: ["8085:8085"]
     depends_on:
@@ -206,6 +207,24 @@ services:
         condition: service_started
       ledger-service:
         condition: service_started
+      risk-ai-service:
+        condition: service_started
+
+  risk-ai-service:
+    profiles: [core, full]
+    build:
+      context: ../..
+      dockerfile: services/risk-ai-service/Dockerfile
+    environment:
+      FINIX_MODEL_DIR: /app/app/model_artifacts
+    ports: ["8091:8091"]
+    networks: [finix]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8091/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   enclave-runtime:
     profiles: [core, full]
@@ -264,6 +283,47 @@ services:
     volumes:
       - ../../apps/admin:/usr/share/nginx/html:ro
     ports: ["3001:80"]
+    networks: [finix]
+    restart: unless-stopped
+
+  ussd-gateway:
+    <<: *jvm-service
+    profiles: [core, full]
+    build:
+      context: ../..
+      dockerfile: services/ussd-gateway/Dockerfile
+    environment:
+      <<: *jvm-env
+      SPRING_APPLICATION_NAME: ussd-gateway
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/finix
+      FINIX_ACCOUNT_BASE_URL: http://account-service:8083
+      FINIX_ORCHESTRATOR_BASE_URL: http://transaction-orchestrator:8085
+      FINIX_SECURITY_PERMIT_ALL: "true"
+      FINIX_DPOP_ENABLED: "false"
+      FINIX_IDEMPOTENCY_ENABLED: "false"
+      SERVER_PORT: "8087"
+    ports: ["8087:8087"]
+    depends_on:
+      redis:
+        condition: service_healthy
+      account-service:
+        condition: service_started
+      transaction-orchestrator:
+        condition: service_started
+
+  web:
+    profiles: [core, full]
+    image: nginx:1.27-alpine
+    volumes:
+      - ../../apps/web:/usr/share/nginx/html:ro
+      - ../../apps/web/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports: ["3000:80"]
+    depends_on:
+      ussd-gateway:
+        condition: service_started
+      account-service:
+        condition: service_started
     networks: [finix]
     restart: unless-stopped
 

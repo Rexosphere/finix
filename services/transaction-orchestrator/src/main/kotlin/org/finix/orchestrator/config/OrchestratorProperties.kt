@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 data class OrchestratorProperties(
     val account: Downstream = Downstream(baseUrl = "http://localhost:8083"),
     val ledger: Downstream = Downstream(baseUrl = "http://localhost:8084"),
+    val risk: Downstream = Downstream(baseUrl = "http://localhost:8091"),
 ) {
     data class Downstream(
         val baseUrl: String = "",

@@ -35,3 +35,7 @@ GRANT CONNECT ON DATABASE identity TO identity;
 GRANT CONNECT ON DATABASE account TO account;
 GRANT CONNECT ON DATABASE ledger TO ledger;
 GRANT CONNECT ON DATABASE orchestrator TO orchestrator;
+GRANT CONNECT ON DATABASE vault TO vault_svc;
+GRANT CONNECT ON DATABASE compliance TO compliance;
+GRANT CONNECT ON DATABASE loan TO loan;
+GRANT CONNECT ON DATABASE ussd TO ussd;

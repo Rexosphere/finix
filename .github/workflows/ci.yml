@@ -29,6 +29,9 @@ jobs:
       - name: Verify
         run: ./gradlew verify --no-daemon
 
+      - name: Lite bundle budget
+        run: bash scripts/check-lite-budget.sh
+
       - name: Upload detekt SARIF
         if: always()
         uses: github/codeql-action/upload-sarif@v3

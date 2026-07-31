@@ -99,24 +99,28 @@ target architecture.
 | **M3** | Saga orchestrator, transactional outbox → Redpanda, AsyncAPI, chaos script | ✅ Complete |
 | **M4** | Vault: Shamir + Feldman VSS, custodians, enclave, ceremony UI | ✅ Complete |
 | **M5** | Merkle anchor, proof API, in-browser verification, tamper demo | ✅ Complete |
-| **M6** | PWA, offline vouchers, USSD gateway, `/lite` under 50 KB | ⬜ Planned |
-| **M7** | Risk AI, adaptive step-up auth, service quarantine | ⬜ Planned |
+| **M6** | PWA, offline vouchers, USSD gateway, `/lite` under 50 KB | ✅ Complete |
+| **M7** | Risk AI, adaptive step-up auth, service quarantine | ✅ Complete |
 | **M8** | Payment Hub, loans, compliance, notifications, admin console | ⬜ Planned |
 | **M9** | Full QA suite, load/chaos/DR evidence, user guide | ⬜ Planned |
 
 ### What works today
 
-**M0–M5** are in tree and pass `./gradlew verify`:
+**M0–M7** are in tree and pass `./gradlew verify`:
 
 - **shared-kernel** — Money, JCS, Merkle, PQC, outbox, DPoP, OAuth2 resource-server defaults
 - **identity-service** — profiles, devices, login-risk scoring, PKCE authorize/token BFF cookies
-- **account-service** — open/list accounts, reserve/commit/release holds, seed personas
+- **account-service** — open/list accounts, reserve/commit/release holds, seed personas, offline voucher register/reconcile + double-spend quarantine
 - **ledger-service** — balanced double-entry journals, SHA-256 hash chain, append-only DB triggers, `/verify`, ML-DSA Merkle anchors + proof + tamper demo
-- **transaction-orchestrator** — internal-transfer saga with compensation + outbox events
+- **transaction-orchestrator** — internal-transfer saga with risk gating (`allow` / `AWAITING_STEP_UP` / `BLOCKED`) + compensation + outbox events
 - **vault-service** — Shamir 3-of-5 + Feldman VSS, hybrid-sealed custodian shards, ceremony workflow
 - **enclave-runtime** — attestation, reconstruct-only path with key zeroing
-- **apps/admin** — ceremony UI (compose `:3001`); **apps/web/verify.html** + `scripts/verify-ledger.sh`
-- **infra** — compose core + vault/enclave/admin, OPA Rego, Keycloak realm JSON
+- **ussd-gateway** — Africa's Talking `POST /ussd` for `*334#` (balance, send, mini-statement, language) with Redis sessions
+- **risk-ai-service** — IsolationForest + rules (`/v1/score`), login enrichment, AI Shield quarantine, FedAvg demo; model card in `docs/model-card-risk-ai.md`
+- **Keycloak SPI** — `infra/keycloak/spi` adaptive authenticator calls identity `/login-risk`
+- **apps/web** — offline PWA (voucher QR/Base45 + outbox), USSD simulator, zero-JS `/lite.html` (&lt;50 KB CI budget), ledger verify
+- **apps/admin** — ceremony UI (compose `:3001`)
+- **infra** — compose core + vault/enclave/admin/web/ussd/risk-ai, OPA Rego, Keycloak realm JSON
 
 ---
 

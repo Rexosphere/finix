@@ -22,6 +22,8 @@ data class TransferSaga(
     /** True once the forward journal has been accepted — survives COMPENSATING for safe replay. */
     val ledgerPosted: Boolean = false,
     val failureReason: String? = null,
+    val riskScore: Int? = null,
+    val riskDecision: String? = null,
     val createdAt: Instant,
     val updatedAt: Instant,
 ) {
@@ -43,8 +45,31 @@ data class TransferSaga(
         }
     }
 
-    fun markReserved(at: Instant = Instant.now()): TransferSaga =
-        transition(SagaState.INITIATED, SagaState.FUNDS_RESERVED, at)
+    fun withRisk(score: Int, decision: String, at: Instant = Instant.now()): TransferSaga =
+        copy(riskScore = score, riskDecision = decision, updatedAt = at)
+
+    fun markAwaitingStepUp(at: Instant = Instant.now()): TransferSaga =
+        transition(SagaState.INITIATED, SagaState.AWAITING_STEP_UP, at)
+
+    fun markBlocked(reason: String, at: Instant = Instant.now()): TransferSaga {
+        domainRequire(state == SagaState.INITIATED || state == SagaState.AWAITING_STEP_UP) {
+            DomainError.Conflict(
+                detail = "cannot block from state $state",
+                properties = mapOf("sagaId" to id.toString(), "state" to state.name),
+            )
+        }
+        return copy(state = SagaState.BLOCKED, failureReason = reason, updatedAt = at)
+    }
+
+    fun markReserved(at: Instant = Instant.now()): TransferSaga {
+        domainRequire(state == SagaState.INITIATED || state == SagaState.AWAITING_STEP_UP) {
+            DomainError.Conflict(
+                detail = "illegal transition $state → FUNDS_RESERVED",
+                properties = mapOf("sagaId" to id.toString(), "from" to state.name, "to" to "FUNDS_RESERVED"),
+            )
+        }
+        return copy(state = SagaState.FUNDS_RESERVED, updatedAt = at)
+    }
 
     fun markLedgerPosted(at: Instant = Instant.now()): TransferSaga =
         transition(SagaState.FUNDS_RESERVED, SagaState.LEDGER_POSTED, at).copy(ledgerPosted = true)
@@ -103,6 +128,7 @@ data class TransferSaga(
 
         private val FAILABLE = setOf(
             SagaState.INITIATED,
+            SagaState.AWAITING_STEP_UP,
             SagaState.COMPENSATING,
         )
 

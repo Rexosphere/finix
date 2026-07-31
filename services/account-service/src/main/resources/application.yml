@@ -58,6 +58,12 @@ finix:
     enabled: true
   idempotency:
     enabled: true
+  offline:
+    max-duration-hours: 72
+    max-per-tx-minor: 500000
+    max-cumulative-minor: 2500000
+    max-queued: 20
+    reconciliation-window-hours: 168
 
 springdoc:
   api-docs:

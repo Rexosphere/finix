@@ -1,0 +1,16 @@
+{
+  "features": [
+    "amount_z",
+    "velocity_1h",
+    "new_device",
+    "geo_velocity",
+    "payee_novelty",
+    "hour_sin",
+    "hour_cos",
+    "offline_voucher"
+  ],
+  "seed": 42,
+  "algorithm": "IsolationForest",
+  "contamination": 0.05,
+  "n_estimators": 100
+}

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FINIX — USSD *334#</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=DM+Sans:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --bg:#0b1210; --term:#0e1a14; --fg:#b7f5c8; --dim:#5f8a6e; --amber:#e8b84a; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; color: var(--fg);
+      font-family: "DM Sans", system-ui, sans-serif;
+      background: radial-gradient(ellipse 60% 40% at 50% 0%, #163528, transparent), var(--bg);
+      padding: 2rem 1rem;
+    }
+    main { max-width: 640px; margin: 0 auto; }
+    h1 { margin: 0 0 .25rem; letter-spacing: -.02em; }
+    .lede { color: var(--dim); margin-bottom: 1rem; }
+    a { color: var(--amber); }
+    .controls { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: .75rem; }
+    select, button, input {
+      font: inherit; padding: .55rem .7rem;
+      background: var(--term); color: var(--fg); border: 1px solid #244833;
+    }
+    button { cursor: pointer; background: #1f6b45; border-color: #1f6b45; color: #eafff1; font-weight: 700; }
+    .screen {
+      font-family: "IBM Plex Mono", monospace;
+      background: var(--term);
+      border: 1px solid #244833;
+      min-height: 280px;
+      padding: 1rem;
+      white-space: pre-wrap;
+      line-height: 1.45;
+      box-shadow: inset 0 0 40px rgba(0,0,0,.35);
+    }
+    .keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; max-width: 240px; margin-top: .75rem; }
+    .keys button { padding: .85rem; font-family: "IBM Plex Mono", monospace; }
+    .hint { color: var(--dim); font-size: .85rem; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>USSD *334#</h1>
+    <p class="lede">Terminal simulator hitting the real Africa's Talking <code>POST /ussd</code> contract.</p>
+    <p><a href="/">PWA</a> · <a href="/lite.html">Lite</a></p>
+    <div class="controls">
+      <select id="phone">
+        <option value="+94771110001">+94771110001 Farmer</option>
+        <option value="+94771110002">+94771110002 SME</option>
+        <option value="+94771110003">+94771110003 Elder</option>
+      </select>
+      <button id="dial" type="button">Dial *334#</button>
+      <button id="reset" type="button">End session</button>
+    </div>
+    <div class="screen" id="screen">Press Dial to start.</div>
+    <div class="keys" id="keys" hidden>
+      <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+      <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+      <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+      <button data-k="*">*</button><button data-k="0">0</button><button data-k="send">OK</button>
+    </div>
+    <input id="buffer" placeholder="type then OK" style="width:100%;margin-top:.75rem" />
+    <p class="hint">Menu: 1 Balance · 2 Send Money · 3 Mini-statement · 4 Loan · 5 Language</p>
+  </main>
+  <script>
+    const USSD_BASE = window.FINIX_USSD_BASE || "/api/ussd";
+    const screen = document.getElementById("screen");
+    const keys = document.getElementById("keys");
+    const buffer = document.getElementById("buffer");
+    let sessionId = null;
+    let path = [];
+    let ended = true;
+
+    async function call(text) {
+      const body = {
+        sessionId,
+        phoneNumber: document.getElementById("phone").value,
+        serviceCode: "*334#",
+        text,
+      };
+      const res = await fetch(USSD_BASE + "/ussd", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const reply = await res.text();
+      const isEnd = reply.startsWith("END");
+      screen.textContent = reply.replace(/^(CON|END)\s/, "");
+      ended = isEnd;
+      keys.hidden = isEnd;
+      if (isEnd) path = [];
+      return reply;
+    }
+
+    document.getElementById("dial").onclick = async () => {
+      sessionId = "web-" + crypto.randomUUID();
+      path = [];
+      buffer.value = "";
+      await call("");
+    };
+
+    document.getElementById("reset").onclick = () => {
+      sessionId = null;
+      path = [];
+      ended = true;
+      keys.hidden = true;
+      screen.textContent = "Session cleared.";
+    };
+
+    async function submitToken(token) {
+      if (!sessionId || ended) return;
+      if (token === "send") {
+        const typed = buffer.value.trim();
+        if (typed) path.push(typed);
+        buffer.value = "";
+      } else {
+        path.push(token);
+      }
+      await call(path.join("*"));
+    }
+
+    keys.addEventListener("click", (ev) => {
+      const k = ev.target.getAttribute("data-k");
+      if (k) submitToken(k);
+    });
+    buffer.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") submitToken("send");
+    });
+  </script>
+</body>
+</html>

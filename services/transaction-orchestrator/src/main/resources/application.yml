@@ -51,6 +51,8 @@ finix:
     base-url: http://localhost:8083
   ledger:
     base-url: http://localhost:8084
+  risk:
+    base-url: http://localhost:8091
   # Demo mode: local compose and chaos scripts call the API without bearer tokens.
   security:
     permit-all: true

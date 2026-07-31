@@ -50,8 +50,9 @@ class CompensateAndGetUseCaseTest {
 
     private val accounts = mockk<AccountClient>()
     private val ledger = mockk<LedgerClient>()
+    private val risk = mockk<org.finix.orchestrator.application.port.RiskClient>()
     private val persistence = SagaPersistence(sagas, outbox)
-    private val runTransfer = RunTransferSagaUseCase(persistence, accounts, ledger, clock)
+    private val runTransfer = RunTransferSagaUseCase(persistence, sagas, accounts, ledger, risk, clock)
     private val getTransfer = GetTransferSagaUseCase(sagas)
     private val compensate = CompensateTransferSagaUseCase(sagas, runTransfer)
 

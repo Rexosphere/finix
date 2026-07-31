@@ -23,6 +23,13 @@ data class CreateTransferRequest(
     @field:NotNull val fromAccountId: UUID,
     @field:NotNull val toAccountId: UUID,
     @field:NotBlank val amount: String,
+    val newDevice: Boolean = false,
+    val velocity1h: Int = 0,
+    val offlineVoucher: Boolean = false,
+)
+
+data class StepUpRequest(
+    @field:NotBlank val otpCode: String,
 )
 
 data class TransferResponse(
@@ -33,6 +40,8 @@ data class TransferResponse(
     val amount: String,
     val holdId: UUID,
     val failureReason: String?,
+    val riskScore: Int? = null,
+    val riskDecision: String? = null,
 )
 
 private fun TransferSaga.toResponse() = TransferResponse(
@@ -43,6 +52,8 @@ private fun TransferSaga.toResponse() = TransferResponse(
     amount = amount.toString(),
     holdId = holdId,
     failureReason = failureReason,
+    riskScore = riskScore,
+    riskDecision = riskDecision,
 )
 
 @RestController
@@ -60,6 +71,9 @@ class TransferController(
             fromAccountId = request.fromAccountId,
             toAccountId = request.toAccountId,
             amount = Money.parse(request.amount),
+            newDevice = request.newDevice,
+            velocity1h = request.velocity1h,
+            offlineVoucher = request.offlineVoucher,
         )
         return saga.toResponse()
     }
@@ -67,6 +81,13 @@ class TransferController(
     @GetMapping("/{id}")
     fun get(@PathVariable id: UUID): TransferResponse =
         getTransfer.execute(id).toResponse()
+
+    @PostMapping("/{id}/step-up")
+    fun stepUp(
+        @PathVariable id: UUID,
+        @Valid @RequestBody request: StepUpRequest,
+    ): TransferResponse =
+        runTransfer.completeStepUp(id, request.otpCode).toResponse()
 
     @PostMapping("/{id}/compensate")
     fun compensate(@PathVariable id: UUID): TransferResponse =

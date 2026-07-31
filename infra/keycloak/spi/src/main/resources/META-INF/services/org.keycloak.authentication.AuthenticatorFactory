@@ -1,0 +1,1 @@
+org.keycloak.authentication.AuthenticatorFactory=org.finix.keycloak.AdaptiveRiskAuthenticatorFactory
