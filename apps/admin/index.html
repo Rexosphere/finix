@@ -3,246 +3,336 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>FINIX — Vault Ceremony</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <title>FINIX — Ops Console</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --ink: #0f1c18;
-      --paper: #e8f0ea;
-      --panel: #102820;
-      --mint: #3dd68c;
-      --amber: #e8b84a;
-      --danger: #e85d5d;
-      --muted: #8aa396;
+      --ink:#0f1c18; --paper:#e8f0ea; --panel:#102820; --mint:#3dd68c;
+      --amber:#e8b84a; --danger:#e85d5d; --muted:#8aa396;
     }
     * { box-sizing: border-box; }
     body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: "DM Sans", system-ui, sans-serif;
-      color: var(--paper);
+      margin:0; min-height:100vh; font-family:"DM Sans",system-ui,sans-serif; color:var(--paper);
       background:
         radial-gradient(ellipse 80% 50% at 10% -10%, #1a4a38 0%, transparent 55%),
         radial-gradient(ellipse 60% 40% at 100% 100%, #143028 0%, transparent 50%),
         var(--ink);
     }
-    main {
-      max-width: 920px;
-      margin: 0 auto;
-      padding: 3rem 1.5rem 4rem;
+    header { max-width:1100px; margin:0 auto; padding:1.5rem 1.25rem .5rem; display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; align-items:baseline; }
+    h1 { margin:0; font-size:clamp(1.6rem,4vw,2.4rem); letter-spacing:-.03em; }
+    .brand { color:var(--mint); }
+    nav.tabs { display:flex; gap:.35rem; flex-wrap:wrap; max-width:1100px; margin:0 auto; padding:0 1.25rem 1rem; }
+    nav.tabs button {
+      border:1px solid color-mix(in srgb, var(--mint) 25%, transparent);
+      background:transparent; color:var(--paper); padding:.45rem .8rem; cursor:pointer; font:inherit;
     }
-    h1 {
-      font-size: clamp(2rem, 5vw, 3rem);
-      font-weight: 700;
-      letter-spacing: -0.03em;
-      margin: 0 0 0.35rem;
+    nav.tabs button.active { background:var(--mint); color:var(--ink); font-weight:700; }
+    main { max-width:1100px; margin:0 auto; padding:0 1.25rem 3rem; }
+    .panel { display:none; }
+    .panel.active { display:block; }
+    .lede { color:var(--muted); max-width:40rem; line-height:1.45; }
+    .row { display:flex; gap:.5rem; flex-wrap:wrap; margin:1rem 0; }
+    button.action, input, select {
+      font:inherit; padding:.55rem .75rem;
+      border:1px solid color-mix(in srgb, var(--mint) 30%, transparent);
+      background:color-mix(in srgb, var(--panel) 92%, black); color:var(--paper);
     }
-    .brand { color: var(--mint); }
-    .lede { color: var(--muted); max-width: 36rem; line-height: 1.5; margin-bottom: 2rem; }
-    .progress {
-      display: flex;
-      align-items: baseline;
-      gap: 0.75rem;
-      margin-bottom: 1.5rem;
-      font-family: "JetBrains Mono", monospace;
+    button.action { background:var(--mint); color:var(--ink); font-weight:700; cursor:pointer; border-color:var(--mint); }
+    button.ghost { background:transparent; color:var(--mint); cursor:pointer; }
+    pre, .log {
+      font-family:"JetBrains Mono",monospace; font-size:.78rem; background:color-mix(in srgb, var(--panel) 90%, black);
+      border:1px solid color-mix(in srgb, var(--mint) 20%, transparent); padding:1rem; white-space:pre-wrap; max-height:22rem; overflow:auto;
     }
-    .progress strong { font-size: 2.5rem; color: var(--mint); }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 0.75rem;
-      margin-bottom: 1.5rem;
-    }
-    .custodian {
-      background: color-mix(in srgb, var(--panel) 90%, black);
-      border: 1px solid color-mix(in srgb, var(--mint) 25%, transparent);
-      padding: 1rem 0.85rem;
-      min-height: 7rem;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      transition: border-color 180ms ease, transform 180ms ease;
-    }
-    .custodian.approved {
-      border-color: var(--mint);
-      transform: translateY(-2px);
-    }
-    .custodian h3 {
-      margin: 0;
-      font-size: 0.85rem;
-      font-weight: 500;
-      line-height: 1.3;
-    }
-    .custodian button {
-      margin-top: 0.75rem;
-      border: 0;
-      background: var(--mint);
-      color: var(--ink);
-      font: 600 0.8rem "DM Sans", sans-serif;
-      padding: 0.45rem 0.6rem;
-      cursor: pointer;
-    }
-    .custodian.approved button { background: var(--muted); cursor: default; }
-    .actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1.5rem; }
-    .actions button {
-      border: 1px solid color-mix(in srgb, var(--mint) 40%, transparent);
-      background: transparent;
-      color: var(--paper);
-      font: 500 0.9rem "DM Sans", sans-serif;
-      padding: 0.65rem 1rem;
-      cursor: pointer;
-    }
-    .actions button.primary { background: var(--mint); color: var(--ink); border-color: var(--mint); }
-    .panel {
-      background: color-mix(in srgb, var(--panel) 88%, black);
-      border: 1px solid color-mix(in srgb, var(--mint) 18%, transparent);
-      padding: 1.25rem;
-      margin-bottom: 1rem;
-    }
-    .panel h2 { margin: 0 0 0.75rem; font-size: 1rem; color: var(--amber); }
-    pre {
-      margin: 0;
-      white-space: pre-wrap;
-      word-break: break-word;
-      font-family: "JetBrains Mono", monospace;
-      font-size: 0.78rem;
-      line-height: 1.45;
-      color: var(--paper);
-    }
-    .ok { color: var(--mint); }
-    .err { color: var(--danger); }
-    .banner {
-      opacity: 0;
-      transform: translateY(8px);
-      transition: opacity 400ms ease, transform 400ms ease;
-      font-size: 1.15rem;
-      font-weight: 700;
-      color: var(--mint);
-      margin: 1rem 0;
-    }
-    .banner.show { opacity: 1; transform: none; }
+    table { width:100%; border-collapse:collapse; font-size:.9rem; }
+    th, td { text-align:left; padding:.45rem .35rem; border-bottom:1px solid color-mix(in srgb, var(--mint) 15%, transparent); }
+    th { color:var(--muted); font-weight:500; }
+    .pill { font-family:"JetBrains Mono",monospace; font-size:.75rem; color:var(--amber); }
+    .ok { color:var(--mint); } .err { color:var(--danger); }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:.75rem; }
+    .card { background:color-mix(in srgb, var(--panel) 90%, black); border:1px solid color-mix(in srgb, var(--mint) 20%, transparent); padding:.85rem; }
+    a { color:var(--mint); }
   </style>
 </head>
 <body>
+  <header>
+    <h1><span class="brand">FINIX</span> Ops</h1>
+    <p class="lede" style="margin:0">Ceremony · risk · loans · payments · notifications</p>
+  </header>
+  <nav class="tabs" id="tabs">
+    <button data-tab="ceremony" class="active">Ceremony</button>
+    <button data-tab="risk">Risk & Shield</button>
+    <button data-tab="compliance">Compliance</button>
+    <button data-tab="loans">Loans</button>
+    <button data-tab="payments">Payments</button>
+    <button data-tab="notify">Notify</button>
+  </nav>
   <main>
-    <h1><span class="brand">FINIX</span> Vault Ceremony</h1>
-    <p class="lede">
-      Five custodians hold Shamir shards of the Master Key. Any 3 of 5 unlock reconstruction
-      inside the enclave — the key never crosses the enclave boundary.
-    </p>
+    <section class="panel active" id="ceremony">
+      <p class="lede">3-of-5 custodian ceremony. Approvals unlock Master Key reconstruction in the enclave.</p>
+      <div class="row">
+        <button class="action" id="seed">Seed ceremony</button>
+        <button class="ghost" id="refreshCeremony">Refresh</button>
+        <button class="action" id="reconstruct">Reconstruct</button>
+      </div>
+      <p>Approvals: <strong id="count">?/5</strong> · State: <span class="pill" id="state">—</span></p>
+      <div class="grid" id="custodians"></div>
+      <h3>Egress log</h3>
+      <pre id="egress">(empty)</pre>
+      <p id="clog" class="log"></p>
+    </section>
 
-    <div class="progress">
-      <strong id="count">0/5</strong>
-      <span id="state">PENDING</span>
-    </div>
-    <div class="banner" id="banner">Master Key reconstructed inside enclave — banking network unlocked</div>
+    <section class="panel" id="risk">
+      <p class="lede">AI Shield quarantine and recent fraud cases from risk-ai.</p>
+      <div class="row">
+        <input id="qService" value="payment-hub" />
+        <button class="action" id="quarantine">Quarantine</button>
+        <button class="ghost" id="release">Release</button>
+        <button class="ghost" id="refreshRisk">Refresh</button>
+      </div>
+      <h3>Active quarantines</h3>
+      <pre id="quarantines">[]</pre>
+      <h3>Risk cases</h3>
+      <pre id="riskCases">[]</pre>
+    </section>
 
-    <div class="actions">
-      <button class="primary" id="seed">Seed / start ceremony</button>
-      <button id="reconstruct">Reconstruct in enclave</button>
-      <button id="refresh">Refresh status</button>
-    </div>
+    <section class="panel" id="compliance">
+      <p class="lede">AML / sanctions / SAR case register.</p>
+      <div class="row">
+        <button class="action" id="refreshCases">Refresh cases</button>
+        <button class="ghost" id="openDemoCase">Open demo FRAUD case</button>
+      </div>
+      <div id="casesTable"></div>
+    </section>
 
-    <div class="grid" id="custodians"></div>
+    <section class="panel" id="loans">
+      <p class="lede">SME micro-loan applications (demo SME persona).</p>
+      <div class="row">
+        <input id="loanAmount" value="LKR 50000.00" />
+        <button class="action" id="applyLoan">Apply</button>
+        <button class="ghost" id="refreshLoans">Refresh</button>
+      </div>
+      <div id="loansTable"></div>
+    </section>
 
-    <div class="panel">
-      <h2>Enclave egress log</h2>
-      <pre id="egress">Approve ≥3 custodians, then reconstruct. The egress log shows network-config plaintext only — never the Master Key.</pre>
-    </div>
-    <div class="panel">
-      <h2>API</h2>
-      <pre id="log"></pre>
-    </div>
+    <section class="panel" id="payments">
+      <p class="lede">Payment Hub — LankaPay / Visa / CBDC with pacs.008.</p>
+      <div class="row">
+        <select id="scheme"><option>LANKAPAY</option><option>VISA</option><option>CBDC</option></select>
+        <input id="payAmt" type="number" value="150000" title="minor units" />
+        <button class="action" id="sendPay">Send payment</button>
+      </div>
+      <pre id="payOut"></pre>
+    </section>
+
+    <section class="panel" id="notify">
+      <p class="lede">Trilingual notification outbox (en / si / ta).</p>
+      <div class="row">
+        <select id="locale"><option>en</option><option>si</option><option>ta</option></select>
+        <select id="template">
+          <option>transfer_receipt</option>
+          <option>step_up_challenge</option>
+          <option>loan_approved</option>
+          <option>fraud_alert</option>
+        </select>
+        <button class="action" id="sendNotify">Send</button>
+        <button class="ghost" id="refreshNotify">Refresh</button>
+      </div>
+      <pre id="notifyOut"></pre>
+    </section>
   </main>
   <script>
-    const VAULT = localStorage.getItem("finix.vault") || "http://localhost:8086";
-    const CUSTODIANS = [
-      ["CENTRAL_BANK", "Central Bank"],
-      ["GOVT_DR", "Govt DR"],
-      ["IEEE_VAULT", "IEEE Vault"],
-      ["CLOUD_HSM_A", "Cloud HSM A"],
-      ["CLOUD_HSM_B", "Cloud HSM B"],
-    ];
-
-    const el = (id) => document.getElementById(id);
-    const log = (msg, cls) => {
-      const line = document.createElement("div");
-      if (cls) line.className = cls;
-      line.textContent = msg;
-      el("log").prepend(line);
+    const $ = (id) => document.getElementById(id);
+    const bases = {
+      vault: "/api/vault",
+      risk: "/api/risk",
+      compliance: "/api/compliance",
+      loan: "/api/loan",
+      pay: "/api/pay",
+      notify: "/api/notify",
     };
-
-    async function api(path, method = "GET") {
-      const res = await fetch(`${VAULT}${path}`, { method, headers: { "Idempotency-Key": crypto.randomUUID() } });
-      const text = await res.text();
-      let body; try { body = JSON.parse(text); } catch { body = text; }
-      if (!res.ok) throw new Error(typeof body === "string" ? body : (body.detail || JSON.stringify(body)));
-      return body;
-    }
-
-    function renderCustodians(approvals = []) {
-      const set = new Set(approvals);
-      el("custodians").innerHTML = CUSTODIANS.map(([id, label]) => {
-        const ok = set.has(id);
-        return `<div class="custodian ${ok ? "approved" : ""}" data-id="${id}">
-          <h3>${label}</h3>
-          <button ${ok ? "disabled" : ""}>${ok ? "Approved" : "Approve"}</button>
-        </div>`;
-      }).join("");
-      el("custodians").querySelectorAll("button").forEach((btn) => {
-        btn.addEventListener("click", async () => {
-          const id = btn.closest(".custodian").dataset.id;
-          try {
-            await api(`/api/v1/vault/ceremony/approve/${id}`, "POST");
-            log(`Approved ${id}`, "ok");
-            await refresh();
-          } catch (e) { log(String(e), "err"); }
-        });
+    // Local fallbacks when admin is opened without nginx proxy
+    if (location.port === "3001" || location.hostname === "localhost") {
+      Object.assign(bases, {
+        vault: location.port === "3001" ? "/api/vault" : "http://localhost:8086",
+        risk: location.port === "3001" ? "/api/risk" : "http://localhost:8091",
+        compliance: location.port === "3001" ? "/api/compliance" : "http://localhost:8089",
+        loan: location.port === "3001" ? "/api/loan" : "http://localhost:8088",
+        pay: location.port === "3001" ? "/api/pay" : "http://localhost:8092",
+        notify: location.port === "3001" ? "/api/notify" : "http://localhost:8093",
       });
     }
 
-    async function refresh() {
+    async function api(base, path, method = "GET", body) {
+      const res = await fetch(base + path, {
+        method,
+        headers: body ? { "content-type": "application/json" } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const text = await res.text();
+      if (!res.ok) throw new Error(text || res.status);
+      try { return JSON.parse(text); } catch { return text; }
+    }
+
+    document.querySelectorAll("#tabs button").forEach((btn) => {
+      btn.onclick = () => {
+        document.querySelectorAll("#tabs button").forEach((b) => b.classList.remove("active"));
+        document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+        btn.classList.add("active");
+        $(btn.dataset.tab).classList.add("active");
+      };
+    });
+
+    /* Ceremony — prefer proxied vault paths used by prior admin */
+    async function vault(path, method, body) {
       try {
-        const status = await api("/api/v1/vault/ceremony");
-        const c = status.ceremony || status;
-        const approvals = c.approvals || [];
-        el("count").textContent = `${approvals.length}/5`;
-        el("state").textContent = c.state || status.state || "?";
-        renderCustodians(approvals);
-        if ((c.state || status.state) === "UNLOCKED") el("banner").classList.add("show");
-        try {
-          const egress = await api("/api/v1/vault/ceremony/egress-log");
-          const entries = egress.entries || egress;
-          el("egress").textContent = (Array.isArray(entries) ? entries : [])
-            .map((e) => (e.message || e)).join("\n") || "(empty)";
-        } catch (_) { /* ceremony may not exist yet */ }
+        return await api(bases.vault, path.startsWith("/api") ? path.replace(/^\/api\/v1/, "/api/v1") : "/api/v1" + path, method, body);
       } catch (e) {
-        log(String(e), "err");
-        renderCustodians([]);
+        return api("http://localhost:8086", "/api/v1" + path, method, body);
       }
     }
 
-    el("seed").onclick = async () => {
+    function renderCustodians(approvals) {
+      const ids = ["CENTRAL_BANK","GOVT_DR","IEEE_VAULT","CLOUD_HSM_A","CLOUD_HSM_B"];
+      const names = ["Central Bank","Govt DR","IEEE Vault","Cloud HSM A","Cloud HSM B"];
+      $("custodians").innerHTML = names.map((n, i) => {
+        const a = (approvals || [])[i];
+        const ok = a && (a.approved || a.status === "APPROVED" || a.approvedAt);
+        return `<div class="card"><strong>${n}</strong><div class="pill">${ok ? "APPROVED" : "PENDING"}</div>
+          <button class="ghost" data-i="${i}" ${ok ? "disabled" : ""}>Approve</button></div>`;
+      }).join("");
+      $("custodians").querySelectorAll("button[data-i]").forEach((b) => {
+        b.onclick = async () => {
+          const id = ids[Number(b.dataset.i)];
+          try {
+            await fetch(`http://localhost:8086/api/v1/vault/ceremony/approve/${id}`, { method: "POST" });
+            await refreshCeremony();
+          } catch (e2) { $("clog").textContent = String(e2); $("clog").className = "log err"; }
+        };
+      });
+    }
+
+    async function refreshCeremony() {
       try {
-        await api("/api/v1/vault/admin/seed", "POST");
-        log("Ceremony seeded", "ok");
-        await refresh();
-      } catch (e) { log(String(e), "err"); }
-    };
-    el("reconstruct").onclick = async () => {
+        const status = await fetch("http://localhost:8086/api/v1/vault/ceremony").then((r) => r.json());
+        const c = status.ceremony || status;
+        const approvals = c.approvals || status.approvals || [];
+        const approvedCount = approvals.filter((a) => a.approved === true || a.status === "APPROVED" || a.approvedAt).length;
+        $("count").textContent = `${approvedCount}/5`;
+        $("state").textContent = c.state || status.state || "?";
+        renderCustodians(approvals);
+      } catch (e) {
+        $("clog").textContent = "Vault unreachable — start compose core. " + e;
+        renderCustodians([]);
+      }
+    }
+    $("seed").onclick = async () => {
       try {
-        const r = await api("/api/v1/vault/ceremony/reconstruct", "POST");
-        log("Reconstructed — network unlocked", "ok");
-        el("egress").textContent = (r.egressLog || []).join("\n");
-        el("banner").classList.add("show");
-        await refresh();
-      } catch (e) { log(String(e), "err"); }
+        await fetch("http://localhost:8086/api/v1/vault/admin/seed", { method: "POST" });
+        $("clog").textContent = "Seeded"; $("clog").className = "log ok";
+        await refreshCeremony();
+      } catch (e) { $("clog").textContent = String(e); $("clog").className = "log err"; }
     };
-    el("refresh").onclick = refresh;
-    renderCustodians([]);
-    refresh();
+    $("reconstruct").onclick = async () => {
+      try {
+        const r = await fetch("http://localhost:8086/api/v1/vault/ceremony/reconstruct", { method: "POST" }).then((x) => x.json());
+        $("egress").textContent = JSON.stringify(r, null, 2);
+        await refreshCeremony();
+      } catch (e) { $("clog").textContent = String(e); }
+    };
+    $("refreshCeremony").onclick = refreshCeremony;
+
+    $("quarantine").onclick = async () => {
+      const service = $("qService").value;
+      await api(bases.risk, "/v1/shield/quarantine", "POST", { service, reason: "admin-demo" });
+      await refreshRisk();
+    };
+    $("release").onclick = async () => {
+      await api(bases.risk, "/v1/shield/release/" + encodeURIComponent($("qService").value), "POST");
+      await refreshRisk();
+    };
+    async function refreshRisk() {
+      try {
+        $("quarantines").textContent = JSON.stringify(await api(bases.risk, "/v1/shield/quarantines"), null, 2);
+        $("riskCases").textContent = JSON.stringify(await api(bases.risk, "/v1/cases"), null, 2);
+      } catch (e) {
+        $("quarantines").textContent = String(e);
+      }
+    }
+    $("refreshRisk").onclick = refreshRisk;
+
+    async function refreshCases() {
+      try {
+        const cases = await api(bases.compliance, "/api/v1/cases");
+        const list = Array.isArray(cases) ? cases : (cases.cases || []);
+        $("casesTable").innerHTML = `<table><tr><th>Type</th><th>Status</th><th>Severity</th><th>Subject</th></tr>${
+          list.map((c) => `<tr><td>${c.type}</td><td class="pill">${c.status}</td><td>${c.severity}</td><td>${c.subjectRef || c.subject || ""}</td></tr>`).join("")
+        }</table>`;
+      } catch (e) { $("casesTable").textContent = String(e); }
+    }
+    $("refreshCases").onclick = refreshCases;
+    $("openDemoCase").onclick = async () => {
+      await api(bases.compliance, "/api/v1/cases", "POST", {
+        type: "FRAUD", subjectRef: "demo-tx", severity: "HIGH", notes: "Opened from admin console",
+      });
+      await refreshCases();
+    };
+
+    const SME_USER = "a1111111-1111-4111-8111-111111111102";
+    const SME_ACCT = "a2222222-2222-4222-8222-222222222202";
+    async function refreshLoans() {
+      try {
+        const loans = await api(bases.loan, `/api/v1/loans?borrowerUserId=${SME_USER}`);
+        const list = Array.isArray(loans) ? loans : (loans.loans || []);
+        $("loansTable").innerHTML = `<table><tr><th>Id</th><th>Principal</th><th>Status</th><th></th></tr>${
+          list.map((l) => `<tr><td>${(l.id||"").toString().slice(0,8)}…</td><td>${l.principal || l.principalAmount || ""}</td><td class="pill">${l.status}</td>
+          <td><button class="ghost" data-decide="${l.id}">Decide</button></td></tr>`).join("")
+        }</table>`;
+        $("loansTable").querySelectorAll("[data-decide]").forEach((b) => {
+          b.onclick = async () => {
+            await api(bases.loan, `/api/v1/loans/${b.dataset.decide}/decide`, "POST", {});
+            await refreshLoans();
+          };
+        });
+      } catch (e) { $("loansTable").textContent = String(e); }
+    }
+    $("applyLoan").onclick = async () => {
+      await api(bases.loan, "/api/v1/loans", "POST", {
+        borrowerUserId: SME_USER, accountId: SME_ACCT, principal: $("loanAmount").value, termMonths: 12,
+      });
+      await refreshLoans();
+    };
+    $("refreshLoans").onclick = refreshLoans;
+
+    $("sendPay").onclick = async () => {
+      try {
+        const body = {
+          debtorAccount: "FINIX-SAV-00000001",
+          creditorAccount: "FINIX-CUR-00000002",
+          amountMinor: Number($("payAmt").value),
+          currency: "LKR",
+          endToEndId: "E2E-" + Date.now(),
+          scheme: $("scheme").value,
+        };
+        const created = await api(bases.pay, "/v1/payments", "POST", body);
+        const xml = await fetch(bases.pay + "/v1/payments/" + created.id + "/pacs008").then((r) => r.text());
+        $("payOut").textContent = JSON.stringify(created, null, 2) + "\n\n" + xml;
+      } catch (e) { $("payOut").textContent = String(e); }
+    };
+
+    $("sendNotify").onclick = async () => {
+      try {
+        const r = await api(bases.notify, "/v1/notify", "POST", {
+          channel: "sms", locale: $("locale").value, template: $("template").value,
+          to: "+94771110001", vars: { amount: "LKR 100.00", name: "Farmer" },
+        });
+        $("notifyOut").textContent = JSON.stringify(r, null, 2);
+      } catch (e) { $("notifyOut").textContent = String(e); }
+    };
+    $("refreshNotify").onclick = async () => {
+      $("notifyOut").textContent = JSON.stringify(await api(bases.notify, "/v1/messages"), null, 2);
+    };
+
+    refreshCeremony();
   </script>
 </body>
 </html>

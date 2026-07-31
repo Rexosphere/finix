@@ -101,12 +101,12 @@ target architecture.
 | **M5** | Merkle anchor, proof API, in-browser verification, tamper demo | ✅ Complete |
 | **M6** | PWA, offline vouchers, USSD gateway, `/lite` under 50 KB | ✅ Complete |
 | **M7** | Risk AI, adaptive step-up auth, service quarantine | ✅ Complete |
-| **M8** | Payment Hub, loans, compliance, notifications, admin console | ⬜ Planned |
-| **M9** | Full QA suite, load/chaos/DR evidence, user guide | ⬜ Planned |
+| **M8** | Payment Hub, loans, compliance, notifications, admin console | ✅ Complete |
+| **M9** | Full QA suite, load/chaos/DR evidence, user guide | ✅ Complete |
 
 ### What works today
 
-**M0–M7** are in tree and pass `./gradlew verify`:
+**M0–M9** are in tree. JVM modules pass `./gradlew verify`; polyglot edges have their own tests:
 
 - **shared-kernel** — Money, JCS, Merkle, PQC, outbox, DPoP, OAuth2 resource-server defaults
 - **identity-service** — profiles, devices, login-risk scoring, PKCE authorize/token BFF cookies
@@ -117,10 +117,17 @@ target architecture.
 - **enclave-runtime** — attestation, reconstruct-only path with key zeroing
 - **ussd-gateway** — Africa's Talking `POST /ussd` for `*334#` (balance, send, mini-statement, language) with Redis sessions
 - **risk-ai-service** — IsolationForest + rules (`/v1/score`), login enrichment, AI Shield quarantine, FedAvg demo; model card in `docs/model-card-risk-ai.md`
+- **loan-service** — SME micro-loans with deterministic credit decision + repayment schedule
+- **compliance-service** — AML/sanctions/SAR cases + party screening + risk-case ingest
+- **payment-hub** (Go) — LankaPay/Visa/CBDC connectors + ISO 20022 pacs.008
+- **notification-service** (Node) — SMS/email/push/voice templates in si/ta/en
 - **Keycloak SPI** — `infra/keycloak/spi` adaptive authenticator calls identity `/login-risk`
-- **apps/web** — offline PWA (voucher QR/Base45 + outbox), USSD simulator, zero-JS `/lite.html` (&lt;50 KB CI budget), ledger verify
-- **apps/admin** — ceremony UI (compose `:3001`)
-- **infra** — compose core + vault/enclave/admin/web/ussd/risk-ai, OPA Rego, Keycloak realm JSON
+- **apps/web** — offline PWA, USSD simulator, zero-JS `/lite.html` (&lt;50 KB CI budget), ledger verify
+- **apps/admin** — ops console: ceremony, risk/shield, compliance, loans, payments, notifications
+- **docs** — [USER-GUIDE](docs/USER-GUIDE.md), [FIDELITY-MATRIX](docs/FIDELITY-MATRIX.md), [DEMO](docs/DEMO.md), QA + runbooks
+- **infra** — compose core profile wires the full demo stack
+
+Judges: `make demo` then follow [docs/DEMO.md](docs/DEMO.md).
 
 ---
 
@@ -188,8 +195,12 @@ an off-by-one in the ECMAScript exponent boundary, cross-checked against Node.
 
 ## Documentation
 
+- [USER-GUIDE.md](docs/USER-GUIDE.md) — graded operator guide
+- [FIDELITY-MATRIX.md](docs/FIDELITY-MATRIX.md) — every Phase-1 claim → status + evidence
+- [DEMO.md](docs/DEMO.md) — 12-minute judge script
 - [Architecture Decision Records](docs/adr/) — every decision worth challenging, with its rationale
   and its trade-offs
+- [QA strategy](docs/qa/TEST-STRATEGY.md) · [Runbooks](docs/runbooks/)
 
 Key decisions so far:
 

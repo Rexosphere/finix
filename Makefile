@@ -32,3 +32,4 @@ demo: ## Build, start, wait healthy, seed, print URLs
 
 dist: ## Build submission zip
 	./scripts/dist.sh
+
