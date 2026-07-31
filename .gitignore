@@ -4,6 +4,7 @@ out/
 bin/
 target/
 .gradle/
+.gradle-home/
 !gradle/wrapper/gradle-wrapper.jar
 
 # Node

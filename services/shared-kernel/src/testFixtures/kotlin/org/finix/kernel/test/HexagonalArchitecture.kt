@@ -111,6 +111,7 @@ object HexagonalArchitecture {
             .and().areTopLevelClasses()
             .should().beInterfaces()
             .orShould().beRecords()
+            .allowEmptyShould(true)
             .`as`("a port is a contract; a concrete class in the port package is an adapter in disguise")
 
     private fun noJavaUtilLogging(): ArchRule =

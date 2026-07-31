@@ -46,7 +46,6 @@ management:
 
 finix:
   # Demo / local grading: endpoints are open until the gateway + Keycloak path is wired end-to-end.
-  # Production compose overrides this (or omits it) so JWT auth applies.
   security:
     permit-all: true
   dpop:
@@ -54,6 +53,9 @@ finix:
     required: false
   outbox:
     enabled: true
+  anchor:
+    interval-ms: 60000
+    adapter: local
 
 logging:
   level:

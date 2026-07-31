@@ -207,6 +207,66 @@ services:
       ledger-service:
         condition: service_started
 
+  enclave-runtime:
+    profiles: [core, full]
+    build:
+      context: ../..
+      dockerfile: services/enclave-runtime/Dockerfile
+    environment:
+      SPRING_APPLICATION_NAME: enclave-runtime
+      JAVA_TOOL_OPTIONS: >-
+        -XX:+UseSerialGC
+        -Xms32m
+        -Xmx96m
+        -Djava.security.egd=file:/dev./urandom
+      SERVER_PORT: "8090"
+      FINIX_SECURITY_PERMIT_ALL: "true"
+      FINIX_DPOP_ENABLED: "false"
+      FINIX_IDEMPOTENCY_ENABLED: "false"
+    ports: ["8090:8090"]
+    read_only: true
+    tmpfs:
+      - /tmp
+    networks: [finix]
+    restart: unless-stopped
+
+  vault-service:
+    <<: *jvm-service
+    profiles: [core, full]
+    build:
+      context: ../..
+      dockerfile: services/vault-service/Dockerfile
+    environment:
+      <<: *jvm-env
+      SPRING_APPLICATION_NAME: vault-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/vault
+      SPRING_DATASOURCE_USERNAME: vault_svc
+      SPRING_DATASOURCE_PASSWORD: vault_svc
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/finix
+      FINIX_ENCLAVE_MODE: local
+      FINIX_ENCLAVE_BASE_URL: http://enclave-runtime:8090
+      SERVER_PORT: "8086"
+    ports: ["8086:8086"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      enclave-runtime:
+        condition: service_started
+
+  admin:
+    profiles: [core, full]
+    image: nginx:1.27-alpine
+    volumes:
+      - ../../apps/admin:/usr/share/nginx/html:ro
+    ports: ["3001:80"]
+    networks: [finix]
+    restart: unless-stopped
+
 networks:
   finix:
     driver: bridge

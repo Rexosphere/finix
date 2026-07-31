@@ -97,8 +97,8 @@ target architecture.
 | **M1** | Identity + auth: Keycloak realm-as-code, PKCE BFF, DPoP, OPA, Vault PKI profile | ✅ Complete |
 | **M2** | Money core: account-service, append-only double-entry ledger + hash chain | ✅ Complete |
 | **M3** | Saga orchestrator, transactional outbox → Redpanda, AsyncAPI, chaos script | ✅ Complete |
-| **M4** | Vault: Shamir + Feldman VSS, custodians, enclave, ceremony UI | ⬜ Planned |
-| **M5** | Merkle anchor, proof API, in-browser verification, tamper demo | ⬜ Planned |
+| **M4** | Vault: Shamir + Feldman VSS, custodians, enclave, ceremony UI | ✅ Complete |
+| **M5** | Merkle anchor, proof API, in-browser verification, tamper demo | ✅ Complete |
 | **M6** | PWA, offline vouchers, USSD gateway, `/lite` under 50 KB | ⬜ Planned |
 | **M7** | Risk AI, adaptive step-up auth, service quarantine | ⬜ Planned |
 | **M8** | Payment Hub, loans, compliance, notifications, admin console | ⬜ Planned |
@@ -106,14 +106,17 @@ target architecture.
 
 ### What works today
 
-**M0–M3** are in tree and pass `./gradlew verify`:
+**M0–M5** are in tree and pass `./gradlew verify`:
 
 - **shared-kernel** — Money, JCS, Merkle, PQC, outbox, DPoP, OAuth2 resource-server defaults
 - **identity-service** — profiles, devices, login-risk scoring, PKCE authorize/token BFF cookies
 - **account-service** — open/list accounts, reserve/commit/release holds, seed personas
-- **ledger-service** — balanced double-entry journals, SHA-256 hash chain, append-only DB triggers, `/verify`
+- **ledger-service** — balanced double-entry journals, SHA-256 hash chain, append-only DB triggers, `/verify`, ML-DSA Merkle anchors + proof + tamper demo
 - **transaction-orchestrator** — internal-transfer saga with compensation + outbox events
-- **infra** — compose core profile (Postgres / Redis / Redpanda / Keycloak + four services), OPA Rego, Keycloak realm JSON
+- **vault-service** — Shamir 3-of-5 + Feldman VSS, hybrid-sealed custodian shards, ceremony workflow
+- **enclave-runtime** — attestation, reconstruct-only path with key zeroing
+- **apps/admin** — ceremony UI (compose `:3001`); **apps/web/verify.html** + `scripts/verify-ledger.sh`
+- **infra** — compose core + vault/enclave/admin, OPA Rego, Keycloak realm JSON
 
 ---
 

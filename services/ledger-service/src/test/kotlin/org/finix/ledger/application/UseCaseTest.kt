@@ -9,6 +9,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.finix.kernel.crypto.Hashing
+import org.finix.kernel.crypto.MerkleTree
 import org.finix.kernel.domain.DomainError
 import org.finix.kernel.domain.DomainException
 import org.finix.kernel.domain.lkr
@@ -124,7 +125,7 @@ class VerifyLedgerUseCaseTest : StringSpec({
 })
 
 class GetProofUseCaseTest : StringSpec({
-    "returns entry hashes as the M2 inclusion stub" {
+    "returns entry hashes when no covering anchor exists" {
         val mapper = ObjectMapper().registerKotlinModule()
         val canonicalizer = LedgerCanonicalizer(mapper)
         val entry = JournalEntry.create(
@@ -140,11 +141,64 @@ class GetProofUseCaseTest : StringSpec({
             canonicalize = canonicalizer::bytes,
         )
         val repo = mockk<LedgerRepository>()
+        val anchors = mockk<org.finix.ledger.application.port.AnchorRepository>()
         every { repo.findByTransactionId(entry.transactionId) } returns entry
+        every { anchors.findCovering(1L) } returns null
 
-        val proof = GetProofUseCase(repo)(entry.transactionId)
+        val proof = GetProofUseCase(repo, anchors)(entry.transactionId)
         proof.entryHash shouldBe entry.entryHash
         proof.prevHash shouldBe entry.prevHash
         proof.inclusion shouldBe entry.entryHash
+        proof.merkleRoot shouldBe null
+    }
+
+    "includes Merkle path when an anchor covers the entry" {
+        val mapper = ObjectMapper().registerKotlinModule()
+        val canonicalizer = LedgerCanonicalizer(mapper)
+        fun mk(seq: Long) = JournalEntry.create(
+            id = UUID.randomUUID(),
+            transactionId = UUID.randomUUID(),
+            lines = listOf(
+                JournalLine(UUID.randomUUID(), EntrySide.DEBIT, 10.lkr()),
+                JournalLine(UUID.randomUUID(), EntrySide.CREDIT, 10.lkr()),
+            ),
+            prevHash = Hashing.ZERO_DIGEST,
+            sequence = seq,
+            recordedAt = Instant.parse("2026-07-30T15:00:00Z"),
+            canonicalize = canonicalizer::bytes,
+        )
+        val e1 = mk(1)
+        val e2 = mk(2)
+        val anchor = org.finix.ledger.domain.LedgerAnchor(
+            id = UUID.randomUUID(),
+            windowStartSeq = 1,
+            windowEndSeq = 2,
+            merkleRoot = MerkleTree.root(listOf(e1.entryHash, e2.entryHash)),
+            entryCount = 2,
+            signature = byteArrayOf(1, 2, 3),
+            publicKey = byteArrayOf(4, 5),
+            anchoredAt = Instant.parse("2026-07-30T15:01:00Z"),
+        )
+        val repo = mockk<LedgerRepository>()
+        val anchors = mockk<org.finix.ledger.application.port.AnchorRepository>()
+        every { repo.findByTransactionId(e1.transactionId) } returns e1
+        every { anchors.findCovering(1L) } returns anchor
+        every { repo.findSequenceRange(1L, 2L) } returns listOf(e1, e2)
+
+        val proof = GetProofUseCase(repo, anchors)(e1.transactionId)
+        proof.merkleRoot shouldBe anchor.merkleRoot
+        proof.anchorId shouldBe anchor.id
+        proof.leafIndex shouldBe 0
+        proof.treeSize shouldBe 2
+        proof.merklePath.isNotEmpty() shouldBe true
+    }
+
+    "missing transaction is NotFound" {
+        val repo = mockk<LedgerRepository>()
+        val anchors = mockk<org.finix.ledger.application.port.AnchorRepository>()
+        every { repo.findByTransactionId(any()) } returns null
+        io.kotest.assertions.throwables.shouldThrow<DomainException> {
+            GetProofUseCase(repo, anchors)(UUID.randomUUID())
+        }
     }
 })

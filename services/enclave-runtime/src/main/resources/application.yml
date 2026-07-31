@@ -1,0 +1,50 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: enclave-runtime
+  main:
+    # No cloud platform discovery — this container is intentionally isolated.
+    cloud-platform: NONE
+  threads:
+    virtual:
+      enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Compose probes only. Production Nitro-style enclaves expose zero actuator;
+        # replace with a plain /health behind mTLS if the orchestrator requires a probe.
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+finix:
+  # Vault reaches the enclave over the compose network with mTLS in Phase-3; local demo is open.
+  security:
+    permit-all: true
+  dpop:
+    enabled: false
+  # Reconstruct is not a client-retry surface; idempotency would force vault to mint keys for no gain.
+  idempotency:
+    enabled: false
+  enclave:
+    module-id: finix-enclave-1
+    # Classpath PEM/B64 material under attestation/ (build-time mock Nitro trust anchors).
+    attestation-signing-private: classpath:attestation/signing-private.b64
+    attestation-signing-public: classpath:attestation/signing-public.b64
+    mlkem-private: classpath:attestation/mlkem-private.b64
+    mlkem-public: classpath:attestation/mlkem-public.b64
+    x25519-private: classpath:attestation/x25519-private.b64
+    x25519-public: classpath:attestation/x25519-public.b64
+
+logging:
+  level:
+    root: WARN
+    org.finix.enclave: WARN
+  # Prefer no request-body logging: never configure HTTP message converters / access logs
+  # that dump payloads — sealed shares and ciphertext must not leave the process as logs.

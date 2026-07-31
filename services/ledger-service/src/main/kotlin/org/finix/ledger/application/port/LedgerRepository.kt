@@ -9,21 +9,26 @@ import java.util.UUID
  * Persistence port for the append-only journal.
  *
  * Implementations must never UPDATE or DELETE ledger rows — the database triggers refuse it,
- * and the adapter must not attempt it either.
+ * and the adapter must not attempt it either. The sole exception is the **dev-profile** tamper
+ * helper, which goes through `finix_dev_tamper_entry_hash` for the immutability demo.
  */
 interface LedgerRepository {
 
-    /** Append a new entry (header + lines) in one transaction. */
     fun append(entry: JournalEntry)
 
-    /** Tip of the chain, or [LedgerHead.GENESIS] when the ledger is empty. */
     fun latestHead(): LedgerHead
 
     fun findByTransactionId(transactionId: UUID): JournalEntry?
 
-    /** Entries with sequence >= [fromSequence], ordered by sequence ascending, capped at [limit]. */
     fun findFromSequence(fromSequence: Long, limit: Int): List<JournalEntry>
 
-    /** Full-chain walk from sequence 1; recomputes hashes against stored payloads. */
+    /** Entries in [fromSequence, toSequence] inclusive, ordered by sequence. */
+    fun findSequenceRange(fromSequence: Long, toSequence: Long): List<JournalEntry>
+
     fun verifyChain(): VerificationReport
+
+    /**
+     * DEV ONLY: flip one hex digit of entry_hash at [sequence] via the privileged SQL function.
+     */
+    fun injectTamper(sequence: Long)
 }

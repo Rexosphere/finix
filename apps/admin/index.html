@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FINIX — Vault Ceremony</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #0f1c18;
+      --paper: #e8f0ea;
+      --panel: #102820;
+      --mint: #3dd68c;
+      --amber: #e8b84a;
+      --danger: #e85d5d;
+      --muted: #8aa396;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "DM Sans", system-ui, sans-serif;
+      color: var(--paper);
+      background:
+        radial-gradient(ellipse 80% 50% at 10% -10%, #1a4a38 0%, transparent 55%),
+        radial-gradient(ellipse 60% 40% at 100% 100%, #143028 0%, transparent 50%),
+        var(--ink);
+    }
+    main {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 4rem;
+    }
+    h1 {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin: 0 0 0.35rem;
+    }
+    .brand { color: var(--mint); }
+    .lede { color: var(--muted); max-width: 36rem; line-height: 1.5; margin-bottom: 2rem; }
+    .progress {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      font-family: "JetBrains Mono", monospace;
+    }
+    .progress strong { font-size: 2.5rem; color: var(--mint); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    .custodian {
+      background: color-mix(in srgb, var(--panel) 90%, black);
+      border: 1px solid color-mix(in srgb, var(--mint) 25%, transparent);
+      padding: 1rem 0.85rem;
+      min-height: 7rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: border-color 180ms ease, transform 180ms ease;
+    }
+    .custodian.approved {
+      border-color: var(--mint);
+      transform: translateY(-2px);
+    }
+    .custodian h3 {
+      margin: 0;
+      font-size: 0.85rem;
+      font-weight: 500;
+      line-height: 1.3;
+    }
+    .custodian button {
+      margin-top: 0.75rem;
+      border: 0;
+      background: var(--mint);
+      color: var(--ink);
+      font: 600 0.8rem "DM Sans", sans-serif;
+      padding: 0.45rem 0.6rem;
+      cursor: pointer;
+    }
+    .custodian.approved button { background: var(--muted); cursor: default; }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1.5rem; }
+    .actions button {
+      border: 1px solid color-mix(in srgb, var(--mint) 40%, transparent);
+      background: transparent;
+      color: var(--paper);
+      font: 500 0.9rem "DM Sans", sans-serif;
+      padding: 0.65rem 1rem;
+      cursor: pointer;
+    }
+    .actions button.primary { background: var(--mint); color: var(--ink); border-color: var(--mint); }
+    .panel {
+      background: color-mix(in srgb, var(--panel) 88%, black);
+      border: 1px solid color-mix(in srgb, var(--mint) 18%, transparent);
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .panel h2 { margin: 0 0 0.75rem; font-size: 1rem; color: var(--amber); }
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.78rem;
+      line-height: 1.45;
+      color: var(--paper);
+    }
+    .ok { color: var(--mint); }
+    .err { color: var(--danger); }
+    .banner {
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 400ms ease, transform 400ms ease;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--mint);
+      margin: 1rem 0;
+    }
+    .banner.show { opacity: 1; transform: none; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1><span class="brand">FINIX</span> Vault Ceremony</h1>
+    <p class="lede">
+      Five custodians hold Shamir shards of the Master Key. Any 3 of 5 unlock reconstruction
+      inside the enclave — the key never crosses the enclave boundary.
+    </p>
+
+    <div class="progress">
+      <strong id="count">0/5</strong>
+      <span id="state">PENDING</span>
+    </div>
+    <div class="banner" id="banner">Master Key reconstructed inside enclave — banking network unlocked</div>
+
+    <div class="actions">
+      <button class="primary" id="seed">Seed / start ceremony</button>
+      <button id="reconstruct">Reconstruct in enclave</button>
+      <button id="refresh">Refresh status</button>
+    </div>
+
+    <div class="grid" id="custodians"></div>
+
+    <div class="panel">
+      <h2>Enclave egress log</h2>
+      <pre id="egress">Approve ≥3 custodians, then reconstruct. The egress log shows network-config plaintext only — never the Master Key.</pre>
+    </div>
+    <div class="panel">
+      <h2>API</h2>
+      <pre id="log"></pre>
+    </div>
+  </main>
+  <script>
+    const VAULT = localStorage.getItem("finix.vault") || "http://localhost:8086";
+    const CUSTODIANS = [
+      ["CENTRAL_BANK", "Central Bank"],
+      ["GOVT_DR", "Govt DR"],
+      ["IEEE_VAULT", "IEEE Vault"],
+      ["CLOUD_HSM_A", "Cloud HSM A"],
+      ["CLOUD_HSM_B", "Cloud HSM B"],
+    ];
+
+    const el = (id) => document.getElementById(id);
+    const log = (msg, cls) => {
+      const line = document.createElement("div");
+      if (cls) line.className = cls;
+      line.textContent = msg;
+      el("log").prepend(line);
+    };
+
+    async function api(path, method = "GET") {
+      const res = await fetch(`${VAULT}${path}`, { method, headers: { "Idempotency-Key": crypto.randomUUID() } });
+      const text = await res.text();
+      let body; try { body = JSON.parse(text); } catch { body = text; }
+      if (!res.ok) throw new Error(typeof body === "string" ? body : (body.detail || JSON.stringify(body)));
+      return body;
+    }
+
+    function renderCustodians(approvals = []) {
+      const set = new Set(approvals);
+      el("custodians").innerHTML = CUSTODIANS.map(([id, label]) => {
+        const ok = set.has(id);
+        return `<div class="custodian ${ok ? "approved" : ""}" data-id="${id}">
+          <h3>${label}</h3>
+          <button ${ok ? "disabled" : ""}>${ok ? "Approved" : "Approve"}</button>
+        </div>`;
+      }).join("");
+      el("custodians").querySelectorAll("button").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const id = btn.closest(".custodian").dataset.id;
+          try {
+            await api(`/api/v1/vault/ceremony/approve/${id}`, "POST");
+            log(`Approved ${id}`, "ok");
+            await refresh();
+          } catch (e) { log(String(e), "err"); }
+        });
+      });
+    }
+
+    async function refresh() {
+      try {
+        const status = await api("/api/v1/vault/ceremony");
+        const c = status.ceremony || status;
+        const approvals = c.approvals || [];
+        el("count").textContent = `${approvals.length}/5`;
+        el("state").textContent = c.state || status.state || "?";
+        renderCustodians(approvals);
+        if ((c.state || status.state) === "UNLOCKED") el("banner").classList.add("show");
+        try {
+          const egress = await api("/api/v1/vault/ceremony/egress-log");
+          const entries = egress.entries || egress;
+          el("egress").textContent = (Array.isArray(entries) ? entries : [])
+            .map((e) => (e.message || e)).join("\n") || "(empty)";
+        } catch (_) { /* ceremony may not exist yet */ }
+      } catch (e) {
+        log(String(e), "err");
+        renderCustodians([]);
+      }
+    }
+
+    el("seed").onclick = async () => {
+      try {
+        await api("/api/v1/vault/admin/seed", "POST");
+        log("Ceremony seeded", "ok");
+        await refresh();
+      } catch (e) { log(String(e), "err"); }
+    };
+    el("reconstruct").onclick = async () => {
+      try {
+        const r = await api("/api/v1/vault/ceremony/reconstruct", "POST");
+        log("Reconstructed — network unlocked", "ok");
+        el("egress").textContent = (r.egressLog || []).join("\n");
+        el("banner").classList.add("show");
+        await refresh();
+      } catch (e) { log(String(e), "err"); }
+    };
+    el("refresh").onclick = refresh;
+    renderCustodians([]);
+    refresh();
+  </script>
+</body>
+</html>

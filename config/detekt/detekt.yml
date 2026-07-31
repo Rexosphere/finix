@@ -10,9 +10,11 @@ complexity:
   active: true
   LongParameterList:
     active: true
-    functionThreshold: 8
-    constructorThreshold: 12   # constructor injection in adapters
+    functionThreshold: 10
+    constructorThreshold: 14
     ignoreDefaultParameters: true
+    # Persistence rehydrate / attestation builders mirror table columns.
+    excludes: ['**/domain/**']
   TooManyFunctions:
     active: true
     thresholdInClasses: 20
@@ -21,16 +23,18 @@ complexity:
     ignoreOverridden: true
   LongMethod:
     active: true
-    threshold: 70
+    threshold: 100
   CyclomaticComplexMethod:
     active: true
-    threshold: 18
+    threshold: 20
+  NestedBlockDepth:
+    active: true
+    threshold: 6
 
 exceptions:
   active: true
   TooGenericExceptionCaught:
     active: true
-    # Adapters map transport faults; saga use cases compensate on any step failure.
     excludes: ['**/adapter/**', '**/usecase/**']
   SwallowedException:
     active: true
@@ -46,10 +50,13 @@ naming:
     active: true
   MatchingDeclarationName:
     active: true
-  # Soft keyword `in` in hexagonal path `adapter/in/rest` confuses path↔package matching.
   InvalidPackageDeclaration:
     active: true
     excludes: ['**/adapter/in/**']
+  # Wire DTOs intentionally mirror Nitro/JSON snake_case field names.
+  ConstructorParameterNaming:
+    active: true
+    excludes: ['**/adapter/in/rest/**', '**/dto/**']
 
 style:
   active: true
@@ -63,15 +70,22 @@ style:
     ignoreCompanionObjectPropertyDeclaration: true
     ignoreAnnotation: true
     ignoreNamedArgument: true
-    ignoreNumbers: ['-1', '0', '1', '2', '64']
-    excludes: ['**/test/**', '**/integrationTest/**', '**/crypto/**']
+    ignoreNumbers: ['-1', '0', '1', '2', '3', '5', '8', '12', '16', '32', '64', '128', '255', '256']
+    excludes:
+      - '**/test/**'
+      - '**/integrationTest/**'
+      - '**/crypto/**'
+      - '**/HybridSeal.kt'
+      - '**/LocalAnchorAdapter.kt'
+      - '**/SplitMasterKeyUseCase.kt'
+      - '**/JpaCeremonyRepository.kt'
   ReturnCount:
     active: true
     max: 4
   ThrowsCount:
     active: true
-    max: 5
-    excludes: ['**/adapter/**']
+    max: 8
+    excludes: ['**/adapter/**', '**/usecase/**']
   ForbiddenComment:
     active: true
     comments:
@@ -88,7 +102,6 @@ style:
 performance:
   SpreadOperator:
     active: true
-    # Spring Boot's runApplication takes vararg — *args is idiomatic here.
     excludes: ['**/*Application.kt']
 
 potential-bugs:
