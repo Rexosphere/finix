@@ -28,8 +28,9 @@ failure, offline conditions, and strict security.
 **What “running it” means:** Docker starts the gateway, databases, Kafka, Keycloak, and the banking
 services. You then open the web/admin UIs and walk through the demo.
 
-New here? Jump to [How to run](#how-to-run). Fastest path (Docker only): `make demo-pull`.
-Judges building from source: `make demo`. Then follow [docs/DEMO.md](docs/DEMO.md).
+**Two ways to start:** use our **published images** (Docker only — fastest for new users), or
+**build everything yourself** from this repo if you prefer. Same demo either way — see
+[How to run](#how-to-run), then [docs/DEMO.md](docs/DEMO.md).
 
 ---
 
@@ -153,23 +154,29 @@ target architecture.
 
 ## How to run
 
+Pick one path — both end in the same running demo.
+
+| Path | Who it’s for | Needs | Command |
+|---|---|---|---|
+| **Use published images** | New users, judges, quick try | Docker only | `make demo-pull` |
+| **Build yourself** | Contributors, offline/air-gapped, prefer source | Docker + JDK 21 | `make demo` |
+
 ```bash
 git clone https://github.com/Rexosphere/finix.git
 cd finix
 ```
 
-### Option A — pull published images (recommended for trying the demo)
+### Use published images (recommended for new users)
 
-Needs **Docker only** (no JDK). Images publish to GHCR on every push to `master` / `main`:
-
-`ghcr.io/rexosphere/finix/<service>:latest`
+No local Gradle build. Images are published to GHCR on every push to `master` / `main`
+(`ghcr.io/rexosphere/finix/<service>:latest`):
 
 ```bash
 make demo-pull
 ```
 
-That pulls images, starts the core stack, waits until healthy, seeds personas, and prints URLs.
-Then open the web/admin links and follow [docs/DEMO.md](docs/DEMO.md).
+That pulls the images, starts the stack, waits until healthy, seeds personas, and prints URLs.
+Then open the links below and follow [docs/DEMO.md](docs/DEMO.md).
 
 | URL | What |
 |---|---|
@@ -186,19 +193,19 @@ Pin a specific commit build:
 FINIX_IMAGE_TAG=sha-<shortsha> make demo-pull
 ```
 
-If `docker pull` from GHCR fails with unauthorized, the package may still be private — an org
-admin must make `ghcr.io/rexosphere/finix/*` public, or you `docker login ghcr.io` with a PAT
-that can read packages.
+If `docker pull` fails with unauthorized, make the GHCR packages public (org settings), or
+`docker login ghcr.io` with a PAT that can read packages.
 
-### Option B — build locally
+### Build yourself (optional)
 
-Needs **Docker** and **JDK 21**. Builds service images on your machine, then starts the same stack:
+Prefer not to pull prebuilt images? Build and run from this repository instead — same stack,
+same seed data, same URLs:
 
 ```bash
 make demo
 ```
 
-Same wait / seed / URL banner as Option A.
+Needs **Docker** and **JDK 21**.
 
 ### Useful Make targets
 
