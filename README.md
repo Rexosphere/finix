@@ -28,7 +28,8 @@ failure, offline conditions, and strict security.
 **What “running it” means:** Docker starts the gateway, databases, Kafka, Keycloak, and the banking
 services. You then open the web/admin UIs and walk through the demo.
 
-New here? Jump to [How to run](#how-to-run). Judges: `make demo` then follow [docs/DEMO.md](docs/DEMO.md).
+New here? Jump to [How to run](#how-to-run). Fastest path (Docker only): `make demo-pull`.
+Judges building from source: `make demo`. Then follow [docs/DEMO.md](docs/DEMO.md).
 
 ---
 
@@ -152,29 +153,61 @@ target architecture.
 
 ## How to run
 
-You need **Docker** (for the full stack) and **JDK 21** (for local Gradle builds/tests).
-
 ```bash
 git clone https://github.com/Rexosphere/finix.git
 cd finix
 ```
 
-### Full demo stack (recommended)
+### Option A — pull published images (recommended for trying the demo)
 
-Builds images locally, starts everything, waits until healthy, seeds personas, and prints URLs:
+Needs **Docker only** (no JDK). Images publish to GHCR on every push to `master` / `main`:
+
+`ghcr.io/rexosphere/finix/<service>:latest`
+
+```bash
+make demo-pull
+```
+
+That pulls images, starts the core stack, waits until healthy, seeds personas, and prints URLs.
+Then open the web/admin links and follow [docs/DEMO.md](docs/DEMO.md).
+
+| URL | What |
+|---|---|
+| http://localhost:3000 | Web PWA / lite / USSD simulator |
+| http://localhost:3001 | Admin / vault ceremony |
+| http://localhost:8081 | Keycloak (`admin` / `admin`) |
+
+Demo logins (password `Finix!2026` for all): `farmer@finix.lk`, `sme@finix.lk`,
+`elder@finix.lk`, `regulator@finix.lk`.
+
+Pin a specific commit build:
+
+```bash
+FINIX_IMAGE_TAG=sha-<shortsha> make demo-pull
+```
+
+If `docker pull` from GHCR fails with unauthorized, the package may still be private — an org
+admin must make `ghcr.io/rexosphere/finix/*` public, or you `docker login ghcr.io` with a PAT
+that can read packages.
+
+### Option B — build locally
+
+Needs **Docker** and **JDK 21**. Builds service images on your machine, then starts the same stack:
 
 ```bash
 make demo
 ```
 
-Then open the printed URLs and follow [docs/DEMO.md](docs/DEMO.md).
+Same wait / seed / URL banner as Option A.
 
 ### Useful Make targets
 
 | Command | What it does |
 |---|---|
-| `make demo` | Build, start, wait healthy, seed, print URLs |
-| `make up` | Start core compose profile (local image build) |
+| `make demo-pull` | Pull GHCR images, start, wait healthy, seed, print URLs |
+| `make demo` | Build locally, start, wait healthy, seed, print URLs |
+| `make up-pull` | Pull + start only (no wait/seed) |
+| `make up` | Start with local image build (no wait/seed) |
 | `make seed` | Seed personas into a running stack |
 | `make logs` | Tail compose logs |
 | `make down` | Stop the stack and remove volumes |

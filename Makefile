@@ -1,4 +1,4 @@
-.PHONY: help verify test demo up up-pull down logs seed dist
+.PHONY: help verify test demo demo-pull up up-pull down logs seed dist
 
 COMPOSE := docker compose -f infra/compose/docker-compose.yml
 export COMPOSE_PROJECT_NAME ?= finix
@@ -33,8 +33,11 @@ logs: ## Tail compose logs
 seed: ## Seed personas into running stack
 	./scripts/seed.sh
 
-demo: ## Build, start, wait healthy, seed, print URLs
+demo: ## Build locally, start, wait healthy, seed, print URLs
 	./scripts/up.sh
+
+demo-pull: ## Pull GHCR images, start, wait healthy, seed, print URLs (Docker only)
+	./scripts/up-pull.sh
 
 dist: ## Build submission zip
 	./scripts/dist.sh
