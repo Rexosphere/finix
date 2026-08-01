@@ -48,10 +48,23 @@ jobs:
             :loan-service:bootJar \
             :compliance-service:bootJar
 
+      # Stage under a directory with no wildcards. upload-artifact flattens paths
+      # before the first `*`, so `services/*/build/libs/app.jar` would download as
+      # `<service>/build/libs/app.jar` and break Dockerfile COPY paths.
+      - name: Stage bootJars for artifact
+        run: |
+          mkdir -p bootjars-upload
+          for jar in services/*/build/libs/app.jar; do
+            dest="bootjars-upload/${jar}"
+            mkdir -p "$(dirname "$dest")"
+            cp -a "$jar" "$dest"
+          done
+          find bootjars-upload -type f -ls
+
       - uses: actions/upload-artifact@v4
         with:
           name: bootjars
-          path: services/*/build/libs/app.jar
+          path: bootjars-upload
           retention-days: 1
           if-no-files-found: error
 
@@ -99,6 +112,7 @@ jobs:
         if: matrix.jvm
         with:
           name: bootjars
+          path: .
 
       - name: Verify JVM bootJar
         if: matrix.jvm
@@ -113,6 +127,8 @@ jobs:
           # Each bootJar is ~100MB+; drop the other services' jars so the
           # Docker context stays small on this matrix runner.
           find services -name 'app.jar' ! -path "services/${{ matrix.service }}/*" -delete
+          # Drop the staging wrapper directory if present (keeps context lean).
+          rm -rf bootjars-upload
 
       - name: Image name (lowercase)
         id: image
