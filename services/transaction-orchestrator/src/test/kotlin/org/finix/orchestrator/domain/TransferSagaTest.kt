@@ -115,4 +115,31 @@ class TransferSagaTest {
         val ex = shouldThrow<DomainException> { saga.markCompensated(at) }
         ex.error.shouldBeInstanceOf<DomainError.Conflict>()
     }
+
+    @Test
+    fun `step-up and block transitions from INITIATED`() {
+        val awaiting = TransferSaga.initiate(from, to, 10.lkr(), at)
+            .withRisk(55, "step_up", at)
+            .markAwaitingStepUp(at)
+        awaiting.state shouldBe SagaState.AWAITING_STEP_UP
+        awaiting.riskScore shouldBe 55
+
+        val blocked = TransferSaga.initiate(from, to, 10.lkr(), at)
+            .markBlocked("velocity", at)
+        blocked.state shouldBe SagaState.BLOCKED
+        blocked.failureReason shouldBe "velocity"
+
+        val blockedAfterStepUp = awaiting.markBlocked("otp failed", at)
+        blockedAfterStepUp.state shouldBe SagaState.BLOCKED
+
+        val reservedAfterStepUp = TransferSaga.initiate(from, to, 10.lkr(), at)
+            .markAwaitingStepUp(at)
+            .markReserved(at)
+        reservedAfterStepUp.state shouldBe SagaState.FUNDS_RESERVED
+
+        val ex = shouldThrow<DomainException> {
+            TransferSaga.initiate(from, to, 10.lkr(), at).markReserved(at).markBlocked("late", at)
+        }
+        ex.error.shouldBeInstanceOf<DomainError.Conflict>()
+    }
 }

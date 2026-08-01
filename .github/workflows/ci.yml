@@ -9,6 +9,11 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
 jobs:
   jvm:
     name: JVM verify
@@ -32,11 +37,20 @@ jobs:
       - name: Lite bundle budget
         run: bash scripts/check-lite-budget.sh
 
-      - name: Upload detekt SARIF
+      - name: Collect detekt SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        run: |
+          mkdir -p build/detekt-sarif
+          shopt -s nullglob
+          for f in services/*/build/reports/detekt/detekt.sarif; do
+            cp "$f" "build/detekt-sarif/$(basename "$(dirname "$(dirname "$(dirname "$f")")")").sarif"
+          done
+
+      - name: Upload detekt SARIF
+        if: always() && hashFiles('build/detekt-sarif/*.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: services/shared-kernel/build/reports/detekt/detekt.sarif
+          sarif_file: build/detekt-sarif
           wait-for-processing: false
         continue-on-error: true
 

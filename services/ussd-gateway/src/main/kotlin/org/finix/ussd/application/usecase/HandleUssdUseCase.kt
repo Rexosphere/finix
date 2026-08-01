@@ -91,47 +91,60 @@ class HandleUssdUseCase(
         session: UssdSession,
         subscriber: UssdDirectory.Subscriber,
         rest: List<String>,
+    ): Pair<String, UssdSession> =
+        when {
+            rest.isEmpty() -> con(copy.sendPromptPayee(session.locale)) to session
+            rest.size == 1 -> promptSendAmount(session, rest[0])
+            rest.size == 2 -> promptSendConfirm(session, rest[0], rest[1])
+            else -> executeSend(session, subscriber, rest)
+        }
+
+    private fun promptSendAmount(session: UssdSession, payeeRaw: String): Pair<String, UssdSession> {
+        val locale = session.locale
+        val payee = payeeRaw.trim()
+        if (UssdDirectory.findByAccountNumber(payee) == null && UssdDirectory.findByPhone(payee) == null) {
+            return end(copy.payeeNotFound(locale)) to session
+        }
+        return con(copy.sendPromptAmount(locale, payee)) to session.copy(pendingPayee = payee)
+    }
+
+    private fun promptSendConfirm(
+        session: UssdSession,
+        payeeRaw: String,
+        amountRaw: String,
     ): Pair<String, UssdSession> {
         val locale = session.locale
-        when {
-            rest.isEmpty() -> return con(copy.sendPromptPayee(locale)) to session
-            rest.size == 1 -> {
-                val payee = rest[0].trim()
-                if (UssdDirectory.findByAccountNumber(payee) == null && UssdDirectory.findByPhone(payee) == null) {
-                    return end(copy.payeeNotFound(locale)) to session
-                }
-                return con(copy.sendPromptAmount(locale, payee)) to
-                    session.copy(pendingPayee = payee)
-            }
-            rest.size == 2 -> {
-                val payeeRaw = rest[0].trim()
-                val amount = parseAmount(rest[1])
-                    ?: return end(copy.invalidAmount(locale)) to session
-                return con(copy.sendConfirm(locale, payeeRaw, amount)) to
-                    session.copy(pendingPayee = payeeRaw, pendingAmount = amount.toString())
-            }
-            else -> {
-                val confirm = rest.getOrNull(2)?.trim()
-                if (confirm != "1") {
-                    return end(copy.unknown(locale)) to session
-                }
-                val payeeRaw = rest[0].trim()
-                val amount = parseAmount(rest[1])
-                    ?: return end(copy.invalidAmount(locale)) to session
-                val payee = UssdDirectory.findByAccountNumber(payeeRaw)
-                    ?: UssdDirectory.findByPhone(payeeRaw)
-                    ?: return end(copy.payeeNotFound(locale)) to session
-                if (payee.accountId == subscriber.accountId) {
-                    return end(copy.sendFail(locale, "same account")) to session
-                }
-                return try {
-                    transfers.transfer(subscriber.accountId, payee.accountId, amount)
-                    end(copy.sendOk(locale, amount, payee.accountNumber)) to session
-                } catch (ex: Exception) {
-                    end(copy.sendFail(locale, ex.message ?: "failed")) to session
-                }
-            }
+        val payee = payeeRaw.trim()
+        val amount = parseAmount(amountRaw)
+            ?: return end(copy.invalidAmount(locale)) to session
+        return con(copy.sendConfirm(locale, payee, amount)) to
+            session.copy(pendingPayee = payee, pendingAmount = amount.toString())
+    }
+
+    private fun executeSend(
+        session: UssdSession,
+        subscriber: UssdDirectory.Subscriber,
+        rest: List<String>,
+    ): Pair<String, UssdSession> {
+        val locale = session.locale
+        if (rest.getOrNull(2)?.trim() != "1") {
+            return end(copy.unknown(locale)) to session
         }
+        val payeeRaw = rest[0].trim()
+        val amount = parseAmount(rest[1])
+        val payee = amount?.let {
+            UssdDirectory.findByAccountNumber(payeeRaw) ?: UssdDirectory.findByPhone(payeeRaw)
+        }
+        val reply = when {
+            amount == null -> end(copy.invalidAmount(locale))
+            payee == null -> end(copy.payeeNotFound(locale))
+            payee.accountId == subscriber.accountId -> end(copy.sendFail(locale, "same account"))
+            else -> runCatching {
+                transfers.transfer(subscriber.accountId, payee.accountId, amount)
+                end(copy.sendOk(locale, amount, payee.accountNumber))
+            }.getOrElse { end(copy.sendFail(locale, it.message ?: "failed")) }
+        }
+        return reply to session
     }
 
     private fun language(session: UssdSession, rest: List<String>): Pair<String, UssdSession> {

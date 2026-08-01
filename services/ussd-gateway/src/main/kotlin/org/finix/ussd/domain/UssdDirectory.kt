@@ -50,12 +50,18 @@ object UssdDirectory {
     fun normalize(raw: String): String {
         val digits = raw.filter { it.isDigit() }
         return when {
-            digits.startsWith("94") && digits.length >= 11 -> "+$digits"
-            digits.startsWith("0") && digits.length == 10 -> "+94${digits.drop(1)}"
-            digits.length == 9 -> "+94$digits"
+            digits.startsWith(COUNTRY_CODE) && digits.length >= INTL_MIN_DIGITS -> "+$digits"
+            digits.startsWith("0") && digits.length == LOCAL_WITH_TRUNK_DIGITS ->
+                "+$COUNTRY_CODE${digits.drop(1)}"
+            digits.length == LOCAL_WITHOUT_TRUNK_DIGITS -> "+$COUNTRY_CODE$digits"
             else -> if (raw.startsWith("+")) raw else "+$digits"
         }
     }
+
+    private const val COUNTRY_CODE = "94"
+    private const val INTL_MIN_DIGITS = 11
+    private const val LOCAL_WITH_TRUNK_DIGITS = 10
+    private const val LOCAL_WITHOUT_TRUNK_DIGITS = 9
 }
 
 enum class UssdLocale { EN, SI, TA }

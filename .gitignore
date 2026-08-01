@@ -1,6 +1,7 @@
 # Build output
 build/
-out/
+# Root-only IDE output (do not use bare `out/` — it also matches hexagonal adapter/out/)
+/out/
 bin/
 target/
 .gradle/

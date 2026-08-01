@@ -174,4 +174,14 @@ class RunTransferSagaUseCaseTest {
         verify { accounts wasNot Called }
         outboxTopics shouldBe listOf(Topics.TRANSACTION_INITIATED, Topics.TRANSACTION_FAILED)
     }
+
+    @Test
+    fun `non-domain reserve failure uses exception message in failure reason`() {
+        every { accounts.reserve(any(), any(), any()) } throws IllegalStateException("boom")
+
+        val result = useCase.execute(from, to, 10.lkr())
+
+        result.state shouldBe SagaState.FAILED
+        result.failureReason shouldBe "boom"
+    }
 }

@@ -131,6 +131,115 @@ class ReconcileOfflineVoucherUseCaseTest : StringSpec({
         verify { events.publishAnomaly("dev-farmer-1", "nonce-reuse", 2, "n1") }
     }
 
+    "quarantines on invalid signature" {
+        val devices = mockk<OfflineDeviceRepository>()
+        val events = mockk<OfflineEventPublisher>()
+        val offlineDevice = device()
+        every { devices.findById("dev-farmer-1") } returns offlineDevice
+        every { devices.nonceExists(any(), any()) } returns false
+        every { devices.save(any()) } answers { firstArg() }
+        every { devices.saveVoucher(any()) } answers { firstArg() }
+        every { events.publishAnomaly(any(), any(), any(), any()) } just runs
+        val verifier = mockk<VoucherSignatureVerifier>()
+        every { verifier.verify(any(), any(), any()) } returns false
+
+        shouldThrow<DomainException> {
+            ReconcileOfflineVoucherUseCase(
+                devices, mockk(), verifier, events, OfflineProperties(), clock,
+            ).execute(
+                ReconcileVoucherCommand(
+                    deviceId = "dev-farmer-1",
+                    payerAccountId = DemoAccounts.FARMER_ACCOUNT_ID,
+                    payeeAccountId = DemoAccounts.SME_ACCOUNT_ID,
+                    amount = "50.00".lkr(),
+                    deviceSeq = 1,
+                    nonce = "bad-sig",
+                    validUntil = now.plusSeconds(3600),
+                    signatureBase64 = "AA==",
+                ),
+            )
+        }
+        offlineDevice.quarantined shouldBe true
+        verify { events.publishAnomaly("dev-farmer-1", "invalid-signature", 1, "bad-sig") }
+    }
+
+    "quarantines on device-seq reuse" {
+        val devices = mockk<OfflineDeviceRepository>()
+        val events = mockk<OfflineEventPublisher>()
+        val offlineDevice = device(seq = 3)
+        every { devices.findById("dev-farmer-1") } returns offlineDevice
+        every { devices.nonceExists(any(), any()) } returns false
+        every { devices.save(any()) } answers { firstArg() }
+        every { devices.saveVoucher(any()) } answers { firstArg() }
+        every { events.publishAnomaly(any(), any(), any(), any()) } just runs
+        val verifier = mockk<VoucherSignatureVerifier>()
+        every { verifier.verify(any(), any(), any()) } returns true
+
+        shouldThrow<DomainException> {
+            ReconcileOfflineVoucherUseCase(
+                devices, mockk(), verifier, events, OfflineProperties(), clock,
+            ).execute(
+                ReconcileVoucherCommand(
+                    deviceId = "dev-farmer-1",
+                    payerAccountId = DemoAccounts.FARMER_ACCOUNT_ID,
+                    payeeAccountId = DemoAccounts.SME_ACCOUNT_ID,
+                    amount = "50.00".lkr(),
+                    deviceSeq = 2,
+                    nonce = "n2",
+                    validUntil = now.plusSeconds(3600),
+                    signatureBase64 = "AA==",
+                ),
+            )
+        }
+        verify { events.publishAnomaly("dev-farmer-1", "device-seq-gap-or-reuse", 2, "n2") }
+    }
+
+    "rejects already quarantined device" {
+        val devices = mockk<OfflineDeviceRepository>()
+        val offlineDevice = device().also { it.quarantine("prior") }
+        every { devices.findById("dev-farmer-1") } returns offlineDevice
+        shouldThrow<DomainException> {
+            ReconcileOfflineVoucherUseCase(
+                devices, mockk(), mockk(), mockk(), OfflineProperties(), clock,
+            ).execute(
+                ReconcileVoucherCommand(
+                    deviceId = "dev-farmer-1",
+                    payerAccountId = DemoAccounts.FARMER_ACCOUNT_ID,
+                    payeeAccountId = DemoAccounts.SME_ACCOUNT_ID,
+                    amount = "50.00".lkr(),
+                    deviceSeq = 1,
+                    nonce = "n3",
+                    validUntil = now.plusSeconds(3600),
+                    signatureBase64 = "AA==",
+                ),
+            )
+        }
+    }
+
+    "rejects payer mismatch" {
+        val devices = mockk<OfflineDeviceRepository>()
+        val verifier = mockk<VoucherSignatureVerifier>()
+        every { devices.findById("dev-farmer-1") } returns device()
+        every { devices.nonceExists(any(), any()) } returns false
+        every { verifier.verify(any(), any(), any()) } returns true
+        shouldThrow<DomainException> {
+            ReconcileOfflineVoucherUseCase(
+                devices, mockk(), verifier, mockk(), OfflineProperties(), clock,
+            ).execute(
+                ReconcileVoucherCommand(
+                    deviceId = "dev-farmer-1",
+                    payerAccountId = DemoAccounts.SME_ACCOUNT_ID,
+                    payeeAccountId = DemoAccounts.FARMER_ACCOUNT_ID,
+                    amount = "50.00".lkr(),
+                    deviceSeq = 1,
+                    nonce = "n4",
+                    validUntil = now.plusSeconds(3600),
+                    signatureBase64 = "AA==",
+                ),
+            )
+        }
+    }
+
     "register is idempotent" {
         val devices = object : OfflineDeviceRepository {
             private val map = ConcurrentHashMap<String, OfflineDevice>()
