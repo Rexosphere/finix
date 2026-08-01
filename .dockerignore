@@ -1,0 +1,30 @@
+.git
+.github
+.idea
+.vscode
+**/.gradle
+**/node_modules
+**/.venv
+**/venv
+**/__pycache__
+**/*.iml
+**/.DS_Store
+docs
+tests
+apps
+policies
+config
+infra
+scripts
+*.md
+Makefile
+build/
+
+# Keep bootJars; drop the rest of Gradle's build tree (classes, reports, …).
+services/*/build/**
+!services/*/build/libs/
+!services/*/build/libs/app.jar
+
+# Polyglot service build caches (if present)
+services/payment-hub/payment-hub
+services/notification-service/node_modules

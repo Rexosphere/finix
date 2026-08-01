@@ -13,6 +13,7 @@ concurrency:
 permissions:
   contents: read
   packages: write
+  actions: write
 
 env:
   REGISTRY: ghcr.io
@@ -59,41 +60,59 @@ jobs:
     needs: bootjars
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+      actions: write
     strategy:
       fail-fast: false
       matrix:
-        service:
-          - identity-service
-          - account-service
-          - ledger-service
-          - transaction-orchestrator
-          - vault-service
-          - enclave-runtime
-          - ussd-gateway
-          - loan-service
-          - compliance-service
-          - risk-ai-service
-          - payment-hub
-          - notification-service
+        include:
+          - service: identity-service
+            jvm: true
+          - service: account-service
+            jvm: true
+          - service: ledger-service
+            jvm: true
+          - service: transaction-orchestrator
+            jvm: true
+          - service: vault-service
+            jvm: true
+          - service: enclave-runtime
+            jvm: true
+          - service: ussd-gateway
+            jvm: true
+          - service: loan-service
+            jvm: true
+          - service: compliance-service
+            jvm: true
+          - service: risk-ai-service
+            jvm: false
+          - service: payment-hub
+            jvm: false
+          - service: notification-service
+            jvm: false
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/download-artifact@v4
+        if: matrix.jvm
         with:
           name: bootjars
-          # Restores services/<svc>/build/libs/app.jar at repo root (matches Dockerfiles).
 
-      - name: Verify JVM bootJars
+      - name: Verify JVM bootJar
+        if: matrix.jvm
         run: |
-          for svc in identity-service account-service ledger-service transaction-orchestrator \
-            vault-service enclave-runtime ussd-gateway loan-service compliance-service; do
-            jar="services/${svc}/build/libs/app.jar"
-            if [ ! -f "$jar" ]; then
-              echo "Missing $jar"
-              find . -name 'app.jar' -print || true
-              exit 1
-            fi
-          done
+          jar="services/${{ matrix.service }}/build/libs/app.jar"
+          if [ ! -f "$jar" ]; then
+            echo "Missing $jar"
+            find . -name 'app.jar' -print || true
+            exit 1
+          fi
+          ls -la "$jar"
+          # Each bootJar is ~100MB+; drop the other services' jars so the
+          # Docker context stays small on this matrix runner.
+          find services -name 'app.jar' ! -path "services/${{ matrix.service }}/*" -delete
 
       - name: Image name (lowercase)
         id: image
@@ -121,6 +140,9 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
 
+      # provenance/sbom attestations are disabled: GHCR often returns
+      # permission_denied/write_package (403) on the first package push when
+      # build-push-action@v6 tries to upload attestation manifests.
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -128,5 +150,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          provenance: false
+          sbom: false
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}

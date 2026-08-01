@@ -11,6 +11,27 @@ This repository implements the architecture submitted in
 
 ---
 
+## What is this?
+
+FINIX is a **hackathon demo banking platform** — a serious rebuild of banking for a scenario where a
+cyberattack has taken traditional systems offline. It is not a single monolith app; it is a **mesh
+of smaller services** (identity, accounts, ledger, payments, risk, and more) that keep working under
+failure, offline conditions, and strict security.
+
+**What it shows:**
+
+- Banking that still works **offline**, on **low-data** pages, and over **USSD** (`*334#`)
+- Strong security: zero-trust, short-lived tokens, master-key recovery only inside an enclave
+- A **tamper-evident ledger** you can verify was not altered
+- Multiple channels: web PWA, lite page, admin console, USSD simulator
+
+**What “running it” means:** Docker starts the gateway, databases, Kafka, Keycloak, and the banking
+services. You then open the web/admin UIs and walk through the demo.
+
+New here? Jump to [How to run](#how-to-run). Judges: `make demo` then follow [docs/DEMO.md](docs/DEMO.md).
+
+---
+
 ## The problem
 
 A Super Malware Agent has taken the world's banking systems offline. Customer data survived in
@@ -127,40 +148,51 @@ target architecture.
 - **docs** — [USER-GUIDE](docs/USER-GUIDE.md), [FIDELITY-MATRIX](docs/FIDELITY-MATRIX.md), [DEMO](docs/DEMO.md), QA + runbooks
 - **infra** — compose core profile wires the full demo stack
 
-Judges: `make demo` then follow [docs/DEMO.md](docs/DEMO.md).
-
-Prebuilt service images publish to GHCR on every push to `master` / `main`
-(`ghcr.io/rexosphere/finix/<service>:latest`). After the first publish (and making
-packages public if the org defaults to private), you can skip local Gradle/Docker
-builds:
-
-```bash
-make up-pull   # docker compose pull + up --no-build
-make seed
-```
-
-Pin a commit build with `FINIX_IMAGE_TAG=sha-<shortsha> make up-pull`.
-
 ---
 
-## Quick start
+## How to run
 
-Requires **JDK 21**. Nothing else — the Gradle wrapper is pinned to a verified SHA-256.
+You need **Docker** (for the full stack) and **JDK 21** (for local Gradle builds/tests).
 
 ```bash
 git clone https://github.com/Rexosphere/finix.git
 cd finix
-./gradlew verify
 ```
 
-`verify` runs the full local gate across every module: compile, unit and property tests,
-static analysis, and the coverage threshold.
+### Full demo stack (recommended)
+
+Builds images locally, starts everything, waits until healthy, seeds personas, and prints URLs:
 
 ```bash
+make demo
+```
+
+Then open the printed URLs and follow [docs/DEMO.md](docs/DEMO.md).
+
+### Useful Make targets
+
+| Command | What it does |
+|---|---|
+| `make demo` | Build, start, wait healthy, seed, print URLs |
+| `make up` | Start core compose profile (local image build) |
+| `make seed` | Seed personas into a running stack |
+| `make logs` | Tail compose logs |
+| `make down` | Stop the stack and remove volumes |
+
+### Local build / tests only
+
+Requires **JDK 21**. The Gradle wrapper is pinned to a verified SHA-256 — nothing else to install
+for compile/unit tests.
+
+```bash
+./gradlew verify                 # full local gate (compile + tests + coverage + detekt)
 ./gradlew :shared-kernel:test    # tests only
 ./gradlew detekt                 # static analysis only
 ./gradlew integrationTest        # Testcontainers suites (requires Docker)
 ```
+
+`verify` runs the full local gate across every module: compile, unit and property tests,
+static analysis, and the coverage threshold.
 
 > Integration tests start real PostgreSQL, Kafka and Keycloak containers, so they need a running
 > Docker daemon. They are a separate source set and are deliberately excluded from `check`, so the
