@@ -3,9 +3,9 @@
   "short_name": "FINIX",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f1c18",
-  "theme_color": "#3dd68c",
-  "description": "Offline-first inclusion banking for Sri Lanka",
+  "background_color": "#0c1322",
+  "theme_color": "#4edea3",
+  "description": "Resilient Fabric — offline-first inclusion banking",
   "icons": [
     {
       "src": "/icon.svg",

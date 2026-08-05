@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#4edea3" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <title>FINIX — Send money</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/theme.css" />
+</head>
+<body class="mesh-grid">
+  <div class="shell">
+    <header class="topbar">
+      <div class="container topbar-inner">
+        <a href="/" class="brand">FINIX</a>
+        <div class="topbar-actions">
+          <span class="mesh-pill" id="meshStatus"><span class="dot"></span> Mesh Active</span>
+          <nav class="nav-links">
+            <a class="active" href="/transfer.html">Send</a>
+            <a href="/offline.html">Offline</a>
+            <a href="/verify.html">Verify</a>
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <main class="page container page-enter" style="max-width:720px">
+      <h1 class="headline-xl">Send money</h1>
+      <p class="lede">Internal transfer saga — risk AI may allow, demand step-up, or block.</p>
+
+      <section class="panel mesh-glow" style="margin-top:1.5rem">
+        <div class="row">
+          <label class="field">
+            <span class="cap">From</span>
+            <select id="from"></select>
+          </label>
+          <label class="field">
+            <span class="cap">To</span>
+            <select id="to"></select>
+          </label>
+          <label class="field">
+            <span class="cap">Amount (LKR)</span>
+            <input id="amount" type="number" min="1" step="0.01" value="100.00" />
+          </label>
+        </div>
+
+        <label style="display:flex;align-items:center;gap:0.6rem;margin-top:1rem;color:var(--on-surface-variant);cursor:pointer">
+          <input id="newDevice" type="checkbox" style="width:auto;min-height:auto" />
+          Simulate new device (triggers step-up)
+        </label>
+        <label style="display:flex;align-items:center;gap:0.6rem;margin-top:0.5rem;color:var(--on-surface-variant);cursor:pointer">
+          <input id="highRisk" type="checkbox" style="width:auto;min-height:auto" />
+          High velocity demo (may BLOCK)
+        </label>
+
+        <div class="actions">
+          <button class="btn btn-primary" type="button" id="send">
+            <span class="material-symbols-outlined">send</span> Send transfer
+          </button>
+          <a class="btn btn-secondary" id="backDash" href="/farmer.html">Back to dashboard</a>
+        </div>
+
+        <div id="result" class="status-banner hidden" style="margin-top:1.25rem"></div>
+        <pre class="pre hidden" id="raw" style="margin-top:0.75rem"></pre>
+      </section>
+    </main>
+
+    <div id="otpModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+      <div class="modal">
+        <h2 class="headline-lg" style="font-size:1.35rem">Step-up required</h2>
+        <p style="color:var(--on-surface-variant)">Risk AI paused this transfer. Enter demo OTP.</p>
+        <label class="field" style="margin-top:1rem">
+          <span class="cap">OTP</span>
+          <input id="otp" value="123456" />
+        </label>
+        <div class="actions">
+          <button class="btn btn-primary" type="button" id="confirmOtp">Confirm</button>
+          <button class="btn btn-secondary" type="button" id="cancelOtp">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <p class="label-caps" style="color:var(--on-surface);margin:0">FINIX Mesh · Transfer saga</p>
+    </footer>
+  </div>
+  <script src="/js/finix.js"></script>
+  <script>
+    Finix.bindMeshStatus("#meshStatus");
+    const params = new URLSearchParams(location.search);
+    const fromKey = params.get("from") || Finix.currentPersona().key || "farmer";
+    Finix.savePersona(fromKey);
+    document.getElementById("backDash").href = Finix.PERSONAS[fromKey].route;
+    if (params.get("stepup") === "1") document.getElementById("newDevice").checked = true;
+
+    const fromSel = document.getElementById("from");
+    const toSel = document.getElementById("to");
+    const opts = Object.values(Finix.PERSONAS)
+      .map((p) => `<option value="${p.key}">${p.label} · ${p.accountNumber}</option>`)
+      .join("");
+    fromSel.innerHTML = opts;
+    toSel.innerHTML = opts;
+    fromSel.value = fromKey;
+    toSel.value = fromKey === "farmer" ? "sme" : "farmer";
+
+    let pendingId = null;
+
+    function showResult(kind, title, detail) {
+      const el = document.getElementById("result");
+      el.className = "status-banner " + kind;
+      el.classList.remove("hidden");
+      el.innerHTML = `<span class="material-symbols-outlined">${kind === "ok" ? "check_circle" : kind === "warn" ? "pending" : "error"}</span>
+        <div><strong>${title}</strong><div class="data-md" style="margin-top:0.25rem">${detail || ""}</div></div>`;
+    }
+
+    document.getElementById("send").onclick = async () => {
+      const from = Finix.PERSONAS[fromSel.value];
+      const to = Finix.PERSONAS[toSel.value];
+      if (from.accountId === to.accountId) {
+        Finix.toast("Pick different accounts", "warn");
+        return;
+      }
+      const btn = document.getElementById("send");
+      btn.disabled = true;
+      try {
+        const res = await Finix.transfer({
+          fromAccountId: from.accountId,
+          toAccountId: to.accountId,
+          amount: document.getElementById("amount").value,
+          newDevice: document.getElementById("newDevice").checked,
+          velocity1h: document.getElementById("highRisk").checked ? 8 : 0,
+        });
+        document.getElementById("raw").classList.remove("hidden");
+        document.getElementById("raw").textContent = JSON.stringify(res, null, 2);
+
+        if (res.state === "COMPLETED") {
+          showResult("ok", "Transfer completed", res.transferId);
+          Finix.toast("Transfer completed", "ok");
+        } else if (res.state === "AWAITING_STEP_UP") {
+          pendingId = res.transferId;
+          showResult("warn", "Awaiting step-up", "Risk score " + (res.riskScore ?? "—") + " · " + (res.riskDecision || ""));
+          document.getElementById("otpModal").classList.remove("hidden");
+        } else if (res.state === "BLOCKED") {
+          showResult("err", "Transfer blocked", res.failureReason || res.riskDecision || "Risk AI blocked this payment");
+          Finix.toast("Transfer blocked", "err");
+        } else {
+          showResult("warn", res.state, res.failureReason || "");
+        }
+      } catch (e) {
+        showResult("err", "Transfer failed", e.message);
+        Finix.toast(e.message, "err");
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    document.getElementById("cancelOtp").onclick = () => {
+      document.getElementById("otpModal").classList.add("hidden");
+    };
+
+    document.getElementById("confirmOtp").onclick = async () => {
+      if (!pendingId) return;
+      try {
+        const res = await Finix.stepUp(pendingId, document.getElementById("otp").value.trim() || "123456");
+        document.getElementById("otpModal").classList.add("hidden");
+        document.getElementById("raw").textContent = JSON.stringify(res, null, 2);
+        if (res.state === "COMPLETED") {
+          showResult("ok", "Step-up complete · transfer settled", res.transferId);
+          Finix.toast("Transfer completed after OTP", "ok");
+        } else {
+          showResult("warn", res.state, res.failureReason || "");
+        }
+      } catch (e) {
+        Finix.toast(e.message, "err");
+      }
+    };
+  </script>
+</body>
+</html>

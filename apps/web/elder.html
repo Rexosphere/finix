@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#4edea3" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <title>FINIX — Elder calm view</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/theme.css" />
+  <style>
+    body { font-size: 18px; }
+    .balance-hero .amount { font-size: clamp(2.4rem, 8vw, 3.25rem); }
+    .btn { min-height: 56px; font-size: 0.9rem; }
+    .calm-main { max-width: 720px; margin-inline: auto; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="container topbar-inner">
+        <a href="/" class="brand">FINIX</a>
+        <div class="topbar-actions">
+          <span class="mesh-pill" id="meshStatus"><span class="dot"></span> Protected</span>
+          <nav class="nav-links">
+            <a href="/verify.html">Verify</a>
+            <a href="/ussd.html">Phone</a>
+            <a href="/transfer.html?from=elder">Send</a>
+            <a href="/">Switch</a>
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <main class="page container calm-main page-enter">
+      <p class="label-caps" style="margin:0 0 0.5rem">Welcome back</p>
+      <h1 class="headline-xl">Your money is safe.</h1>
+      <p class="lede" style="font-size:1.2rem">Large type, high contrast, fewer choices.</p>
+
+      <section class="panel mesh-glow balance-hero" style="margin-top:1.75rem">
+        <p class="label-caps" style="margin:0">Available balance</p>
+        <p class="data-md" style="color:var(--on-surface-variant);margin:0.5rem 0 0" id="acctNo">FINIX-SAV-00000003</p>
+        <p class="amount is-loading" id="balance">LKR —</p>
+        <div class="actions" style="margin:0;flex-direction:column">
+          <a class="btn btn-primary btn-block" href="/verify.html" style="min-height:64px;font-size:1.05rem">
+            <span class="material-symbols-outlined">verified</span> Verify my money
+          </a>
+          <a class="btn btn-secondary btn-block" href="/ussd.html" style="min-height:64px;font-size:1.05rem">
+            <span class="material-symbols-outlined">call</span> Check by phone · *334#
+          </a>
+          <button class="btn btn-secondary btn-block" type="button" id="refresh" style="min-height:56px">Refresh balance</button>
+        </div>
+        <div id="acctError" class="status-banner err hidden"></div>
+      </section>
+
+      <a class="btn btn-secondary btn-block" href="/lite.html" style="margin-top:2rem;min-height:64px;font-size:1.1rem">
+        <span class="material-symbols-outlined">help_center</span>
+        Need help? Open lite balance
+      </a>
+    </main>
+
+    <footer class="site-footer">
+      <p class="label-caps" style="color:var(--on-surface);margin:0">FINIX Mesh · Elder calm view</p>
+    </footer>
+  </div>
+  <script src="/js/finix.js"></script>
+  <script>
+    Finix.savePersona("elder");
+    Finix.bindMeshStatus("#meshStatus");
+    const p = Finix.PERSONAS.elder;
+
+    async function load() {
+      const bal = document.getElementById("balance");
+      bal.classList.add("is-loading");
+      document.getElementById("acctError").classList.add("hidden");
+      try {
+        const a = await Finix.getAccount(p.accountId);
+        bal.classList.remove("is-loading");
+        bal.textContent = Finix.formatMoney(a.availableBalance);
+        document.getElementById("acctNo").textContent = a.accountNumber + " · Elder";
+      } catch (e) {
+        bal.classList.remove("is-loading");
+        bal.textContent = "Unavailable";
+        const err = document.getElementById("acctError");
+        err.classList.remove("hidden");
+        err.textContent = "Could not load account. " + e.message;
+      }
+    }
+    document.getElementById("refresh").onclick = load;
+    load();
+  </script>
+</body>
+</html>

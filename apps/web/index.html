@@ -1,221 +1,135 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#3dd68c" />
+  <meta name="theme-color" content="#4edea3" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-  <title>FINIX — Offline</title>
+  <title>FINIX — Enter the Mesh</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
-  <style>
-    :root {
-      --ink: #0f1c18;
-      --paper: #e8f0ea;
-      --panel: #102820;
-      --mint: #3dd68c;
-      --amber: #e8b84a;
-      --danger: #e85d5d;
-      --muted: #8aa396;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: "DM Sans", system-ui, sans-serif;
-      color: var(--paper);
-      background:
-        radial-gradient(ellipse 80% 50% at 10% -10%, #1a4a38 0%, transparent 55%),
-        radial-gradient(ellipse 60% 40% at 100% 100%, #143028 0%, transparent 50%),
-        var(--ink);
-    }
-    main { max-width: 920px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
-    h1 { font-size: clamp(2rem, 5vw, 3rem); margin: 0 0 .35rem; letter-spacing: -.03em; }
-    .brand { color: var(--mint); }
-    .lede { color: var(--muted); max-width: 36rem; line-height: 1.5; margin-bottom: 1.5rem; }
-    nav { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; }
-    nav a { color: var(--mint); text-decoration: none; font-size: .95rem; }
-    .row { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-    label { display: grid; gap: .35rem; font-size: .85rem; color: var(--muted); }
-    select, input, button, textarea {
-      font: inherit;
-      padding: .65rem .75rem;
-      border: 1px solid color-mix(in srgb, var(--mint) 30%, transparent);
-      background: color-mix(in srgb, var(--panel) 92%, black);
-      color: var(--paper);
-      border-radius: 0;
-    }
-    button {
-      background: var(--mint);
-      color: var(--ink);
-      font-weight: 700;
-      cursor: pointer;
-      border-color: var(--mint);
-    }
-    button.secondary { background: transparent; color: var(--mint); }
-    button.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
-    .panel {
-      background: color-mix(in srgb, var(--panel) 90%, black);
-      border: 1px solid color-mix(in srgb, var(--mint) 20%, transparent);
-      padding: 1rem;
-      margin-top: 1rem;
-    }
-    .status { font-family: "JetBrains Mono", monospace; font-size: .8rem; color: var(--amber); }
-    .code {
-      font-family: "JetBrains Mono", monospace;
-      font-size: .72rem;
-      word-break: break-all;
-      color: var(--mint);
-      max-height: 8rem;
-      overflow: auto;
-    }
-    .outbox { list-style: none; padding: 0; margin: 0; display: grid; gap: .5rem; }
-    .outbox li {
-      display: flex; justify-content: space-between; gap: 1rem; align-items: baseline;
-      border-bottom: 1px solid color-mix(in srgb, var(--mint) 15%, transparent);
-      padding: .4rem 0;
-      font-size: .9rem;
-    }
-    .pill { font-family: "JetBrains Mono", monospace; font-size: .75rem; color: var(--amber); }
-    .online::before { content: ""; display: inline-block; width: .55rem; height: .55rem; border-radius: 50%; background: var(--mint); margin-right: .4rem; }
-    .offline::before { background: var(--danger); }
-  </style>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/theme.css" />
 </head>
 <body>
-  <main>
-    <h1><span class="brand">FINIX</span></h1>
-    <p class="lede">Create a signed offline voucher on-device, hand the Base45 payload as a QR, then reconcile when back online. Double-spend reuses are quarantined.</p>
-    <nav>
-      <a href="/ussd.html">USSD *334#</a>
-      <a href="/lite.html">Lite</a>
-      <a href="/verify.html">Ledger verify</a>
-      <a href="http://localhost:3001/" rel="noreferrer">Ceremony admin</a>
-    </nav>
-    <p class="status" id="net"><span class="online">checking…</span></p>
+  <div class="shell">
+    <header class="topbar">
+      <div class="container topbar-inner">
+        <h1 class="brand">FINIX</h1>
+        <div class="topbar-actions">
+          <span class="mesh-pill" id="meshStatus"><span class="dot"></span> Mesh Active</span>
+          <nav class="nav-links" aria-label="Channels">
+            <a href="/transfer.html">Send</a>
+            <a href="/offline.html">Offline</a>
+            <a href="/ussd.html">USSD</a>
+            <a href="/lite.html">Lite</a>
+            <a href="/verify.html">Verify</a>
+            <a href="http://localhost:3001/">Ops</a>
+          </nav>
+        </div>
+      </div>
+    </header>
 
-    <div class="row">
-      <label>Payer
-        <select id="payer">
-          <option value="farmer">Farmer · FINIX-SAV-00000001</option>
-          <option value="elder">Elder · FINIX-SAV-00000003</option>
-        </select>
-      </label>
-      <label>Payee
-        <select id="payee">
-          <option value="sme">SME · FINIX-CUR-00000002</option>
-          <option value="elder">Elder · FINIX-SAV-00000003</option>
-          <option value="farmer">Farmer · FINIX-SAV-00000001</option>
-        </select>
-      </label>
-      <label>Amount (LKR)
-        <input id="amount" type="number" min="1" step="0.01" value="250.00" />
-      </label>
-    </div>
-    <div class="row" style="margin-top:1rem">
-      <button id="create" type="button">Sign offline voucher</button>
-      <button id="sync" class="secondary" type="button">Reconcile outbox</button>
-      <button id="doublespend" class="danger" type="button">Replay last (double-spend demo)</button>
-    </div>
+    <main class="page container page-enter">
+      <div class="split split-2" style="align-items:center;min-height:62vh">
+        <section>
+          <p class="badge-soft" style="margin-bottom:0.85rem"><span class="material-symbols-outlined" style="font-size:16px">hub</span> Resilient banking mesh</p>
+          <h2 class="headline-xl">Enter the Mesh.</h2>
+          <p class="lede">Pick a demo persona and bank across online, offline, USSD, and lite channels — same ledger underneath.</p>
 
-    <section class="panel">
-      <h2 style="margin:0 0 .5rem;font-size:1rem">Latest voucher</h2>
-      <p id="latestMeta" class="status">None yet</p>
-      <p class="code" id="latestCode"></p>
-    </section>
+          <form class="panel mesh-glow" style="margin-top:1.75rem;max-width:28rem" id="identifyForm" onsubmit="return false;">
+            <h3 class="headline-lg" style="font-size:1.35rem">Identify</h3>
+            <div style="display:grid;gap:1rem;margin-top:1.25rem">
+              <label class="field">
+                <span class="cap">Mesh ID or Phone</span>
+                <input id="mesh_id" autocomplete="username" placeholder="+94771110001" />
+              </label>
+              <label class="field">
+                <span class="cap">Passkey / password</span>
+                <input id="passkey" type="password" autocomplete="current-password" placeholder="Finix!2026" value="Finix!2026" />
+              </label>
+              <button class="btn btn-primary btn-block" type="button" id="connectBtn">
+                <span class="material-symbols-outlined">login</span>
+                Continue to dashboard
+              </button>
+            </div>
+            <p class="label-caps" style="margin-top:1rem">Demo · Finix!2026 · Keycloak realm finix</p>
+          </form>
+        </section>
 
-    <section class="panel">
-      <h2 style="margin:0 0 .5rem;font-size:1rem">Outbox</h2>
-      <ul class="outbox" id="outbox"></ul>
-    </section>
-  </main>
-  <script src="/js/offline.js"></script>
+        <section>
+          <p class="label-caps" style="margin-bottom:0.75rem">Demo Identities</p>
+          <div style="display:grid;gap:0.75rem" id="personaList"></div>
+          <p id="apiHint" class="label-caps" style="margin-top:1rem"></p>
+        </section>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <p class="label-caps" style="color:var(--on-surface);margin:0">FINIX Mesh · Ledger State: 0x72a…f92</p>
+      <div class="links">
+        <a href="/offline.html">Offline vouchers</a>
+        <a href="/ussd.html">USSD *334#</a>
+        <a href="/verify.html">Verify receipt</a>
+      </div>
+    </footer>
+  </div>
+  <script src="/js/finix.js"></script>
   <script>
-    const $ = (id) => document.getElementById(id);
-    const net = $("net");
-    function paintNet() {
-      net.innerHTML = navigator.onLine
-        ? '<span class="online">online — reconcile available</span>'
-        : '<span class="offline">offline — vouchers queue locally</span>';
-    }
-    window.addEventListener("online", paintNet);
-    window.addEventListener("offline", paintNet);
-    paintNet();
+    Finix.bindMeshStatus("#meshStatus");
+    const phoneInput = document.getElementById("mesh_id");
+    let selected = "farmer";
 
-    let lastVoucher = null;
+    const list = document.getElementById("personaList");
+    list.innerHTML = Object.values(Finix.PERSONAS).map((p, i) => {
+      const tone = p.key === "sme" ? "mint" : p.key === "elder" ? "gold" : "";
+      return `<button type="button" class="persona mesh-glow" data-key="${p.key}">
+        <span class="persona-icon ${tone}"><span class="material-symbols-outlined">${p.icon}</span></span>
+        <span style="flex:1">
+          <span class="data-md" style="display:block;color:var(--on-surface)">${p.phone}</span>
+          <span style="color:var(--on-surface-variant);font-size:0.95rem">${p.label} · ${p.blurb}</span>
+        </span>
+        <span class="material-symbols-outlined" style="color:var(--outline)">chevron_right</span>
+      </button>`;
+    }).join("");
 
-    async function refreshOutbox() {
-      const items = await FinixOffline.listOutbox();
-      $("outbox").innerHTML = items
-        .sort((a, b) => b.createdAt - a.createdAt)
-        .map((v) => `<li><span>#${v.deviceSeq} · LKR ${(v.amountMinor / 100).toFixed(2)} → ${v.payeeAccountId.slice(0, 8)}…</span><span class="pill">${v.status}</span></li>`)
-        .join("") || "<li>Empty</li>";
-    }
-
-    $("create").onclick = async () => {
-      const payer = FinixOffline.DEMO[$("payer").value];
-      const payee = FinixOffline.DEMO[$("payee").value];
-      if (payer.accountId === payee.accountId) {
-        alert("Pick different payer and payee");
-        return;
-      }
-      lastVoucher = await FinixOffline.createVoucher({
-        payer,
-        payee,
-        amountLkr: $("amount").value,
-        hoursValid: 24,
-      });
-      $("latestMeta").textContent = `seq ${lastVoucher.deviceSeq} · ${lastVoucher.status} · device ${lastVoucher.deviceId}`;
-      $("latestCode").textContent = lastVoucher.base45;
-      await refreshOutbox();
-      if ("serviceWorker" in navigator && "SyncManager" in window) {
-        const reg = await navigator.serviceWorker.ready;
-        try { await reg.sync.register("finix-offline-reconcile"); } catch (_) {}
-      }
-    };
-
-    $("sync").onclick = async () => {
-      try {
-        const results = await FinixOffline.reconcileAll();
-        $("latestMeta").textContent = `reconciled ${results.length} item(s)`;
-      } catch (e) {
-        $("latestMeta").textContent = String(e);
-      }
-      await refreshOutbox();
-    };
-
-    $("doublespend").onclick = async () => {
-      if (!lastVoucher) {
-        alert("Create a voucher first");
-        return;
-      }
-      const clone = { ...lastVoucher, id: crypto.randomUUID(), status: "queued", createdAt: Date.now() };
-      // Force same nonce + seq into a fresh outbox row for the demo.
-      const dbOpen = indexedDB.open("finix-offline", 1);
-      dbOpen.onsuccess = () => {
-        const tx = dbOpen.result.transaction("outbox", "readwrite");
-        tx.objectStore("outbox").put(clone);
-        tx.oncomplete = async () => {
-          await refreshOutbox();
-          try {
-            await FinixOffline.reconcileVoucher(clone);
-            $("latestMeta").textContent = "unexpected success";
-          } catch (e) {
-            $("latestMeta").textContent = "double-spend caught — " + String(e).slice(0, 180);
-          }
-          await refreshOutbox();
-        };
-      };
-    };
-
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
-      navigator.serviceWorker.addEventListener("message", (ev) => {
-        if (ev.data?.type === "reconcile") FinixOffline.reconcileAll().then(refreshOutbox);
+    function selectPersona(key) {
+      selected = key;
+      const p = Finix.PERSONAS[key];
+      phoneInput.value = p.phone;
+      Finix.savePersona(key);
+      list.querySelectorAll(".persona").forEach((b) => {
+        b.style.borderColor = b.dataset.key === key
+          ? "color-mix(in srgb, var(--primary) 55%, transparent)"
+          : "";
       });
     }
-    refreshOutbox();
+
+    list.querySelectorAll(".persona").forEach((btn) => {
+      btn.addEventListener("click", () => selectPersona(btn.dataset.key));
+    });
+    selectPersona("farmer");
+
+    document.getElementById("connectBtn").onclick = () => {
+      const byPhone = Object.values(Finix.PERSONAS).find((p) => p.phone === phoneInput.value.trim());
+      const key = byPhone?.key || selected;
+      Finix.savePersona(key);
+      location.href = Finix.PERSONAS[key].route;
+    };
+
+    Finix.getAccount(Finix.PERSONAS.farmer.accountId)
+      .then((a) => {
+        document.getElementById("apiHint").textContent =
+          "Mesh online · farmer balance " + Finix.formatMoney(a.availableBalance);
+      })
+      .catch(() => {
+        document.getElementById("apiHint").textContent =
+          "Account API offline — start with make demo / make demo-pull";
+      });
+
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
   </script>
 </body>
 </html>

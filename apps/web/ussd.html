@@ -1,73 +1,84 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>FINIX — USSD *334#</title>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=DM+Sans:wght@500;700&display=swap" rel="stylesheet" />
-  <style>
-    :root { --bg:#0b1210; --term:#0e1a14; --fg:#b7f5c8; --dim:#5f8a6e; --amber:#e8b84a; }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; min-height: 100vh; color: var(--fg);
-      font-family: "DM Sans", system-ui, sans-serif;
-      background: radial-gradient(ellipse 60% 40% at 50% 0%, #163528, transparent), var(--bg);
-      padding: 2rem 1rem;
-    }
-    main { max-width: 640px; margin: 0 auto; }
-    h1 { margin: 0 0 .25rem; letter-spacing: -.02em; }
-    .lede { color: var(--dim); margin-bottom: 1rem; }
-    a { color: var(--amber); }
-    .controls { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: .75rem; }
-    select, button, input {
-      font: inherit; padding: .55rem .7rem;
-      background: var(--term); color: var(--fg); border: 1px solid #244833;
-    }
-    button { cursor: pointer; background: #1f6b45; border-color: #1f6b45; color: #eafff1; font-weight: 700; }
-    .screen {
-      font-family: "IBM Plex Mono", monospace;
-      background: var(--term);
-      border: 1px solid #244833;
-      min-height: 280px;
-      padding: 1rem;
-      white-space: pre-wrap;
-      line-height: 1.45;
-      box-shadow: inset 0 0 40px rgba(0,0,0,.35);
-    }
-    .keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; max-width: 240px; margin-top: .75rem; }
-    .keys button { padding: .85rem; font-family: "IBM Plex Mono", monospace; }
-    .hint { color: var(--dim); font-size: .85rem; margin-top: 1rem; }
-  </style>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/theme.css" />
 </head>
 <body>
-  <main>
-    <h1>USSD *334#</h1>
-    <p class="lede">Terminal simulator hitting the real Africa's Talking <code>POST /ussd</code> contract.</p>
-    <p><a href="/">PWA</a> · <a href="/lite.html">Lite</a></p>
-    <div class="controls">
-      <select id="phone">
-        <option value="+94771110001">+94771110001 Farmer</option>
-        <option value="+94771110002">+94771110002 SME</option>
-        <option value="+94771110003">+94771110003 Elder</option>
-      </select>
-      <button id="dial" type="button">Dial *334#</button>
-      <button id="reset" type="button">End session</button>
-    </div>
-    <div class="screen" id="screen">Press Dial to start.</div>
-    <div class="keys" id="keys" hidden>
-      <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
-      <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
-      <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
-      <button data-k="*">*</button><button data-k="0">0</button><button data-k="send">OK</button>
-    </div>
-    <input id="buffer" placeholder="type then OK" style="width:100%;margin-top:.75rem" />
-    <p class="hint">Menu: 1 Balance · 2 Send Money · 3 Mini-statement · 4 Loan · 5 Language</p>
-  </main>
+  <div class="shell">
+    <header class="topbar">
+      <div class="container topbar-inner">
+        <a href="/" class="brand">FINIX</a>
+        <div class="topbar-actions">
+          <span class="mesh-pill" id="meshStatus"><span class="dot"></span> Mesh Active</span>
+          <nav class="nav-links">
+            <a href="/">Identity</a>
+            <a href="/transfer.html">Send</a>
+            <a href="/offline.html">Offline</a>
+            <a class="active" href="/ussd.html">USSD</a>
+            <a href="/lite.html">Lite</a>
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <main class="page container page-enter" style="max-width:720px">
+      <h1 class="headline-xl">USSD *334#</h1>
+      <p class="lede">Phone-menu banking over the real Africa's Talking <span class="data-md">POST /ussd</span> contract.</p>
+
+      <section class="panel mesh-glow" style="margin-top:1.25rem">
+        <div class="actions" style="margin:0 0 1rem">
+          <label class="field" style="flex:1;min-width:200px">
+            <span class="cap">Phone</span>
+            <select id="phone">
+              <option value="+94771110001">+94771110001 Farmer</option>
+              <option value="+94771110002">+94771110002 SME</option>
+              <option value="+94771110003">+94771110003 Elder</option>
+            </select>
+          </label>
+          <button class="btn btn-primary" id="dial" type="button" style="align-self:end">
+            <span class="material-symbols-outlined">call</span> Dial *334#
+          </button>
+          <button class="btn btn-secondary" id="reset" type="button" style="align-self:end">End</button>
+        </div>
+
+        <div class="ussd-screen" id="screen">Press Dial to start.</div>
+        <div class="keys" id="keys" hidden>
+          <button class="btn btn-secondary" data-k="1" type="button">1</button>
+          <button class="btn btn-secondary" data-k="2" type="button">2</button>
+          <button class="btn btn-secondary" data-k="3" type="button">3</button>
+          <button class="btn btn-secondary" data-k="4" type="button">4</button>
+          <button class="btn btn-secondary" data-k="5" type="button">5</button>
+          <button class="btn btn-secondary" data-k="6" type="button">6</button>
+          <button class="btn btn-secondary" data-k="7" type="button">7</button>
+          <button class="btn btn-secondary" data-k="8" type="button">8</button>
+          <button class="btn btn-secondary" data-k="9" type="button">9</button>
+          <button class="btn btn-secondary" data-k="*" type="button">*</button>
+          <button class="btn btn-secondary" data-k="0" type="button">0</button>
+          <button class="btn btn-primary" data-k="send" type="button">OK</button>
+        </div>
+        <input id="buffer" placeholder="type amount / choice then OK" style="margin-top:0.85rem" />
+        <p class="label-caps" style="margin-top:1rem">1 Balance · 2 Send · 3 Statement · 4 Loan · 5 Language</p>
+        <div id="ussdHint" class="status-banner hidden" style="margin-top:1rem"></div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p class="label-caps" style="color:var(--on-surface);margin:0">FINIX Mesh · USSD gateway</p>
+    </footer>
+  </div>
+  <script src="/js/finix.js"></script>
   <script>
-    const USSD_BASE = window.FINIX_USSD_BASE || "/api/ussd";
+    Finix.bindMeshStatus("#meshStatus");
+    const USSD_BASE = Finix.API.ussd();
     const screen = document.getElementById("screen");
     const keys = document.getElementById("keys");
     const buffer = document.getElementById("buffer");
+    const hint = document.getElementById("ussdHint");
     let sessionId = null;
     let path = [];
     let ended = true;
@@ -79,18 +90,30 @@
         serviceCode: "*334#",
         text,
       };
-      const res = await fetch(USSD_BASE + "/ussd", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const reply = await res.text();
-      const isEnd = reply.startsWith("END");
-      screen.textContent = reply.replace(/^(CON|END)\s/, "");
-      ended = isEnd;
-      keys.hidden = isEnd;
-      if (isEnd) path = [];
-      return reply;
+      try {
+        const res = await fetch(USSD_BASE + "/ussd", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const reply = await res.text();
+        if (!res.ok) throw new Error(reply || res.status);
+        const isEnd = reply.startsWith("END");
+        screen.textContent = reply.replace(/^(CON|END)\s/, "");
+        ended = isEnd;
+        keys.hidden = isEnd;
+        hint.classList.add("hidden");
+        if (isEnd) path = [];
+        return reply;
+      } catch (e) {
+        screen.textContent = "Gateway unreachable.\nStart compose, then Dial again.";
+        hint.className = "status-banner err";
+        hint.classList.remove("hidden");
+        hint.textContent = String(e.message || e);
+        ended = true;
+        keys.hidden = true;
+        Finix.toast("USSD gateway offline", "err");
+      }
     }
 
     document.getElementById("dial").onclick = async () => {
@@ -121,7 +144,7 @@
     }
 
     keys.addEventListener("click", (ev) => {
-      const k = ev.target.getAttribute("data-k");
+      const k = ev.target.closest("[data-k]")?.getAttribute("data-k");
       if (k) submitToken(k);
     });
     buffer.addEventListener("keydown", (ev) => {

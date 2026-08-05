@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#4edea3" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <title>FINIX — SME</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/theme.css" />
+</head>
+<body class="mesh-grid">
+  <div class="shell">
+    <header class="topbar">
+      <div class="container topbar-inner">
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+          <a href="/" class="brand">FINIX</a>
+          <span class="mesh-pill" id="meshStatus"><span class="dot"></span> Mesh Active</span>
+        </div>
+        <div class="topbar-actions">
+          <span class="data-md" style="color:var(--on-surface-variant)">+94771110002 · SME</span>
+          <nav class="nav-links">
+            <a href="/transfer.html">Send</a>
+            <a href="/offline.html">Offline</a>
+            <a href="http://localhost:3001/">Ops</a>
+            <a href="/">Switch</a>
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <main class="page container page-enter">
+      <div style="margin-bottom:1.5rem">
+        <h1 class="headline-xl">Business ledger</h1>
+        <p class="lede">Working capital, transfers with risk gating, and loan desk for the SME persona.</p>
+      </div>
+
+      <div class="split split-sidebar">
+        <div style="display:grid;gap:1.25rem">
+          <section class="panel mesh-glow balance-hero">
+            <div style="display:flex;justify-content:space-between;gap:0.75rem;flex-wrap:wrap">
+              <div>
+                <p class="label-caps" style="margin:0">Current account</p>
+                <p class="data-md" style="color:var(--on-surface-variant);margin:0.35rem 0 0" id="acctNo">FINIX-CUR-00000002</p>
+              </div>
+              <button class="btn btn-secondary" type="button" id="refresh" style="min-height:40px">Refresh</button>
+            </div>
+            <p class="amount is-loading" id="balance">LKR —</p>
+            <p class="label-caps" id="held" style="margin:-0.5rem 0 1rem">Held · —</p>
+            <div class="actions" style="margin:0">
+              <a class="btn btn-primary" href="/transfer.html?from=sme"><span class="material-symbols-outlined">payments</span> Pay supplier</a>
+              <a class="btn btn-secondary" href="http://localhost:3001/"><span class="material-symbols-outlined">account_balance</span> Ops desk</a>
+            </div>
+            <div id="acctError" class="status-banner err hidden"></div>
+          </section>
+
+          <section class="panel-muted">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.85rem">
+              <h2 class="label-caps" style="margin:0;color:var(--on-surface)">Micro-loan</h2>
+              <span class="pill ok">Demo eligible</span>
+            </div>
+            <p style="margin:0 0 1rem;color:var(--on-surface-variant)">Apply and decide from the Ops Loans tab — deterministic credit path for judges.</p>
+            <div class="row">
+              <div class="panel" style="padding:1rem;margin:0">
+                <p class="label-caps" style="margin:0">Suggested</p>
+                <p class="data-lg" style="color:var(--primary);margin:0.35rem 0 0">LKR 50,000</p>
+              </div>
+              <div class="panel" style="padding:1rem;margin:0">
+                <p class="label-caps" style="margin:0">Term</p>
+                <p class="data-lg" style="margin:0.35rem 0 0">12 months</p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <aside style="display:grid;gap:1rem">
+          <section class="panel">
+            <p class="label-caps" style="margin:0 0 0.5rem;color:var(--on-surface)">Risk posture</p>
+            <p style="margin:0;color:var(--on-surface-variant)">New-device transfers may pause for step-up OTP. Demo code: <span class="data-md" style="color:var(--tertiary)">123456</span></p>
+            <a class="btn btn-secondary btn-block" style="margin-top:1rem" href="/transfer.html?from=sme&amp;stepup=1">Try step-up transfer</a>
+          </section>
+          <section class="panel-muted">
+            <p class="label-caps" style="margin:0 0 0.75rem;color:var(--on-surface)">Channels</p>
+            <div class="tile-grid">
+              <a class="tile" href="/offline.html"><span class="material-symbols-outlined" style="color:var(--primary)">qr_code_2</span><strong>Offline</strong></a>
+              <a class="tile" href="/ussd.html"><span class="material-symbols-outlined" style="color:var(--primary)">dialpad</span><strong>USSD</strong></a>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <p class="label-caps" style="color:var(--on-surface);margin:0">FINIX Mesh · SME persona</p>
+    </footer>
+  </div>
+  <script src="/js/finix.js"></script>
+  <script>
+    Finix.savePersona("sme");
+    Finix.bindMeshStatus("#meshStatus");
+    const p = Finix.PERSONAS.sme;
+
+    async function load() {
+      const bal = document.getElementById("balance");
+      bal.classList.add("is-loading");
+      document.getElementById("acctError").classList.add("hidden");
+      try {
+        const a = await Finix.getAccount(p.accountId);
+        bal.classList.remove("is-loading");
+        bal.textContent = Finix.formatMoney(a.availableBalance);
+        document.getElementById("held").textContent = "Held · " + Finix.formatMoney(a.heldBalance);
+        document.getElementById("acctNo").textContent = a.accountNumber;
+      } catch (e) {
+        bal.classList.remove("is-loading");
+        bal.textContent = "Unavailable";
+        const err = document.getElementById("acctError");
+        err.classList.remove("hidden");
+        err.textContent = "Could not load account. " + e.message;
+      }
+    }
+    document.getElementById("refresh").onclick = load;
+    load();
+  </script>
+</body>
+</html>

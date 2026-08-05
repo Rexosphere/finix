@@ -1,45 +1,66 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>FINIX — Verify receipt</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;700&family=JetBrains+Mono&display=swap" rel="stylesheet" />
-  <style>
-    :root { --ink:#101820; --paper:#f2f5f7; --accent:#1f6feb; --ok:#1a7f4b; --bad:#b42318; }
-    body { margin:0; font-family:"DM Sans",sans-serif; background:linear-gradient(160deg,#dfe8f2,#f2f5f7 40%,#e8eef5); color:var(--ink); min-height:100vh; }
-    main { max-width:720px; margin:0 auto; padding:2.5rem 1.25rem; }
-    h1 { font-size:2rem; margin:0 0 .5rem; letter-spacing:-.02em; }
-    p { color:#4b5b6b; line-height:1.5; }
-    label { display:block; font-size:.85rem; margin:1rem 0 .35rem; }
-    input, button { font:inherit; }
-    input { width:100%; padding:.7rem .8rem; border:1px solid #c5d0db; background:#fff; }
-    button { margin-top:1rem; background:var(--accent); color:#fff; border:0; padding:.7rem 1.1rem; cursor:pointer; font-weight:700; }
-    pre { background:#0f1720; color:#e7eef7; padding:1rem; overflow:auto; font-family:"JetBrains Mono",monospace; font-size:.75rem; line-height:1.45; }
-    .ok { color:var(--ok); font-weight:700; }
-    .bad { color:var(--bad); font-weight:700; }
-  </style>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/theme.css" />
 </head>
 <body>
-  <main>
-    <h1>FINIX receipt verification</h1>
-    <p>
-      Verify a transaction’s hash-chain link and Merkle inclusion against the bank’s public
-      ML-DSA-65 anchor — without trusting the bank’s live database. Paste a transaction id from
-      the ledger proof API.
-    </p>
-    <label for="tx">Transaction ID</label>
-    <input id="tx" placeholder="uuid" />
-    <label for="base">Ledger base URL</label>
-    <input id="base" value="http://localhost:8084" />
-    <button id="go">Verify</button>
-    <p id="status"></p>
-    <pre id="out">Results appear here.</pre>
-  </main>
+  <div class="shell">
+    <header class="topbar">
+      <div class="container topbar-inner">
+        <a href="/" class="brand">FINIX</a>
+        <div class="topbar-actions">
+          <span class="mesh-pill" id="meshStatus"><span class="dot"></span> Mesh Active</span>
+          <nav class="nav-links">
+            <a href="/">Identity</a>
+            <a href="/elder.html">Calm view</a>
+            <a href="/transfer.html">Send</a>
+            <a class="active" href="/verify.html">Verify</a>
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <main class="page container page-enter" style="max-width:760px">
+      <h1 class="headline-xl">Receipt verification</h1>
+      <p class="lede">
+        Check the ledger hash chain and Merkle inclusion without trusting the bank’s live database.
+      </p>
+
+      <section class="panel mesh-glow" style="margin-top:1.5rem">
+        <div class="actions" style="margin:0 0 1rem">
+          <button class="btn btn-secondary" type="button" id="chainOnly">
+            <span class="material-symbols-outlined">link</span> Verify full chain
+          </button>
+        </div>
+        <label class="field">
+          <span class="cap">Transaction ID (optional for proof)</span>
+          <input id="tx" placeholder="uuid from a completed transfer" />
+        </label>
+        <label class="field" style="margin-top:1rem">
+          <span class="cap">Ledger API base</span>
+          <input id="base" value="/api/ledger" />
+        </label>
+        <button class="btn btn-primary" id="go" type="button" style="margin-top:1.25rem">
+          <span class="material-symbols-outlined">verified</span>
+          Verify receipt
+        </button>
+        <div id="status" class="status-banner hidden" style="margin-top:1rem"></div>
+        <pre class="pre" id="out" style="margin-top:1rem">Results appear here.</pre>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p class="label-caps" style="color:var(--on-surface);margin:0">FINIX Mesh · Independent verify</p>
+    </footer>
+  </div>
+  <script src="/js/finix.js"></script>
   <script type="module">
-    // Browser-side verification of Merkle path (RFC 6962 domain separation).
-    // ML-DSA signature check uses SubtleCrypto where available for SHA-256 path rebuild;
-    // full ML-DSA verify requires @noble/post-quantum — loaded dynamically when possible.
+    Finix.bindMeshStatus("#meshStatus");
 
     async function sha256Hex(...chunks) {
       const total = chunks.reduce((n, c) => n + c.length, 0);
@@ -68,44 +89,53 @@
       return { ok: computed === proof.merkleRoot, computed, root: proof.merkleRoot };
     }
 
-    async function verifyMlDsa(proof) {
-      if (!proof.anchorSignatureBase64 || !proof.anchorPublicKeyBase64 || !proof.merkleRoot) {
-        return { skipped: true, reason: "No ML-DSA material on proof" };
-      }
+    function banner(kind, title, detail) {
+      const status = document.getElementById("status");
+      status.className = "status-banner " + kind;
+      status.classList.remove("hidden");
+      status.innerHTML = `<span class="material-symbols-outlined">${kind === "ok" ? "verified" : "gpp_bad"}</span>
+        <div><strong>${title}</strong><div style="margin-top:0.25rem">${detail || ""}</div></div>`;
+    }
+
+    async function run(withProof) {
+      const base = document.getElementById("base").value.replace(/\/$/, "");
+      const tx = document.getElementById("tx").value.trim();
+      const out = document.getElementById("out");
       try {
-        const { ml_dsa65 } = await import("https://esm.sh/@noble/post-quantum@0.4.1/ml-dsa.js");
-        const msg = new TextEncoder().encode(
-          `${proof.merkleRoot}|${/* window bounds unknown client-side without anchor fetch */ ""}`
+        const verify = await fetch(`${base}/api/v1/ledger/verify`).then(async (r) => {
+          const t = await r.text();
+          if (!r.ok) throw new Error(t || r.status);
+          return JSON.parse(t);
+        });
+        let proof = null;
+        let merkle = null;
+        if (withProof && tx) {
+          proof = await fetch(`${base}/api/v1/ledger/proof/${tx}`).then(async (r) => {
+            const t = await r.text();
+            if (!r.ok) throw new Error(t || r.status);
+            return JSON.parse(t);
+          });
+          merkle = await verifyMerkle(proof);
+        }
+        const ok = verify.valid && (!merkle || merkle.ok);
+        banner(
+          ok ? "ok" : "err",
+          ok ? "Ledger integrity OK" : "Verification failed",
+          merkle
+            ? (merkle.ok ? "Chain valid · Merkle inclusion OK" : (merkle.reason || "Merkle mismatch"))
+            : (verify.valid ? "Hash chain valid" : `Break at ${verify.firstBreakSequence ?? "?"}`),
         );
-        // Prefer verifying via ledger anchors endpoint message format when present.
-        return { skipped: true, reason: "Fetch /anchors and verify message root|start|end|count with @noble/post-quantum (see script comments)" };
+        out.textContent = JSON.stringify({ chain: verify, proof, merkle }, null, 2);
+        Finix.toast(ok ? "Verification passed" : "Verification failed", ok ? "ok" : "err");
       } catch (e) {
-        return { skipped: true, reason: String(e) };
+        banner("err", "Could not reach ledger", String(e.message || e));
+        out.textContent = String(e);
+        Finix.toast("Ledger API offline", "err");
       }
     }
 
-    document.getElementById("go").onclick = async () => {
-      const base = document.getElementById("base").value.replace(/\/$/, "");
-      const tx = document.getElementById("tx").value.trim();
-      const status = document.getElementById("status");
-      const out = document.getElementById("out");
-      try {
-        const [proof, verify] = await Promise.all([
-          fetch(`${base}/api/v1/ledger/proof/${tx}`).then(r => r.json()),
-          fetch(`${base}/api/v1/ledger/verify`).then(r => r.json()),
-        ]);
-        const merkle = await verifyMerkle(proof);
-        const mldsa = await verifyMlDsa(proof);
-        status.className = merkle.ok && verify.valid ? "ok" : "bad";
-        status.textContent = merkle.ok && verify.valid
-          ? "Chain valid · Merkle inclusion OK"
-          : "Verification failed — see details";
-        out.textContent = JSON.stringify({ chain: verify, proof, merkle, mldsa }, null, 2);
-      } catch (e) {
-        status.className = "bad";
-        status.textContent = String(e);
-      }
-    };
+    document.getElementById("go").onclick = () => run(true);
+    document.getElementById("chainOnly").onclick = () => run(false);
   </script>
 </body>
 </html>

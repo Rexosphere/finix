@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#4edea3" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <title>FINIX — Offline Mesh</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/theme.css" />
+</head>
+<body class="mesh-grid">
+  <div class="shell">
+    <header class="topbar">
+      <div class="container topbar-inner">
+        <a href="/" class="brand">FINIX</a>
+        <div class="topbar-actions">
+          <span class="mesh-pill" id="net"><span class="dot"></span> checking…</span>
+          <nav class="nav-links">
+            <a href="/">Identity</a>
+            <a href="/transfer.html">Send</a>
+            <a class="active" href="/offline.html">Offline</a>
+            <a href="/ussd.html">USSD</a>
+            <a href="/verify.html">Verify</a>
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <main class="page container page-enter">
+      <div style="margin-bottom:1.5rem">
+        <h1 class="headline-xl">Offline Mesh</h1>
+        <p class="lede">Sign a voucher on-device, share the Base45 payload, reconcile when online. Double-spend reuses quarantine the device.</p>
+      </div>
+
+      <div class="split split-7-5">
+        <div style="display:grid;gap:1.25rem">
+          <section class="panel mesh-glow">
+            <p class="label-caps" style="margin:0 0 1rem">New voucher</p>
+            <div class="row">
+              <label class="field">
+                <span class="cap">Payer</span>
+                <select id="payer">
+                  <option value="farmer">Farmer · FINIX-SAV-00000001</option>
+                  <option value="elder">Elder · FINIX-SAV-00000003</option>
+                  <option value="sme">SME · FINIX-CUR-00000002</option>
+                </select>
+              </label>
+              <label class="field">
+                <span class="cap">Payee</span>
+                <select id="payee">
+                  <option value="sme">SME · FINIX-CUR-00000002</option>
+                  <option value="elder">Elder · FINIX-SAV-00000003</option>
+                  <option value="farmer">Farmer · FINIX-SAV-00000001</option>
+                </select>
+              </label>
+              <label class="field">
+                <span class="cap">Amount (LKR)</span>
+                <input id="amount" type="number" min="1" step="0.01" value="250.00" />
+              </label>
+            </div>
+            <div class="actions">
+              <button class="btn btn-primary" id="create" type="button">
+                <span class="material-symbols-outlined">qr_code_scanner</span> Sign offline voucher
+              </button>
+              <button class="btn btn-secondary" id="sync" type="button">
+                <span class="material-symbols-outlined">sync</span> Reconcile outbox
+              </button>
+              <button class="btn btn-danger" id="doublespend" type="button">Replay last (double-spend)</button>
+            </div>
+          </section>
+
+          <div class="warn-block">
+            <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1">warning</span>
+            <p style="margin:0"><strong>Integrity warning:</strong> Replaying the same nonce quarantines this device from the FINIX mesh.</p>
+          </div>
+        </div>
+
+        <div style="display:grid;gap:1.25rem">
+          <section class="panel" style="border-color:color-mix(in srgb, var(--primary) 30%, transparent);background:var(--deep-ink)">
+            <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid color-mix(in srgb, var(--primary) 12%, transparent);padding-bottom:0.75rem;margin-bottom:1rem">
+              <span class="label-caps" style="color:var(--primary)">Active voucher</span>
+              <span class="data-md" id="latestMeta">None yet</span>
+            </div>
+            <p class="code" id="latestCode" style="min-height:4rem">(Base45 payload appears here)</p>
+            <button class="btn btn-secondary btn-block hidden" id="copyBtn" type="button" style="margin-top:0.75rem">
+              <span class="material-symbols-outlined">content_copy</span> Copy Base45
+            </button>
+          </section>
+
+          <section class="panel-muted">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem">
+              <h2 class="label-caps" style="margin:0;color:var(--on-surface)">Offline outbox</h2>
+              <span class="pill" id="outboxCount">0 queued</span>
+            </div>
+            <ul class="list" id="outbox"></ul>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <p class="label-caps" style="color:var(--on-surface);margin:0">FINIX Mesh · Offline vouchers</p>
+    </footer>
+  </div>
+
+  <script src="/js/finix.js"></script>
+  <script src="/js/offline.js"></script>
+  <script>
+    Finix.bindMeshStatus("#net");
+    const $ = (id) => document.getElementById(id);
+    let lastVoucher = null;
+
+    async function refreshOutbox() {
+      const items = await FinixOffline.listOutbox();
+      const queued = items.filter((v) => v.status === "queued" || v.status === "syncing").length;
+      $("outboxCount").textContent = queued + " queued";
+      $("outbox").innerHTML = items
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .map((v) => {
+          const pill = v.status === "settled" ? "ok" : v.status === "rejected" ? "bad" : "";
+          return `<li class="list-item"><span class="data-md">#${v.deviceSeq} · LKR ${(v.amountMinor / 100).toFixed(2)} → ${v.payeeAccountId.slice(0, 8)}…</span><span class="pill ${pill}">${v.status}</span></li>`;
+        })
+        .join("") || '<li class="list-item"><span style="color:var(--on-surface-variant)">Empty</span></li>';
+    }
+
+    $("create").onclick = async () => {
+      const payer = FinixOffline.DEMO[$("payer").value];
+      const payee = FinixOffline.DEMO[$("payee").value];
+      if (payer.accountId === payee.accountId) {
+        Finix.toast("Pick different payer and payee", "warn");
+        return;
+      }
+      try {
+        lastVoucher = await FinixOffline.createVoucher({
+          payer, payee, amountLkr: $("amount").value, hoursValid: 24,
+        });
+        $("latestMeta").textContent = `seq ${lastVoucher.deviceSeq} · ${lastVoucher.status}`;
+        $("latestCode").textContent = lastVoucher.base45;
+        $("copyBtn").classList.remove("hidden");
+        Finix.toast("Voucher signed locally", "ok");
+        await refreshOutbox();
+        if ("serviceWorker" in navigator && "SyncManager" in window) {
+          const reg = await navigator.serviceWorker.ready;
+          try { await reg.sync.register("finix-offline-reconcile"); } catch (_) {}
+        }
+      } catch (e) {
+        Finix.toast(String(e), "err");
+      }
+    };
+
+    $("copyBtn").onclick = async () => {
+      if (!lastVoucher) return;
+      try {
+        await navigator.clipboard.writeText(lastVoucher.base45);
+        Finix.toast("Copied Base45", "ok");
+      } catch (_) {
+        Finix.toast("Copy failed", "err");
+      }
+    };
+
+    $("sync").onclick = async () => {
+      try {
+        const results = await FinixOffline.reconcileAll();
+        const ok = results.filter((r) => !r.error).length;
+        const fail = results.length - ok;
+        $("latestMeta").textContent = `reconciled ${ok} · failed ${fail}`;
+        Finix.toast(ok ? `Settled ${ok} voucher(s)` : "Nothing settled", ok ? "ok" : "warn");
+      } catch (e) {
+        $("latestMeta").textContent = String(e);
+        Finix.toast(String(e), "err");
+      }
+      await refreshOutbox();
+    };
+
+    $("doublespend").onclick = async () => {
+      if (!lastVoucher) {
+        Finix.toast("Create a voucher first", "warn");
+        return;
+      }
+      const clone = { ...lastVoucher, id: crypto.randomUUID(), status: "queued", createdAt: Date.now() };
+      const dbOpen = indexedDB.open("finix-offline", 1);
+      dbOpen.onsuccess = () => {
+        const tx = dbOpen.result.transaction("outbox", "readwrite");
+        tx.objectStore("outbox").put(clone);
+        tx.oncomplete = async () => {
+          await refreshOutbox();
+          try {
+            await FinixOffline.reconcileVoucher(clone);
+            $("latestMeta").textContent = "unexpected success";
+            Finix.toast("Unexpected success", "warn");
+          } catch (e) {
+            $("latestMeta").textContent = "double-spend caught";
+            Finix.toast("Double-spend caught — device quarantined", "err");
+          }
+          await refreshOutbox();
+        };
+      };
+    };
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+      navigator.serviceWorker.addEventListener("message", (ev) => {
+        if (ev.data?.type === "reconcile") FinixOffline.reconcileAll().then(refreshOutbox);
+      });
+    }
+    refreshOutbox();
+  </script>
+</body>
+</html>

@@ -1,6 +1,22 @@
 /* FINIX service worker — cache shell + queue background sync hint. */
-const CACHE = "finix-shell-v1";
-const SHELL = ["/", "/index.html", "/ussd.html", "/lite.html", "/verify.html", "/manifest.webmanifest", "/icon.svg", "/js/offline.js"];
+const CACHE = "finix-shell-v3-polished";
+const SHELL = [
+  "/",
+  "/index.html",
+  "/offline.html",
+  "/transfer.html",
+  "/farmer.html",
+  "/sme.html",
+  "/elder.html",
+  "/ussd.html",
+  "/lite.html",
+  "/verify.html",
+  "/manifest.webmanifest",
+  "/icon.svg",
+  "/css/theme.css",
+  "/js/finix.js",
+  "/js/offline.js",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -15,6 +31,8 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
+  const url = new URL(req.url);
+  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/lite/")) return;
   event.respondWith(
     caches.match(req).then((cached) => cached || fetch(req).then((res) => {
       const copy = res.clone();
