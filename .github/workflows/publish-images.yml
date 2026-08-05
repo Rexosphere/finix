@@ -5,6 +5,14 @@ on:
     branches: [master, main]
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      services:
+        description: >-
+          Comma-separated services to publish (e.g. identity-service,risk-ai-service),
+          or "all"
+        required: true
+        default: all
+        type: string
 
 concurrency:
   group: publish-images-${{ github.ref }}
@@ -19,8 +27,59 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
+  plan:
+    name: Plan publish matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      has_jvm: ${{ steps.plan.outputs.has_jvm }}
+    steps:
+      - id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          SERVICES_INPUT: ${{ github.event.inputs.services }}
+        run: |
+          ALL='[
+            {"service":"identity-service","jvm":true},
+            {"service":"account-service","jvm":true},
+            {"service":"ledger-service","jvm":true},
+            {"service":"transaction-orchestrator","jvm":true},
+            {"service":"vault-service","jvm":true},
+            {"service":"enclave-runtime","jvm":true},
+            {"service":"ussd-gateway","jvm":true},
+            {"service":"loan-service","jvm":true},
+            {"service":"compliance-service","jvm":true},
+            {"service":"risk-ai-service","jvm":false},
+            {"service":"payment-hub","jvm":false},
+            {"service":"notification-service","jvm":false}
+          ]'
+          if [ "$EVENT_NAME" != "workflow_dispatch" ] || [ "$SERVICES_INPUT" = "all" ] || [ -z "$SERVICES_INPUT" ]; then
+            matrix="$ALL"
+          else
+            matrix=$(SERVICES_INPUT="$SERVICES_INPUT" ALL="$ALL" python3 - <<'PY'
+          import json, os
+          wanted = {s.strip() for s in os.environ["SERVICES_INPUT"].split(",") if s.strip()}
+          all_rows = json.loads(os.environ["ALL"])
+          known = {r["service"] for r in all_rows}
+          unknown = sorted(wanted - known)
+          if unknown:
+              raise SystemExit(f"Unknown services: {', '.join(unknown)}. Known: {', '.join(sorted(known))}")
+          rows = [r for r in all_rows if r["service"] in wanted]
+          if not rows:
+              raise SystemExit("No services selected")
+          print(json.dumps(rows))
+          PY
+            )
+          fi
+          has_jvm=$(python3 -c 'import json,sys; print(str(any(r["jvm"] for r in json.loads(sys.argv[1]))).lower())' "$matrix")
+          echo "has_jvm=$has_jvm" >> "$GITHUB_OUTPUT"
+          echo "matrix=$(python3 -c 'import json,sys; print(json.dumps({"include": json.loads(sys.argv[1])}))' "$matrix")" >> "$GITHUB_OUTPUT"
+          echo "Publishing matrix: $matrix"
+
   bootjars:
     name: Build JVM bootJars
+    needs: plan
+    if: needs.plan.outputs.has_jvm == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -35,18 +94,22 @@ jobs:
       - name: Grant Gradle wrapper
         run: chmod +x gradlew
 
-      - name: bootJar (all Spring services)
+      - name: Resolve JVM modules to build
+        id: jars
+        env:
+          MATRIX_JSON: ${{ needs.plan.outputs.matrix }}
         run: |
-          ./gradlew --no-daemon \
-            :identity-service:bootJar \
-            :account-service:bootJar \
-            :ledger-service:bootJar \
-            :transaction-orchestrator:bootJar \
-            :vault-service:bootJar \
-            :enclave-runtime:bootJar \
-            :ussd-gateway:bootJar \
-            :loan-service:bootJar \
-            :compliance-service:bootJar
+          tasks=$(python3 - <<'PY'
+          import json, os
+          rows = json.loads(os.environ["MATRIX_JSON"])["include"]
+          print(" ".join(f":{r['service']}:bootJar" for r in rows if r["jvm"]))
+          PY
+          )
+          echo "tasks=$tasks" >> "$GITHUB_OUTPUT"
+          echo "Building: $tasks"
+
+      - name: bootJar (selected Spring services)
+        run: ./gradlew --no-daemon ${{ steps.jars.outputs.tasks }}
 
       # Stage under a directory with no wildcards. upload-artifact flattens paths
       # before the first `*`, so `services/*/build/libs/app.jar` would download as
@@ -55,6 +118,7 @@ jobs:
         run: |
           mkdir -p bootjars-upload
           for jar in services/*/build/libs/app.jar; do
+            [ -f "$jar" ] || continue
             dest="bootjars-upload/${jar}"
             mkdir -p "$(dirname "$dest")"
             cp -a "$jar" "$dest"
@@ -70,7 +134,8 @@ jobs:
 
   publish:
     name: Publish ${{ matrix.service }}
-    needs: bootjars
+    needs: [plan, bootjars]
+    if: always() && needs.plan.result == 'success' && (needs.bootjars.result == 'success' || needs.bootjars.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -79,32 +144,7 @@ jobs:
       actions: write
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - service: identity-service
-            jvm: true
-          - service: account-service
-            jvm: true
-          - service: ledger-service
-            jvm: true
-          - service: transaction-orchestrator
-            jvm: true
-          - service: vault-service
-            jvm: true
-          - service: enclave-runtime
-            jvm: true
-          - service: ussd-gateway
-            jvm: true
-          - service: loan-service
-            jvm: true
-          - service: compliance-service
-            jvm: true
-          - service: risk-ai-service
-            jvm: false
-          - service: payment-hub
-            jvm: false
-          - service: notification-service
-            jvm: false
+      matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
 

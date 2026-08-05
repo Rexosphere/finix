@@ -180,12 +180,16 @@ Then open the links below and follow [docs/DEMO.md](docs/DEMO.md).
 
 | URL | What |
 |---|---|
-| http://localhost:3000 | Web PWA / lite / USSD simulator |
+| http://localhost:3000 | **Demo app** (PWA / lite / USSD) — use demo users here |
 | http://localhost:3001 | Admin / vault ceremony |
-| http://localhost:8081 | Keycloak (`admin` / `admin`) |
+| http://localhost:8081 | Keycloak admin console — **only** `admin` / `admin` |
 
-Demo logins (password `Finix!2026` for all): `farmer@finix.lk`, `sme@finix.lk`,
+**Demo users** (password `Finix!2026` for all): `farmer@finix.lk`, `sme@finix.lk`,
 `elder@finix.lk`, `regulator@finix.lk`.
+
+They live in the **finix** realm. They will **not** work on the Keycloak admin page at
+`:8081` (that is the **master** realm). Use the web app at `:3000`, or open the finix realm
+login at http://localhost:8081/realms/finix/account .
 
 Pin a specific commit build:
 
@@ -207,6 +211,23 @@ make demo
 
 Needs **Docker** and **JDK 21**.
 
+### Updating only what changed
+
+You do **not** need to republish every image for a small change.
+
+| What you changed | What to do |
+|---|---|
+| `apps/web` or `apps/admin` | Already mounted into nginx — refresh the browser (restart web/admin if needed) |
+| `infra/keycloak/finix-realm.json` | `docker compose … restart keycloak` (realm file is bind-mounted; no image publish) |
+| One service, e.g. `identity-service` | Locally: `make rebuild SERVICE=identity-service` |
+| One service → GHCR for others | GitHub → Actions → **Publish images** → Run workflow → set `services` to e.g. `identity-service` (comma-separated, or `all`) |
+
+Local rebuild example (keeps the rest of the pulled stack):
+
+```bash
+make rebuild SERVICE=account-service
+```
+
 ### Useful Make targets
 
 | Command | What it does |
@@ -215,6 +236,7 @@ Needs **Docker** and **JDK 21**.
 | `make demo` | Build locally, start, wait healthy, seed, print URLs |
 | `make up-pull` | Pull + start only (no wait/seed) |
 | `make up` | Start with local image build (no wait/seed) |
+| `make rebuild SERVICE=…` | Rebuild + recreate one service locally |
 | `make seed` | Seed personas into a running stack |
 | `make logs` | Tail compose logs |
 | `make down` | Stop the stack and remove volumes |

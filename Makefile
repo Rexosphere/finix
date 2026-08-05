@@ -1,4 +1,4 @@
-.PHONY: help verify test demo demo-pull up up-pull down logs seed dist
+.PHONY: help verify test demo demo-pull up up-pull down logs seed rebuild dist
 
 COMPOSE := docker compose -f infra/compose/docker-compose.yml
 export COMPOSE_PROJECT_NAME ?= finix
@@ -6,7 +6,7 @@ export FINIX_IMAGE_PREFIX ?= ghcr.io/rexosphere/finix
 export FINIX_IMAGE_TAG ?= latest
 
 help: ## Show targets
-	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-14s %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
 
 verify: ## Full local gate (compile + unit + ArchUnit + coverage + detekt)
 	./gradlew verify
@@ -38,6 +38,14 @@ demo: ## Build locally, start, wait healthy, seed, print URLs
 
 demo-pull: ## Pull GHCR images, start, wait healthy, seed, print URLs (Docker only)
 	./scripts/up-pull.sh
+
+rebuild: ## Rebuild + recreate one service locally: make rebuild SERVICE=identity-service
+	@test -n "$(SERVICE)" || (echo 'Usage: make rebuild SERVICE=<name>' >&2; exit 1)
+	@if [ -f "services/$(SERVICE)/build.gradle.kts" ]; then \
+	  ./gradlew :$(SERVICE):bootJar; \
+	fi
+	$(COMPOSE) --profile core build $(SERVICE)
+	$(COMPOSE) --profile core up -d --no-deps $(SERVICE)
 
 dist: ## Build submission zip
 	./scripts/dist.sh
