@@ -8,8 +8,8 @@ import java.time.Clock
 
 @ConfigurationProperties(prefix = "finix.enclave")
 data class EnclaveProperties(
-    /** `local` (in-process) or `remote` (HTTP to enclave-runtime). */
-    val mode: String = "local",
+    /** Always `remote`: the enclave is a separate process reached over HTTP. */
+    val mode: String = "remote",
     val baseUrl: String = "http://localhost:8090",
     val kemPublicKeyBase64: String = "",
     val x25519PublicKeyBase64: String = "",

@@ -31,6 +31,13 @@ class OrchestratorConfig {
             .clientConnector(ReactorClientHttpConnector(timeoutClient()))
             .build()
 
+    @Bean
+    fun riskWebClient(builder: WebClient.Builder, properties: OrchestratorProperties): WebClient =
+        builder
+            .baseUrl(properties.risk.baseUrl)
+            .clientConnector(ReactorClientHttpConnector(timeoutClient()))
+            .build()
+
     private fun timeoutClient(): HttpClient =
         HttpClient.create()
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, CONNECT_TIMEOUT_MS)

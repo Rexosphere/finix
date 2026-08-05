@@ -51,7 +51,9 @@ finix:
     enabled: true
     required: false
   enclave:
-    mode: local
+    # Reconstruct always crosses the process boundary — that isolation is the point of the
+    # ceremony, so there is no in-process enclave adapter to fall back to.
+    mode: remote
     base-url: http://localhost:8090
 
 logging:

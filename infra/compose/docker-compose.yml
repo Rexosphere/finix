@@ -273,7 +273,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: vault_svc
       SPRING_DATA_REDIS_HOST: redis
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/finix
-      FINIX_ENCLAVE_MODE: local
+      FINIX_ENCLAVE_MODE: remote
       FINIX_ENCLAVE_BASE_URL: http://enclave-runtime:8090
       SERVER_PORT: "8086"
     ports: ["8086:8086"]

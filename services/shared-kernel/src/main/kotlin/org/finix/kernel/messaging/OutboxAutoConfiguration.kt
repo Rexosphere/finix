@@ -7,6 +7,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.boot.autoconfigure.jdbc.JdbcTemplateAutoConfiguration
+import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
@@ -34,7 +36,11 @@ data class OutboxProperties(
  * network-isolated) simply does not get a relay, and nothing fails to start. That is why the
  * conditions are on classes and beans rather than on a profile.
  */
-@AutoConfiguration
+// The @ConditionalOnBean checks below can only see beans that were registered before this
+// class is evaluated, and auto-configurations are otherwise ordered by class name -- which puts
+// `org.finix` ahead of `org.springframework`. Without this the JdbcTemplate and KafkaTemplate
+// beans do not exist yet and the relay silently never gets wired.
+@AutoConfiguration(after = [JdbcTemplateAutoConfiguration::class, KafkaAutoConfiguration::class])
 @EnableConfigurationProperties(OutboxProperties::class)
 @ConditionalOnClass(KafkaTemplate::class, NamedParameterJdbcTemplate::class)
 @ConditionalOnProperty(prefix = "finix.outbox", name = ["enabled"], matchIfMissing = true)

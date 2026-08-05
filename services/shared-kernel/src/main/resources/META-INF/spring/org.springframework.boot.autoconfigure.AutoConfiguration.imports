@@ -1,4 +1,5 @@
 org.finix.kernel.config.KernelAutoConfiguration
+org.finix.kernel.config.RedisIdempotencyAutoConfiguration
 org.finix.kernel.config.ObservabilityAutoConfiguration
 org.finix.kernel.messaging.OutboxAutoConfiguration
 org.finix.kernel.security.SecurityAutoConfiguration
