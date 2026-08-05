@@ -34,6 +34,7 @@ object PostQuantum {
     const val SIGNATURE_ALGORITHM: String = "ML-DSA-65"
     // Not `const`: callers must touch this property so the init block registers BC.
     // A const PROVIDER is inlined at call sites and the provider never gets added.
+    @Suppress("MayBeConst")
     internal val PROVIDER: String = "BC"
 
     init {
