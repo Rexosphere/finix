@@ -25,7 +25,9 @@ private val log = KotlinLogging.logger {}
  * broker has acknowledged it. A message that fails is left unpublished with its attempt count
  * incremented, so the next tick retries it and the ordering of the remaining backlog is intact.
  */
-class OutboxPublisher(
+// Must be open: created via @Bean (not @Component), so kotlin-spring all-open does not
+// apply, and @Transactional + @Scheduled need a CGLIB subclass.
+open class OutboxPublisher(
     private val outbox: JdbcOutbox,
     private val kafka: KafkaTemplate<String, String>,
     private val properties: OutboxProperties,
@@ -41,7 +43,7 @@ class OutboxPublisher(
 
     @Scheduled(fixedDelayString = "\${finix.outbox.poll-interval-ms:500}")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    fun relay() {
+    open fun relay() {
         val batch = outbox.claimBatch(properties.batchSize)
         if (batch.isEmpty()) return
 

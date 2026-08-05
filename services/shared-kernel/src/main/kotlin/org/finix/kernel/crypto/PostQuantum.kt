@@ -32,7 +32,9 @@ object PostQuantum {
 
     const val KEM_ALGORITHM: String = "ML-KEM-768"
     const val SIGNATURE_ALGORITHM: String = "ML-DSA-65"
-    internal const val PROVIDER = "BC"
+    // Not `const`: callers must touch this property so the init block registers BC.
+    // A const PROVIDER is inlined at call sites and the provider never gets added.
+    internal val PROVIDER: String = "BC"
 
     init {
         if (Security.getProvider(PROVIDER) == null) {

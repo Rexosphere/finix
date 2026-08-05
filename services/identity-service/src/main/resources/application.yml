@@ -31,23 +31,16 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: http://localhost:8081/realms/finix
-      client:
-        # Public PKCE client used by the BFF token exchange — no client secret.
-        registration:
-          finix-web:
-            provider: keycloak
-            client-id: finix-web
-            client-authentication-method: none
-            authorization-grant-type: authorization_code
-            redirect-uri: "{baseUrl}/api/v1/auth/callback"
-            scope: openid,profile,email
-        provider:
-          keycloak:
-            issuer-uri: http://localhost:8081/realms/finix
+      # No spring.security.oauth2.client block: AuthController does PKCE via RestClient
+      # + finix.keycloak.*. A client issuer-uri of localhost:8081 fails inside Docker
+      # (localhost is the identity container, not Keycloak on the host).
 
 finix:
   keycloak:
+    # Server-side token exchange (compose overrides to http://keycloak:8080).
     base-url: http://localhost:8081
+    # Browser-facing authorize URL (must stay reachable from the user's machine).
+    public-base-url: http://localhost:8081
     realm: finix
     client-id: finix-web
   # Local demo: allow unauthenticated calls until the web BFF wires cookies end-to-end.
