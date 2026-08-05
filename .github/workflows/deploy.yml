@@ -1,0 +1,75 @@
+name: Deploy
+
+# Runs only after CI has passed on master/main — never deploys code that
+# failed ./gradlew verify or the compose-config check.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [master, main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to production
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    environment: production
+    steps:
+      - name: Write SSH key and known_hosts
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      # Runs /opt/finix/deploy.sh on the server: git pull, rebuild the JVM
+      # jars, `docker compose up -d --build`, wait for health, seed.
+      # deploy.sh has `set -euo pipefail`, so any failure there exits
+      # non-zero — nothing here pipes that through anything (e.g. tee)
+      # that would swallow the exit code, so a remote failure fails this
+      # step and the job goes red.
+      - name: Run deploy.sh on server
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            -o StrictHostKeyChecking=yes \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=6 \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "bash /opt/finix/deploy.sh"
+
+      # deploy.sh only checks health from localhost on the server itself.
+      # Independently verify the public front doors actually respond from
+      # the outside — catches proxy/firewall/DNS regressions deploy.sh
+      # can't see, so the job fails if the site isn't really reachable.
+      - name: Verify public endpoints
+        run: |
+          check() {
+            local url="$1" expected="$2"
+            local code
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$url")
+            echo "$url -> $code"
+            if [ "$code" != "$expected" ]; then
+              echo "::error::$url returned $code, expected $expected"
+              return 1
+            fi
+          }
+          status=0
+          check https://roboti.qzz.io 200 || status=1
+          check https://admin.roboti.qzz.io 200 || status=1
+          check https://auth.roboti.qzz.io 302 || status=1
+          exit $status
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
