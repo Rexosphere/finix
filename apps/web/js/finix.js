@@ -241,14 +241,45 @@
   };
 })(window);
 
-// Cross-origin links (customer app <-> ops console) are the one thing a prebuilt
-// image cannot know: the two live on different origins in every environment.
-// nginx serves /env.js with the real URLs at runtime, so the image is built once
-// and configured per deploy. The href in the HTML stays as the localhost
-// default, which is what `make demo` uses.
+// Cross-origin links (customer app <-> ops console) live on different hosts.
+// Prefer /env.js (nginx envsubst). If that is missing or still says localhost
+// while we are on a public host, derive admin.<domain> / apex from location.
 (function applyEnvLinks(global) {
+  function inferLinks() {
+    var loc = global.location;
+    var host = loc.hostname || "";
+    if (host === "localhost" || host === "127.0.0.1") {
+      return { web: "http://localhost:3000", admin: "http://localhost:3001" };
+    }
+    if (host.indexOf("admin.") === 0) {
+      return {
+        web: loc.protocol + "//" + host.slice("admin.".length),
+        admin: loc.origin,
+      };
+    }
+    return {
+      web: loc.origin,
+      admin: loc.protocol + "//admin." + host,
+    };
+  }
+
+  function pick(envVal, inferredVal) {
+    if (!envVal) return inferredVal;
+    var onPublic = global.location && global.location.hostname
+      && global.location.hostname !== "localhost"
+      && global.location.hostname !== "127.0.0.1";
+    if (onPublic && envVal.indexOf("localhost") !== -1) return inferredVal;
+    return envVal;
+  }
+
   function apply() {
-    var links = global.FINIX_LINKS || {};
+    var env = global.FINIX_LINKS || {};
+    var inferred = inferLinks();
+    var links = {
+      web: pick(env.web, inferred.web),
+      admin: pick(env.admin, inferred.admin),
+    };
+    global.FINIX_LINKS = links;
     document.querySelectorAll("[data-finix-link]").forEach(function (a) {
       var url = links[a.getAttribute("data-finix-link")];
       if (url) a.setAttribute("href", url);
