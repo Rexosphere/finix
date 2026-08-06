@@ -1,0 +1,38 @@
+name: Bug report
+description: Something behaves differently from what it claims
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you got instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: The exact commands or requests. A curl is worth three paragraphs.
+      render: bash
+    validations:
+      required: true
+
+  - type: input
+    id: release
+    attributes:
+      label: Release
+      description: >-
+        Commit SHA or image tag. On the deployed stack:
+        `docker compose ps --format '{{.Service}} {{.Image}}'`
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs, trace or metrics
+      description: >-
+        Grafana links are ideal — a trace ID lets anyone open the same request.
+        Redact tokens and account identifiers.

@@ -182,7 +182,16 @@ Then open the links below and follow [docs/DEMO.md](docs/DEMO.md).
 |---|---|
 | http://localhost:3000 | **Demo app** (PWA / lite / USSD) — use demo users here |
 | http://localhost:3001 | Admin / vault ceremony |
-| http://localhost:8081 | Keycloak admin console — **only** `admin` / `admin` |
+| http://localhost:8081 | Keycloak admin console — user `admin`, password printed by the startup banner |
+
+**Credentials are generated, never committed.** `make demo` / `make demo-pull` run
+`./scripts/gen-secrets.sh` first, which writes one random password per component into
+`infra/compose/secrets/` (gitignored) and mounts them as Docker secrets. The startup banner
+prints the Keycloak login; reprint the console logins any time with:
+
+```bash
+./scripts/gen-secrets.sh --show
+```
 
 **Demo users** (password `Finix!2026` for all): `farmer@finix.lk`, `sme@finix.lk`,
 `elder@finix.lk`, `regulator@finix.lk`.
@@ -239,16 +248,30 @@ make rebuild SERVICE=account-service
 | `make rebuild SERVICE=…` | Rebuild + recreate one service locally |
 | `make seed` | Seed personas into a running stack |
 | `make logs` | Tail compose logs |
-| `make monitoring` | Start Prometheus + Grafana + Loki alongside the stack |
+| `make monitoring` | Start Prometheus + Grafana + Loki + Tempo + Alertmanager |
 | `make monitoring-down` | Stop the monitoring profile, leaving the stack up |
+| `make secrets` | Generate this machine's credentials and print the console logins |
+| `make vault-demo` | Run the full profile with credentials served from Vault (ADR-0006) |
+| `make scale SERVICE=… N=…` | Scale a stateless service behind nginx |
+| `make hooks` | Install the pre-commit hook |
+| `make provision` | Converge the production host with Ansible (idempotent) |
+| `make backup` / `make restore` | Take or restore a Postgres dump |
 | `make down` | Stop the stack and remove volumes |
+
+`make help` lists everything.
 
 ### Observability
 
-`make monitoring` brings up the `monitoring` profile — Prometheus, Grafana, Loki, Grafana Alloy,
-and exporters for the host, containers, Postgres and Redis. Grafana lands on
-<http://localhost:3002> (`admin` / `admin` locally) with two dashboards pre-provisioned from
+`make monitoring` brings up the `monitoring` profile — Prometheus, Grafana, Loki, Tempo,
+Alertmanager, Grafana Alloy, a blackbox exporter, and exporters for the host, containers, Postgres
+and Redis. Grafana lands on <http://localhost:3002> (user `admin`; the password is generated —
+`./scripts/gen-secrets.sh --show`) with dashboards pre-provisioned from
 `infra/monitoring/grafana/dashboards/`.
+
+All three pillars are joined: a log line links to its trace (Loki derived field → Tempo), a span
+links back to that service's logs and metrics, and Alertmanager groups and inhibits the alert rules
+in `infra/monitoring/prometheus/rules/`. Traces are exported only when sampling is on —
+`FINIX_TRACE_SAMPLE=1.0` alongside `make monitoring`.
 
 Every service exposes request metrics under the same names. The Spring Boot services get
 `http_server_requests_seconds` from Micrometer for free; the Go, Python and Node services emit the
@@ -263,8 +286,8 @@ service name so a log query and a metric query filter on the same `service` valu
 
 In production the stack is part of the `full` profile, so it deploys with everything else; Grafana
 is published on `127.0.0.1:3002` only and reached through Caddy at
-<https://grafana.roboti.qzz.io>. Its credentials come from `/opt/finix/monitoring.env` on the
-server and are never committed.
+<https://grafana.roboti.qzz.io>. Its password is a Docker secret generated on the server and is
+never committed.
 
 ### Local build / tests only
 
@@ -331,6 +354,9 @@ an off-by-one in the ECMAScript exponent boundary, cross-checked against Node.
 - [DEMO.md](docs/DEMO.md) — 12-minute judge script
 - [Architecture Decision Records](docs/adr/) — every decision worth challenging, with its rationale
   and its trade-offs
+- [EVIDENCE.md](docs/EVIDENCE.md) — each engineering practice → the files that implement it and a
+  command that proves it, including what is deliberately not done
+- [CONTRIBUTING.md](CONTRIBUTING.md) — setup, the loop, and which rules are enforced rather than suggested
 - [QA strategy](docs/qa/TEST-STRATEGY.md) · [Runbooks](docs/runbooks/)
 
 Key decisions so far:
@@ -341,6 +367,8 @@ Key decisions so far:
 | [0002](docs/adr/0002-native-platform-bom-over-dependency-management-plugin.md) | Gradle native `platform()` BOM over `io.spring.dependency-management` |
 | [0003](docs/adr/0003-logical-database-per-service.md) | Logical database-per-service by default, physical under a profile |
 | [0004](docs/adr/0004-ml-dsa-anchor-signatures-instead-of-bls.md) | ML-DSA-65 anchor signatures instead of BLS aggregation |
+| [0006](docs/adr/0006-generated-docker-secrets-with-vault-as-runtime-source.md) | Generated Docker secrets, with Vault as the runtime source of truth |
+| [0007](docs/adr/0007-deploy-published-images-not-server-builds.md) | Deploy published images, never build on the server |
 
 ADR-0004 is worth reading as a statement of intent: the blueprint promised BLS aggregation, but
 BouncyCastle ships no BLS provider and BLS is not post-quantum secure, so it would have contradicted

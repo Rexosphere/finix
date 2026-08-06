@@ -1,0 +1,41 @@
+name: Change request
+description: Propose a feature, refactor or infrastructure change
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: >-
+        The problem, not the solution. What is hard, risky or impossible today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+    validations:
+      required: true
+
+  - type: dropdown
+    id: adr
+    attributes:
+      label: Does this need an ADR?
+      description: >-
+        Anything a judge, a teammate or a future maintainer might reasonably
+        challenge gets a record in docs/adr/.
+      options:
+        - "Yes — I will write one"
+        - "No — it is a straightforward change"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: textarea
+    id: blast-radius
+    attributes:
+      label: Blast radius
+      description: >-
+        Which services, which data, and what happens if it goes wrong in
+        production.

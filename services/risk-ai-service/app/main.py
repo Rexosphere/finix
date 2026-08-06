@@ -9,11 +9,11 @@ from uuid import uuid4
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+from app.federated import fedavg_demo
+from app.metrics import setup_metrics
 from app.model import RiskModel, amount_z_score
 from app.rules import Decision, decide, rules_engine
 from app.shield import AiShield, ServiceHealthSample
-from app.federated import fedavg_demo
-from app.metrics import setup_metrics
 
 ARTIFACT_DIR = Path(os.environ.get("FINIX_MODEL_DIR", Path(__file__).parent / "model_artifacts"))
 
@@ -95,7 +95,7 @@ def score_transaction(body: ScoreRequest) -> ScoreResponse:
         hour=hour,
     )
     # Blend: rules dominate for explainability; model nudges.
-    blended = int(round(0.65 * rules_score + 0.35 * model_score))
+    blended = round(0.65 * rules_score + 0.35 * model_score)
     blended = max(0, min(100, blended))
     decision = decide(blended)
     case_id = None

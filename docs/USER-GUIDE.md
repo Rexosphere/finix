@@ -21,7 +21,7 @@ Docs: [DEMO.md](DEMO.md) · [FIDELITY-MATRIX.md](FIDELITY-MATRIX.md) · [qa/TEST
 |---|---|---|
 | Web / lite / verify | http://localhost:3000 | `apps/web` |
 | Admin ceremony | http://localhost:3001 | Vault UI |
-| Keycloak | http://localhost:8081 | admin / admin |
+| Keycloak | http://localhost:8081 | user `admin`; password from `./scripts/gen-secrets.sh --show` |
 | Identity | :8082 | |
 | Account | :8083 | seed + offline |
 | Ledger | :8084 | verify / proof |
