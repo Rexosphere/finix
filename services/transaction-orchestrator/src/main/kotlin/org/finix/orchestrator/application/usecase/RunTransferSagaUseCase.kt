@@ -384,8 +384,13 @@ class RunTransferSagaUseCase(
     private fun refundSender(saga: TransferSaga) {
         try {
             accounts.credit(saga.fromAccountId, saga.amount, reference = refundReference(saga.id))
+        } catch (ex: DomainException) {
+            // A definitive refusal (anything that is not Unavailable) genuinely changed nothing,
+            // so it propagates unchanged. Unavailable is indistinguishable from a refusal raised
+            // after the credit landed, so it joins the ambiguous case below.
+            if (ex.error !is DomainError.Unavailable) throw ex
+            throw UnknownRefundOutcome(ex)
         } catch (ex: Exception) {
-            if (ex is DomainException && ex.error !is DomainError.Unavailable) throw ex
             throw UnknownRefundOutcome(ex)
         }
     }

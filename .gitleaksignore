@@ -1,0 +1,8 @@
+# Exact gitleaks fingerprints only — never rule or path exclusions.
+#
+# tests/e2e/finix-smoke.sh:1215 builds the JSON body of a demo loan request
+# (borrower id, account id, principal, term). The generic-api-key heuristic
+# matches the long printf format string; there is no credential on the line.
+# Listed under both commits because the same line was cherry-picked onto master.
+c24c9f8875e592e3e11878429d28b70103a1851b:tests/e2e/finix-smoke.sh:generic-api-key:1215
+82a3006621a23f2e9921920d48f3d95af37a566f:tests/e2e/finix-smoke.sh:generic-api-key:1215
