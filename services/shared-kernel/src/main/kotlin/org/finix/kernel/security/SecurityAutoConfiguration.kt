@@ -9,7 +9,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.core.convert.converter.Converter
 import org.springframework.core.env.Environment
-import org.springframework.http.HttpMethod
 import org.springframework.security.authentication.AbstractAuthenticationToken
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -83,7 +82,11 @@ class SecurityAutoConfiguration {
                     "/swagger-ui/**",
                     "/swagger-ui.html",
                 ).permitAll()
-                auth.requestMatchers(HttpMethod.POST, "/api/v1/admin/seed").permitAll()
+                // `/api/v1/admin/seed` is deliberately NOT exempted here. It is a demo fixture,
+                // not infrastructure, so it follows the policy below like any other route: open
+                // while `permit-all` is on, authenticated the moment it is turned off. A carve-out
+                // at this point would sit above that decision and silently survive the estate-wide
+                // hardening switch. Guarded by SeedEndpointAuthorizationTest.
                 auth.requestMatchers("/api/v1/auth/**").permitAll()
                 if (permitAll) {
                     auth.anyRequest().permitAll()

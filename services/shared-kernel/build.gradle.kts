@@ -38,4 +38,16 @@ dependencies {
     testImplementation(libs.spring.boot.starter.data.redis)
     testImplementation(libs.spring.boot.starter.data.jpa)
     testImplementation(libs.spring.kafka)
+
+    // Security is `compileOnly` above because a consumer without a resource server must still
+    // compile against the kernel. The filter chain in SecurityAutoConfiguration is nonetheless
+    // the estate's single authorization policy, so the test source set needs the real thing to
+    // exercise it end-to-end rather than by inspection.
+    testImplementation(libs.spring.boot.starter.security)
+    testImplementation(libs.spring.boot.starter.oauth2.resource.server)
+    testImplementation(libs.spring.security.test)
+    // shared-kernel ships logback-spring.xml, which binds the logstash encoder. Deployables get
+    // it from finix.spring-service; the kernel's own Boot-context tests need it too or the
+    // context dies during logging init, before any assertion runs.
+    testImplementation(libs.logstash.encoder)
 }
