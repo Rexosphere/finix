@@ -1,0 +1,89 @@
+---
+- name: Create state directory
+  ansible.builtin.file:
+    path: "{{ finix_state_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Clone or update the application checkout
+  ansible.builtin.git:
+    repo: "{{ finix_repo_url }}"
+    dest: "{{ finix_app_dir }}"
+    version: HEAD
+    # deploy.sh checks out a specific commit and treats the tree as a build
+    # artifact, so local state here is always disposable.
+    force: true
+  # A deploy may have left the checkout detached at an older release; that is
+  # correct, and provisioning must not silently roll it forward.
+  changed_when: false
+
+# Credentials are generated on the host and never leave it (ADR-0006). The
+# script only creates what is missing, so re-running the playbook cannot
+# invalidate the Postgres roles created from these files.
+- name: Generate any missing secrets
+  ansible.builtin.command: "{{ finix_app_dir }}/scripts/gen-secrets.sh"
+  register: gen_secrets
+  changed_when: "'Generated' in gen_secrets.stdout"
+
+- name: Write the environment file consumed by compose
+  ansible.builtin.template:
+    src: finix.env.j2
+    dest: "{{ finix_state_dir }}/finix.env"
+    mode: "0640"
+
+- name: Install the Postgres backup script
+  ansible.builtin.template:
+    src: backup-db.sh.j2
+    dest: "{{ finix_state_dir }}/backup-db.sh"
+    mode: "0755"
+
+- name: Create backup directory
+  ansible.builtin.file:
+    path: "{{ finix_state_dir }}/backups"
+    state: directory
+    mode: "0700"
+
+- name: Install the backup service unit
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/finix-backup.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=FINIX nightly Postgres backup
+      After=docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=oneshot
+      ExecStart={{ finix_state_dir }}/backup-db.sh
+  notify: Reload systemd
+
+- name: Install the backup timer unit
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/finix-backup.timer
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Run the FINIX Postgres backup nightly
+
+      [Timer]
+      OnCalendar=*-*-* {{ finix_backup_hour }}:00
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+  notify: Reload systemd
+
+- name: Enable the backup timer
+  ansible.builtin.systemd:
+    name: finix-backup.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Keep a convenience symlink for the old deploy path
+  ansible.builtin.file:
+    src: "{{ finix_app_dir }}/infra/deploy/deploy.sh"
+    dest: "{{ finix_state_dir }}/deploy.sh"
+    state: link
+    force: true

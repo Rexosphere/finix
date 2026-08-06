@@ -1,0 +1,48 @@
+---
+# Plain ufw is not enough: Docker inserts its own iptables rules ahead of ufw's,
+# so every published container port (postgres 5432, redis 6379, redpanda 19092,
+# every service on 8082-8093) would be reachable from the internet no matter what
+# ufw was told. ufw-docker fixes the ordering, which is what makes the compose
+# file's port bindings safe to leave alone.
+- name: Install ufw-docker
+  ansible.builtin.get_url:
+    url: https://github.com/chaifeng/ufw-docker/raw/master/ufw-docker
+    dest: /usr/local/bin/ufw-docker
+    mode: "0755"
+
+- name: Check whether ufw-docker rules are installed
+  ansible.builtin.command: grep -q 'ufw-docker' /etc/ufw/after.rules
+  register: ufw_docker_installed
+  changed_when: false
+  failed_when: false
+
+- name: Install ufw-docker rules
+  ansible.builtin.command: ufw-docker install
+  when: ufw_docker_installed.rc != 0
+  notify: Restart docker for ufw
+
+# ufw itself is idempotent ("Skipping adding existing rule"), so the CLI is used
+# directly rather than pulling in the community.general collection for it.
+- name: Allow SSH, HTTP and HTTPS
+  ansible.builtin.command: "ufw allow {{ item }}"
+  loop:
+    - OpenSSH
+    - 80/tcp
+    - 443/tcp
+  register: ufw_rule
+  changed_when: "'Skipping' not in ufw_rule.stdout"
+
+- name: Default deny incoming
+  ansible.builtin.command: ufw default deny incoming
+  register: ufw_deny
+  changed_when: "'updated' in ufw_deny.stdout"
+
+- name: Default allow outgoing
+  ansible.builtin.command: ufw default allow outgoing
+  register: ufw_allow_out
+  changed_when: "'updated' in ufw_allow_out.stdout"
+
+- name: Enable ufw
+  ansible.builtin.command: ufw --force enable
+  register: ufw_enable
+  changed_when: "'active' in ufw_enable.stdout"

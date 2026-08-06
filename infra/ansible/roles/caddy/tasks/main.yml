@@ -1,0 +1,44 @@
+---
+- name: Install Caddy prerequisites
+  ansible.builtin.apt:
+    name:
+      - debian-keyring
+      - debian-archive-keyring
+      - apt-transport-https
+    state: present
+
+- name: Add Caddy GPG key
+  ansible.builtin.get_url:
+    url: https://dl.cloudsmith.io/public/caddy/stable/gpg.key
+    dest: /etc/apt/keyrings/caddy.asc
+    mode: "0644"
+
+- name: Add Caddy apt repository
+  ansible.builtin.deb822_repository:
+    name: caddy-stable
+    types: [deb]
+    uris: https://dl.cloudsmith.io/public/caddy/stable/deb/debian
+    suites: [any-version]
+    components: [main]
+    signed_by: /etc/apt/keyrings/caddy.asc
+    state: present
+
+- name: Install Caddy
+  ansible.builtin.apt:
+    name: caddy
+    state: present
+    update_cache: true
+
+- name: Write Caddyfile
+  ansible.builtin.template:
+    src: Caddyfile.j2
+    dest: /etc/caddy/Caddyfile
+    mode: "0644"
+    validate: caddy validate --adapter caddyfile --config %s
+  notify: Reload caddy
+
+- name: Enable Caddy
+  ansible.builtin.systemd:
+    name: caddy
+    enabled: true
+    state: started
