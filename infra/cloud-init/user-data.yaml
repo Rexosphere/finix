@@ -167,8 +167,14 @@ write_files:
       export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-finix}"
 
       if [ -d "$APP_DIR/.git" ]; then
-        echo "==> Repo already present, pulling latest"
-        git -C "$APP_DIR" pull --ff-only
+        echo "==> Repo already present, resetting to origin"
+        # The sed below rewrites tracked HTML in place, so this working tree is
+        # always dirty by the time the next deploy runs. `git pull --ff-only`
+        # then aborts the moment an incoming commit touches one of those files.
+        # This checkout is a build artifact, never an editing surface, so
+        # discard local state outright rather than trying to merge into it.
+        git -C "$APP_DIR" fetch --prune origin
+        git -C "$APP_DIR" reset --hard "@{u}"
       else
         echo "==> Cloning $REPO_URL"
         git clone "$REPO_URL" "$APP_DIR"

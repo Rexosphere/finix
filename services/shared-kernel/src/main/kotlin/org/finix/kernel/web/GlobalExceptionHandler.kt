@@ -10,6 +10,7 @@ import org.springframework.http.ProblemDetail
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.MissingRequestHeaderException
+import org.springframework.web.bind.MissingServletRequestParameterException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.servlet.resource.NoResourceFoundException
@@ -89,6 +90,21 @@ class GlobalExceptionHandler {
             detail = "Header '${ex.headerName}' is required",
             request = request,
         ).apply { setProperty("header", ex.headerName) }
+
+    /**
+     * The query-parameter twin of [onMissingHeader]. Without it a missing `@RequestParam` reaches
+     * the catch-all below and a caller's own mistake is answered with a 500 — which tells the
+     * caller to retry something that can never succeed, and logs a full stack trace per attempt.
+     */
+    @ExceptionHandler(MissingServletRequestParameterException::class)
+    fun onMissingParameter(ex: MissingServletRequestParameterException, request: HttpServletRequest): ProblemDetail =
+        problem(
+            status = HttpStatus.BAD_REQUEST,
+            code = "missing-parameter",
+            title = "Required parameter missing",
+            detail = "Query parameter '${ex.parameterName}' is required",
+            request = request,
+        ).apply { setProperty("parameter", ex.parameterName) }
 
     /** Malformed JSON. The parser message is not echoed back: it quotes the offending payload. */
     @ExceptionHandler(HttpMessageNotReadableException::class)
