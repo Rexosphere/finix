@@ -7,6 +7,8 @@ cd "$ROOT"
 COMPOSE=(docker compose -f infra/compose/docker-compose.yml --profile core)
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-finix}"
 
+./scripts/gen-secrets.sh
+
 echo "==> Building JVM services (core money path)"
 ./gradlew \
   :identity-service:bootJar \

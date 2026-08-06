@@ -10,6 +10,11 @@ datasources:
     jsonData:
       timeInterval: 15s
       httpMethod: POST
+      # Exemplars link a slow bucket in a latency histogram to the trace that
+      # produced it.
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: finix-tempo
 
   - name: Loki
     type: loki
@@ -18,9 +23,46 @@ datasources:
     url: http://loki:3100
     jsonData:
       maxLines: 1000
-      # Clicking a trace id in a log line jumps straight to the metrics
-      # view for that service; the JVM services already emit `service`.
+      # logback-spring.xml emits JSON with a traceId field, so the pattern
+      # matches the field rather than a logfmt token, and the link now points at
+      # Tempo — previously it had no datasourceUid, so clicking it went nowhere.
       derivedFields:
         - name: TraceID
-          matcherRegex: "traceId=(\\w+)"
+          matcherRegex: '"traceId":"(\w+)"'
           url: "$${__value.raw}"
+          datasourceUid: finix-tempo
+
+  - name: Tempo
+    type: tempo
+    uid: finix-tempo
+    access: proxy
+    url: http://tempo:3200
+    jsonData:
+      # The three pillars joined: from a span, jump to that service's logs for
+      # the same trace, or to its metrics.
+      tracesToLogsV2:
+        datasourceUid: finix-loki
+        spanStartTimeShift: -1m
+        spanEndTimeShift: 1m
+        filterByTraceID: true
+        tags:
+          - key: service.name
+            value: service
+      tracesToMetrics:
+        datasourceUid: finix-prometheus
+        spanStartTimeShift: -1m
+        spanEndTimeShift: 1m
+        tags:
+          - key: service.name
+            value: service
+      nodeGraph:
+        enabled: true
+
+  - name: Alertmanager
+    type: alertmanager
+    uid: finix-alertmanager
+    access: proxy
+    url: http://alertmanager:9093
+    jsonData:
+      implementation: prometheus
+      handleGrafanaManagedAlerts: false

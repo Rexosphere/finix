@@ -1,15 +1,45 @@
 # FINIX core compose — default profile fits ~8GB RAM.
 # Usage:
+#   Secrets:      ./scripts/gen-secrets.sh          (once, before the first `up`)
 #   Local build:  docker compose -f infra/compose/docker-compose.yml --profile core up -d --build
 #   Prebuilt:     FINIX_IMAGE_TAG=latest docker compose -f … --profile core pull && … up -d
 # Images publish to ghcr.io/rexosphere/finix/<service> via .github/workflows/publish-images.yml
+#
+# No credential appears in this file. Every password lives in a file under
+# infra/compose/secrets/ (gitignored, generated per machine) and is mounted as a
+# Docker secret — see the `secrets:` block at the bottom. Spring services read
+# theirs through spring.config.import=configtree, so /run/secrets/spring.datasource.password
+# becomes the spring.datasource.password property with no application code change.
 
 name: finix
 
+# Hardening applied to every image we build ourselves. Our services run as uid
+# 10001 and bind ports above 1024, so they need no Linux capabilities at all.
+# Third-party images (postgres, keycloak, …) are deliberately excluded — they
+# chown/setuid during their own startup.
+x-hardening: &hardening
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+
 x-jvm-service: &jvm-service
+  <<: *hardening
   restart: unless-stopped
+  # Ceiling, not a reservation: the JVM is capped at -Xmx192m + 128m metaspace,
+  # so 512m leaves headroom for stack/direct buffers while stopping one leaking
+  # service from taking the host down with it.
+  mem_limit: 512m
+  cpus: 1.0
   environment: &jvm-env
     SPRING_THREADS_VIRTUAL_ENABLED: "true"
+    # Maps every file in /run/secrets/ to the property named after it.
+    # `optional:` so a service with no mounted secret still starts.
+    SPRING_CONFIG_IMPORT: optional:configtree:/run/secrets/
+    # Tracing: the OTLP exporter is on the classpath already (finix.spring-service),
+    # so this is only where to send spans and how many. Sampling defaults to 0 —
+    # no Tempo runs in the `core` profile, and sampling nothing means exporting
+    # nothing. `make monitoring` / production set FINIX_TRACE_SAMPLE=1.0.
+    MANAGEMENT_OTLP_TRACING_ENDPOINT: ${FINIX_OTLP_ENDPOINT:-http://tempo:4318/v1/traces}
+    MANAGEMENT_TRACING_SAMPLING_PROBABILITY: ${FINIX_TRACE_SAMPLE:-0.0}
     JAVA_TOOL_OPTIONS: >-
       -XX:+UseSerialGC
       -Xms64m
@@ -31,14 +61,28 @@ services:
   postgres:
     image: postgres:16-alpine
     profiles: [core, full]
+    mem_limit: 1g
+    cpus: 2.0
     environment:
       POSTGRES_USER: finix
-      POSTGRES_PASSWORD: finix
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_superuser_password
       POSTGRES_DB: postgres
     ports: ["5432:5432"]
+    # Every per-service role password: init-databases.sh creates the roles from
+    # these files on first boot, so no password is ever written to a tracked file.
+    secrets:
+      - postgres_superuser_password
+      - db_identity_password
+      - db_account_password
+      - db_ledger_password
+      - db_orchestrator_password
+      - db_vault_svc_password
+      - db_compliance_password
+      - db_loan_password
+      - db_ussd_password
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./init-databases.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./init-databases.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
     healthcheck:
       # -d postgres is load-bearing: pg_isready defaults the database name to
       # the username, and no `finix` database exists, so every 5s probe logged
@@ -52,6 +96,8 @@ services:
   redis:
     image: redis:7-alpine
     profiles: [core, full]
+    mem_limit: 512m
+    cpus: 1.0
     ports: ["6379:6379"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -63,6 +109,10 @@ services:
   redpanda:
     image: redpandadata/redpanda:v24.2.4
     profiles: [core, full]
+    # --memory=512M below is what Redpanda allocates for itself; the limit sits
+    # above it so the container is killed only if it genuinely misbehaves.
+    mem_limit: 1500m
+    cpus: 2.0
     command:
       - redpanda
       - start
@@ -86,10 +136,20 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
     profiles: [core, full]
-    command: ["start-dev", "--import-realm"]
+    mem_limit: 1g
+    cpus: 2.0
+    # Keycloak has no _FILE-suffixed env var support (keycloak/keycloak#10816 is
+    # still open), so the bootstrap password is exported from the mounted secret
+    # at start instead of living in this file or in the container's config.
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        export KC_BOOTSTRAP_ADMIN_PASSWORD="$$(cat /run/secrets/keycloak_admin_password)"
+        exec /opt/keycloak/bin/kc.sh start-dev --import-realm
+    secrets:
+      - keycloak_admin_password
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
-      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
       KC_HTTP_PORT: "8080"
       KC_HEALTH_ENABLED: "true"
       # Keycloak 26 serves /metrics on the management port (9000), which is
@@ -111,12 +171,47 @@ services:
     image: hashicorp/vault:1.17
     profiles: [security, full]
     cap_add: [IPC_LOCK]
-    environment:
-      VAULT_DEV_ROOT_TOKEN_ID: finix-root
-      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    # Dev-mode Vault (in-memory, unsealed at boot) — see docs/adr/0006. The root
+    # token comes from the mounted secret rather than a literal, so nothing here
+    # grants access to anyone reading the repo.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        exec vault server -dev \
+          -dev-root-token-id="$$(cat /run/secrets/vault_root_token)" \
+          -dev-listen-address=0.0.0.0:8200
+    secrets:
+      - vault_root_token
     ports: ["8200:8200"]
     volumes:
       - ./vault-init.sh:/vault-init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "VAULT_ADDR=http://127.0.0.1:8200 vault status >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [finix]
+
+  # One-shot: seeds Vault from the mounted Docker secrets and issues an AppRole
+  # per service. Dev-mode Vault is in-memory, so this runs on every start.
+  vault-bootstrap:
+    image: hashicorp/vault:1.17
+    profiles: [security, full]
+    restart: "no"
+    entrypoint: ["/bin/sh", "/vault-bootstrap.sh"]
+    environment:
+      VAULT_ADDR: http://vault:8200
+    secrets:
+      - vault_root_token
+      - db_identity_password
+      - db_vault_svc_password
+    volumes:
+      - ./vault-bootstrap.sh:/vault-bootstrap.sh:ro
+      - approle-identity:/approle/identity-service
+      - approle-vault-service:/approle/vault-service
+    depends_on:
+      vault:
+        condition: service_healthy
     networks: [finix]
 
   opa:
@@ -140,7 +235,6 @@ services:
       SPRING_APPLICATION_NAME: identity-service
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/identity
       SPRING_DATASOURCE_USERNAME: identity
-      SPRING_DATASOURCE_PASSWORD: identity
       SPRING_DATA_REDIS_HOST: redis
       SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/finix
@@ -151,6 +245,10 @@ services:
       # Override baked-in oauth2.client issuer on older GHCR images (localhost fails in-container).
       SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/finix
       SERVER_PORT: "8082"
+    # configtree turns the file name into the property name.
+    secrets:
+      - source: db_identity_password
+        target: spring.datasource.password
     ports: ["8082:8082"]
 
   account-service:
@@ -165,11 +263,13 @@ services:
       SPRING_APPLICATION_NAME: account-service
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/account
       SPRING_DATASOURCE_USERNAME: account
-      SPRING_DATASOURCE_PASSWORD: account
       SPRING_DATA_REDIS_HOST: redis
       SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/finix
       SERVER_PORT: "8083"
+    secrets:
+      - source: db_account_password
+        target: spring.datasource.password
     ports: ["8083:8083"]
 
   ledger-service:
@@ -184,11 +284,13 @@ services:
       SPRING_APPLICATION_NAME: ledger-service
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ledger
       SPRING_DATASOURCE_USERNAME: ledger
-      SPRING_DATASOURCE_PASSWORD: ledger
       SPRING_DATA_REDIS_HOST: redis
       SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/finix
       SERVER_PORT: "8084"
+    secrets:
+      - source: db_ledger_password
+        target: spring.datasource.password
     ports: ["8084:8084"]
 
   transaction-orchestrator:
@@ -203,7 +305,6 @@ services:
       SPRING_APPLICATION_NAME: transaction-orchestrator
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/orchestrator
       SPRING_DATASOURCE_USERNAME: orchestrator
-      SPRING_DATASOURCE_PASSWORD: orchestrator
       SPRING_DATA_REDIS_HOST: redis
       SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/finix
@@ -211,6 +312,9 @@ services:
       FINIX_LEDGER_BASE_URL: http://ledger-service:8084
       FINIX_RISK_BASE_URL: http://risk-ai-service:8091
       SERVER_PORT: "8085"
+    secrets:
+      - source: db_orchestrator_password
+        target: spring.datasource.password
     ports: ["8085:8085"]
     depends_on:
       postgres:
@@ -221,36 +325,42 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_healthy
+      # Every image now carries a HEALTHCHECK, so waiting on "healthy" instead of
+      # "started" means the orchestrator never routes a transfer at a service
+      # that has a process but no working datasource yet.
       account-service:
-        condition: service_started
+        condition: service_healthy
       ledger-service:
-        condition: service_started
+        condition: service_healthy
       risk-ai-service:
-        condition: service_started
+        condition: service_healthy
 
   risk-ai-service:
+    <<: *hardening
     profiles: [core, full]
     image: ${FINIX_IMAGE_PREFIX:-ghcr.io/rexosphere/finix}/risk-ai-service:${FINIX_IMAGE_TAG:-latest}
     build:
       context: ../..
       dockerfile: services/risk-ai-service/Dockerfile
+    mem_limit: 512m
+    cpus: 1.0
     environment:
       FINIX_MODEL_DIR: /app/app/model_artifacts
     ports: ["8091:8091"]
     networks: [finix]
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8091/health')\""]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+    # Liveness comes from the image's own HEALTHCHECK (services/risk-ai-service/Dockerfile),
+    # so it is defined once and applies wherever the image runs.
 
   enclave-runtime:
+    <<: *hardening
     profiles: [core, full]
     image: ${FINIX_IMAGE_PREFIX:-ghcr.io/rexosphere/finix}/enclave-runtime:${FINIX_IMAGE_TAG:-latest}
     build:
       context: ../..
       dockerfile: services/enclave-runtime/Dockerfile
+    mem_limit: 256m
+    cpus: 1.0
     environment:
       SPRING_APPLICATION_NAME: enclave-runtime
       JAVA_TOOL_OPTIONS: >-
@@ -281,12 +391,14 @@ services:
       SPRING_APPLICATION_NAME: vault-service
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/vault
       SPRING_DATASOURCE_USERNAME: vault_svc
-      SPRING_DATASOURCE_PASSWORD: vault_svc
       SPRING_DATA_REDIS_HOST: redis
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/finix
       FINIX_ENCLAVE_MODE: remote
       FINIX_ENCLAVE_BASE_URL: http://enclave-runtime:8090
       SERVER_PORT: "8086"
+    secrets:
+      - source: db_vault_svc_password
+        target: spring.datasource.password
     ports: ["8086:8086"]
     depends_on:
       postgres:
@@ -303,10 +415,23 @@ services:
     image: nginx:1.27-alpine
     volumes:
       - ../../apps/admin:/usr/share/nginx/html:ro
-      - ../../apps/admin/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Mounted as a template: the nginx entrypoint envsubst's it into
+      # /etc/nginx/conf.d/ at start, which is what renders /env.js with the
+      # cross-app URLs for this environment.
+      - ../../apps/admin/nginx.conf:/etc/nginx/templates/default.conf.template:ro
+    environment:
+      FINIX_WEB_URL: ${FINIX_WEB_URL:-http://localhost:3000}
+      FINIX_ADMIN_URL: ${FINIX_ADMIN_URL:-http://localhost:3001}
+    mem_limit: 64m
+    cpus: 0.5
     ports: ["3001:80"]
     networks: [finix]
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
 
   ussd-gateway:
     <<: *jvm-service
@@ -340,8 +465,20 @@ services:
     image: nginx:1.27-alpine
     volumes:
       - ../../apps/web:/usr/share/nginx/html:ro
-      - ../../apps/web/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # See the admin service: template, not a final conf, so /env.js can carry
+      # the per-environment cross-app URLs.
+      - ../../apps/web/nginx.conf:/etc/nginx/templates/default.conf.template:ro
+    environment:
+      FINIX_WEB_URL: ${FINIX_WEB_URL:-http://localhost:3000}
+      FINIX_ADMIN_URL: ${FINIX_ADMIN_URL:-http://localhost:3001}
+    mem_limit: 64m
+    cpus: 0.5
     ports: ["3000:80"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
     depends_on:
       ussd-gateway:
         condition: service_started
@@ -362,10 +499,12 @@ services:
       SPRING_APPLICATION_NAME: loan-service
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/loan
       SPRING_DATASOURCE_USERNAME: loan
-      SPRING_DATASOURCE_PASSWORD: loan
       SPRING_DATA_REDIS_HOST: redis
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/finix
       SERVER_PORT: "8088"
+    secrets:
+      - source: db_loan_password
+        target: spring.datasource.password
     ports: ["8088:8088"]
 
   compliance-service:
@@ -380,28 +519,36 @@ services:
       SPRING_APPLICATION_NAME: compliance-service
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/compliance
       SPRING_DATASOURCE_USERNAME: compliance
-      SPRING_DATASOURCE_PASSWORD: compliance
       SPRING_DATA_REDIS_HOST: redis
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/finix
       SERVER_PORT: "8089"
+    secrets:
+      - source: db_compliance_password
+        target: spring.datasource.password
     ports: ["8089:8089"]
 
   payment-hub:
+    <<: *hardening
     profiles: [core, full]
     image: ${FINIX_IMAGE_PREFIX:-ghcr.io/rexosphere/finix}/payment-hub:${FINIX_IMAGE_TAG:-latest}
     build:
       context: ../..
       dockerfile: services/payment-hub/Dockerfile
+    mem_limit: 128m
+    cpus: 1.0
     ports: ["8092:8092"]
     networks: [finix]
     restart: unless-stopped
 
   notification-service:
+    <<: *hardening
     profiles: [core, full]
     image: ${FINIX_IMAGE_PREFIX:-ghcr.io/rexosphere/finix}/notification-service:${FINIX_IMAGE_TAG:-latest}
     build:
       context: ../..
       dockerfile: services/notification-service/Dockerfile
+    mem_limit: 128m
+    cpus: 1.0
     ports: ["8093:8093"]
     networks: [finix]
     restart: unless-stopped
@@ -413,6 +560,11 @@ services:
   # Only Grafana publishes a port, and only on the loopback — Caddy on the
   # host terminates TLS for grafana.roboti.qzz.io and proxies to it.
   # Prometheus and Loki are reachable from the finix network only.
+  #
+  # Deliberately not memory-capped, unlike the application services: an
+  # OOM-killed Prometheus loses exactly the data needed to explain the incident
+  # that killed it. Their footprint is bounded by retention settings instead
+  # (--storage.tsdb.retention.size below, and loki.yml's limits).
   # ---------------------------------------------------------------------
 
   prometheus:
@@ -436,6 +588,59 @@ services:
       interval: 30s
       timeout: 5s
       retries: 5
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    profiles: [monitoring, full]
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes:
+      - ../monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanagerdata:/alertmanager
+    expose: ["9093"]
+    networks: [finix]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  # Probes the public URLs from outside the app network — the same path a user
+  # takes, through Caddy and TLS.
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    profiles: [monitoring, full]
+    command:
+      - --config.file=/etc/blackbox/blackbox.yml
+    volumes:
+      - ../monitoring/blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
+    expose: ["9115"]
+    networks: [finix]
+    restart: unless-stopped
+
+  # Traces. The services already produce spans and already stamp traceId into
+  # every log line; this is where the spans finally land.
+  tempo:
+    image: grafana/tempo:2.6.1
+    profiles: [monitoring, full]
+    # Same reason as loki below: the image runs as a non-root uid but a fresh
+    # named volume is owned by root.
+    user: "0:0"
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    volumes:
+      - ../monitoring/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+      - tempodata:/var/tempo
+    expose: ["3200", "4317", "4318"]
+    networks: [finix]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3200/ready || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   loki:
     image: grafana/loki:3.2.1
@@ -482,9 +687,10 @@ services:
     image: grafana/grafana:11.4.0
     profiles: [monitoring, full]
     environment:
-      # Override on the server; never commit the real password.
       GF_SECURITY_ADMIN_USER: ${FINIX_GRAFANA_ADMIN_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${FINIX_GRAFANA_ADMIN_PASSWORD:-admin}
+      # Grafana's own file provider: <VAR>__FILE (two underscores) reads the
+      # value from disk, so the password never enters the container environment.
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
       GF_SERVER_ROOT_URL: ${FINIX_GRAFANA_ROOT_URL:-http://localhost:3002}
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_AUTH_ANONYMOUS_ENABLED: "false"
@@ -495,11 +701,15 @@ services:
       - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafanadata:/var/lib/grafana
+    secrets:
+      - grafana_admin_password
     ports: ["127.0.0.1:3002:3000"]
     depends_on:
       prometheus:
         condition: service_started
       loki:
+        condition: service_started
+      tempo:
         condition: service_started
     networks: [finix]
     restart: unless-stopped
@@ -540,8 +750,14 @@ services:
     image: quay.io/prometheuscommunity/postgres-exporter:v0.16.0
     profiles: [monitoring, full]
     environment:
-      DATA_SOURCE_NAME: postgresql://finix:finix@postgres:5432/postgres?sslmode=disable
+      # DATA_SOURCE_URI carries no credentials; the superuser password is read
+      # from the mounted secret via the exporter's *_FILE support.
+      DATA_SOURCE_URI: postgres:5432/postgres?sslmode=disable
+      DATA_SOURCE_USER: finix
+      DATA_SOURCE_PASS_FILE: /run/secrets/postgres_superuser_password
       PG_EXPORTER_AUTO_DISCOVER_DATABASES: "true"
+    secrets:
+      - postgres_superuser_password
     expose: ["9187"]
     depends_on:
       postgres:
@@ -561,13 +777,49 @@ services:
     networks: [finix]
     restart: unless-stopped
 
+# Every credential the stack uses, sourced from files generated per machine by
+# ./scripts/gen-secrets.sh. infra/compose/secrets/ is gitignored — the repository
+# never contains a password. On the server the same files are written by the
+# Ansible `finix` role from the CI secret store.
+secrets:
+  postgres_superuser_password:
+    file: ./secrets/postgres_superuser_password
+  db_identity_password:
+    file: ./secrets/db_identity_password
+  db_account_password:
+    file: ./secrets/db_account_password
+  db_ledger_password:
+    file: ./secrets/db_ledger_password
+  db_orchestrator_password:
+    file: ./secrets/db_orchestrator_password
+  db_vault_svc_password:
+    file: ./secrets/db_vault_svc_password
+  db_compliance_password:
+    file: ./secrets/db_compliance_password
+  db_loan_password:
+    file: ./secrets/db_loan_password
+  db_ussd_password:
+    file: ./secrets/db_ussd_password
+  keycloak_admin_password:
+    file: ./secrets/keycloak_admin_password
+  grafana_admin_password:
+    file: ./secrets/grafana_admin_password
+  vault_root_token:
+    file: ./secrets/vault_root_token
+
 networks:
   finix:
     driver: bridge
 
 volumes:
+  # AppRole credentials issued by vault-bootstrap, one volume per service so a
+  # service can only ever mount its own (docker-compose.vault.yml consumes them).
+  approle-identity:
+  approle-vault-service:
   pgdata:
   promdata:
   lokidata:
   alloydata:
   grafanadata:
+  alertmanagerdata:
+  tempodata:

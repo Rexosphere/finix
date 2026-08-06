@@ -1,6 +1,7 @@
 [versions]
 kotlin = "2.3.21"   # must match Gradle 9.6.1's embedded Kotlin
 springBoot = "3.5.16"
+springCloud = "2025.0.0"   # release train aligned with Boot 3.5.x
 java = "21"
 
 bouncycastle = "1.82"
@@ -39,6 +40,10 @@ spring-kafka = { module = "org.springframework.kafka:spring-kafka" }
 spring-kafka-test = { module = "org.springframework.kafka:spring-kafka-test" }
 spring-retry = { module = "org.springframework.retry:spring-retry" }
 spring-aspects = { module = "org.springframework:spring-aspects" }
+
+# --- Secrets (ADR-0006: Vault is the runtime source of truth for credentials) ---
+spring-cloud-bom = { module = "org.springframework.cloud:spring-cloud-dependencies", version.ref = "springCloud" }
+spring-cloud-starter-vault-config = { module = "org.springframework.cloud:spring-cloud-starter-vault-config" }
 
 # --- Kotlin ---
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect" }

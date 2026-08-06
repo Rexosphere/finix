@@ -3,7 +3,9 @@
 # Run after `vault` is up: docker compose exec vault sh /vault-init.sh
 set -eu
 export VAULT_ADDR="${VAULT_ADDR:-http://127.0.0.1:8200}"
-export VAULT_TOKEN="${VAULT_TOKEN:-finix-root}"
+# The root token is a generated Docker secret (ADR-0006), mounted into the vault
+# container — it is no longer the literal `finix-root` this script used to assume.
+export VAULT_TOKEN="${VAULT_TOKEN:-$(cat /run/secrets/vault_root_token)}"
 
 vault secrets enable -path=pki pki || true
 vault secrets tune -max-lease-ttl=8760h pki

@@ -1,0 +1,42 @@
+# Tempo — the missing third pillar. Metrics (Prometheus) said *that* a transfer
+# was slow and logs (Loki) said *what* each service logged; neither could show a
+# single transfer crossing orchestrator -> account -> ledger -> risk.
+#
+# The services already emit spans: micrometer-tracing-bridge-otel and
+# opentelemetry-exporter-otlp ship in the finix.spring-service convention plugin,
+# and logback-spring.xml already writes traceId/spanId into every JSON log line.
+# All that was missing was somewhere to send them.
+
+server:
+  http_listen_port: 3200
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        http:
+          endpoint: 0.0.0.0:4318
+        grpc:
+          endpoint: 0.0.0.0:4317
+
+ingester:
+  # Small blocks: this is a demo-scale stack, and short flush intervals mean a
+  # trace is queryable seconds after the request, not minutes.
+  max_block_duration: 5m
+
+compactor:
+  compaction:
+    # Traces are a debugging aid, not a record of account: 48h is plenty and
+    # keeps the volume bounded on a single-disk host.
+    block_retention: 48h
+
+storage:
+  trace:
+    backend: local
+    local:
+      path: /var/tempo/blocks
+    wal:
+      path: /var/tempo/wal
+
+usage_report:
+  reporting_enabled: false

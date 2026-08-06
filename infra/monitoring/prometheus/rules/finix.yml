@@ -88,3 +88,44 @@ groups:
           severity: warning
         annotations:
           summary: "Less than 10% memory available on the host"
+
+      - alert: ContainerNearMemoryLimit
+        # Every service now runs under a mem_limit (docker-compose.yml). Hitting
+        # it means the OOM killer, not a slow degradation, so warn before it.
+        expr: |
+          container_memory_usage_bytes{service!=""}
+            /
+          clamp_min(container_spec_memory_limit_bytes{service!=""}, 1)
+            > 0.9
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }} is within 10% of its container memory limit"
+
+  # The public front doors, probed from outside through Caddy and TLS. These are
+  # scoped to the blackbox jobs rather than to `up`, because on a laptop the
+  # deployed URLs are legitimately unreachable.
+  - name: finix-public-endpoints
+    interval: 30s
+    rules:
+      - alert: PublicEndpointDown
+        expr: probe_success{job=~"blackbox-.*"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.instance }} is not answering from the public internet"
+          description: >-
+            The deploy-time check passed but the door is shut now — proxy, DNS,
+            certificate or the container behind it.
+
+      - alert: PublicEndpointTlsExpiringSoon
+        expr: (probe_ssl_earliest_cert_expiry - time()) / 86400 < 14
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} TLS certificate expires in under 14 days"
+          description: >-
+            Caddy renews automatically; this firing means renewal is failing.

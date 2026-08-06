@@ -10,6 +10,8 @@ export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-finix}"
 export FINIX_IMAGE_PREFIX="${FINIX_IMAGE_PREFIX:-ghcr.io/rexosphere/finix}"
 export FINIX_IMAGE_TAG="${FINIX_IMAGE_TAG:-latest}"
 
+./scripts/gen-secrets.sh
+
 echo "==> Pulling published images (${FINIX_IMAGE_PREFIX}:*:${FINIX_IMAGE_TAG})"
 "${COMPOSE[@]}" pull
 

@@ -10,7 +10,10 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/identity
     username: identity
-    password: identity
+    # No default: the password is supplied at runtime — a mounted Docker secret
+    # (configtree) in compose, Vault where it runs, or this variable for a bare
+    # `gradlew bootRun` against a local Postgres.
+    password: ${FINIX_LOCAL_DB_PASSWORD:}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -24,6 +27,18 @@ spring:
     redis:
       host: localhost
       port: 6379
+  cloud:
+    vault:
+      # ADR-0006. Off unless a Vault is running: locally the datasource password
+      # arrives as a mounted Docker secret (configtree), and in the security/full
+      # profile the same value is read from Vault, which vault-bootstrap seeded
+      # from those very files — so the two sources cannot disagree.
+      enabled: ${FINIX_VAULT_ENABLED:false}
+      uri: ${FINIX_VAULT_URI:http://localhost:8200}
+      authentication: APPROLE
+      # AppRole role-id/secret-id are supplied by a configtree import that is
+      # listed before vault:// in spring.config.import.
+      fail-fast: true
   kafka:
     bootstrap-servers: localhost:9092
   security:

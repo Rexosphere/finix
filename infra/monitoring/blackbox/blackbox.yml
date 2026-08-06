@@ -1,0 +1,32 @@
+# Blackbox exporter — probes the public front doors the way a user reaches them:
+# from outside the compose network, through Caddy and TLS.
+#
+# The Deploy workflow already curls these three URLs once, after a release. This
+# turns that one-shot check into a continuous one, so a certificate expiry or a
+# proxy misconfiguration between deploys is caught by an alert rather than by a
+# judge opening the site.
+
+modules:
+  http_2xx:
+    prober: http
+    timeout: 10s
+    http:
+      valid_http_versions: [HTTP/1.1, HTTP/2.0]
+      valid_status_codes: [200]
+      follow_redirects: true
+      preferred_ip_protocol: ip4
+      fail_if_not_ssl: false
+
+  # Keycloak's root answers 302 to the admin console; following the redirect
+  # would probe the console rather than the front door.
+  http_redirect:
+    prober: http
+    timeout: 10s
+    http:
+      valid_status_codes: [200, 302, 303]
+      follow_redirects: false
+      preferred_ip_protocol: ip4
+
+  tcp_connect:
+    prober: tcp
+    timeout: 5s

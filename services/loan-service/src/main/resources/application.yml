@@ -10,7 +10,10 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/loan
     username: loan
-    password: loan
+    # No default: the password is supplied at runtime — a mounted Docker secret
+    # (configtree) in compose, Vault where it runs, or this variable for a bare
+    # `gradlew bootRun` against a local Postgres.
+    password: ${FINIX_LOCAL_DB_PASSWORD:}
   jpa:
     open-in-view: false
     hibernate:

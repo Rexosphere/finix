@@ -18,6 +18,13 @@ global:
 rule_files:
   - /etc/prometheus/rules/*.yml
 
+# The rules above used to fire into nothing. Alertmanager groups, de-duplicates
+# and inhibits them — see ../alertmanager/alertmanager.yml.
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
 scrape_configs:
   - job_name: prometheus
     static_configs:
@@ -110,6 +117,66 @@ scrape_configs:
       - targets: ["loki:3100"]
         labels:
           service: loki
+
+  - job_name: tempo
+    static_configs:
+      - targets: ["tempo:3200"]
+        labels:
+          service: tempo
+
+  - job_name: alertmanager
+    static_configs:
+      - targets: ["alertmanager:9093"]
+        labels:
+          service: alertmanager
+
+  # Probes the public URLs from outside the app network, through Caddy and TLS —
+  # the same path a user takes. On a laptop these targets simply report down
+  # (they point at the deployed environment), which is why the BlackboxProbeDown
+  # alert is scoped to the probe job rather than to `up`.
+  - job_name: blackbox-http
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - https://roboti.qzz.io
+          - https://admin.roboti.qzz.io
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+      - source_labels: [__param_target]
+        target_label: service
+        replacement: public-endpoint
+
+  # Keycloak's front door answers 302, not 200.
+  - job_name: blackbox-http-redirect
+    metrics_path: /probe
+    params:
+      module: [http_redirect]
+    static_configs:
+      - targets:
+          - https://auth.roboti.qzz.io
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+      - source_labels: [__param_target]
+        target_label: service
+        replacement: public-endpoint
+
+  - job_name: blackbox-exporter
+    static_configs:
+      - targets: ["blackbox-exporter:9115"]
+        labels:
+          service: blackbox
 
   - job_name: alloy
     static_configs:
