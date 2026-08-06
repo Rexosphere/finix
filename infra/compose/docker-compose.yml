@@ -59,7 +59,7 @@ x-jvm-service: &jvm-service
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     profiles: [core, full]
     mem_limit: 1g
     cpus: 2.0
@@ -94,7 +94,7 @@ services:
     networks: [finix]
 
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     profiles: [core, full]
     mem_limit: 512m
     cpus: 1.0
@@ -107,7 +107,7 @@ services:
     networks: [finix]
 
   redpanda:
-    image: redpandadata/redpanda:v24.2.4
+    image: redpandadata/redpanda:v26.2.1
     profiles: [core, full]
     # --memory=512M below is what Redpanda allocates for itself; the limit sits
     # above it so the container is killed only if it genuinely misbehaves.
@@ -134,7 +134,7 @@ services:
     networks: [finix]
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.0
+    image: quay.io/keycloak/keycloak:26.6
     profiles: [core, full]
     mem_limit: 1g
     cpus: 2.0
@@ -168,7 +168,7 @@ services:
     networks: [finix]
 
   vault:
-    image: hashicorp/vault:1.17
+    image: hashicorp/vault:1.21
     profiles: [security, full]
     cap_add: [IPC_LOCK]
     # Dev-mode Vault (in-memory, unsealed at boot) — see docs/adr/0006. The root
@@ -195,7 +195,7 @@ services:
   # One-shot: seeds Vault from the mounted Docker secrets and issues an AppRole
   # per service. Dev-mode Vault is in-memory, so this runs on every start.
   vault-bootstrap:
-    image: hashicorp/vault:1.17
+    image: hashicorp/vault:1.21
     profiles: [security, full]
     restart: "no"
     entrypoint: ["/bin/sh", "/vault-bootstrap.sh"]
@@ -215,7 +215,7 @@ services:
     networks: [finix]
 
   opa:
-    image: openpolicyagent/opa:0.68.0
+    image: openpolicyagent/opa:1.19.0
     profiles: [security, full]
     command: ["run", "--server", "--addr", "0.0.0.0:8181", "/policies"]
     volumes:
@@ -412,7 +412,7 @@ services:
 
   admin:
     profiles: [core, full]
-    image: nginx:1.27-alpine
+    image: nginx:1.31-alpine
     volumes:
       - ../../apps/admin:/usr/share/nginx/html:ro
       # Mounted as a template: the nginx entrypoint envsubst's it into
@@ -462,7 +462,7 @@ services:
 
   web:
     profiles: [core, full]
-    image: nginx:1.27-alpine
+    image: nginx:1.31-alpine
     volumes:
       - ../../apps/web:/usr/share/nginx/html:ro
       # See the admin service: template, not a final conf, so /env.js can carry
@@ -568,7 +568,7 @@ services:
   # ---------------------------------------------------------------------
 
   prometheus:
-    image: prom/prometheus:v2.55.1
+    image: prom/prometheus:v3.13.2
     profiles: [monitoring, full]
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -590,7 +590,7 @@ services:
       retries: 5
 
   alertmanager:
-    image: prom/alertmanager:v0.27.0
+    image: prom/alertmanager:v0.33.1
     profiles: [monitoring, full]
     command:
       - --config.file=/etc/alertmanager/alertmanager.yml
@@ -610,7 +610,7 @@ services:
   # Probes the public URLs from outside the app network — the same path a user
   # takes, through Caddy and TLS.
   blackbox-exporter:
-    image: prom/blackbox-exporter:v0.25.0
+    image: prom/blackbox-exporter:v0.28.0
     profiles: [monitoring, full]
     command:
       - --config.file=/etc/blackbox/blackbox.yml
@@ -623,7 +623,7 @@ services:
   # Traces. The services already produce spans and already stamp traceId into
   # every log line; this is where the spans finally land.
   tempo:
-    image: grafana/tempo:2.6.1
+    image: grafana/tempo:3.0.2
     profiles: [monitoring, full]
     # Same reason as loki below: the image runs as a non-root uid but a fresh
     # named volume is owned by root.
@@ -643,7 +643,7 @@ services:
       start_period: 30s
 
   loki:
-    image: grafana/loki:3.2.1
+    image: grafana/loki:3.7.4
     profiles: [monitoring, full]
     # The image runs as uid 10001 but a fresh named volume is owned by root,
     # so Loki cannot create /loki/chunks on first boot without this.
@@ -663,7 +663,7 @@ services:
       start_period: 30s
 
   alloy:
-    image: grafana/alloy:v1.5.1
+    image: grafana/alloy:v1.18.0
     profiles: [monitoring, full]
     # Needs to read the Docker socket to discover containers and tail logs.
     user: "0:0"
@@ -684,7 +684,7 @@ services:
     restart: unless-stopped
 
   grafana:
-    image: grafana/grafana:11.4.0
+    image: grafana/grafana:13.1.1
     profiles: [monitoring, full]
     environment:
       GF_SECURITY_ADMIN_USER: ${FINIX_GRAFANA_ADMIN_USER:-admin}
@@ -715,7 +715,7 @@ services:
     restart: unless-stopped
 
   node-exporter:
-    image: prom/node-exporter:v1.8.2
+    image: prom/node-exporter:v1.12.1
     profiles: [monitoring, full]
     command:
       - --path.procfs=/host/proc
@@ -732,7 +732,7 @@ services:
     restart: unless-stopped
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    image: gcr.io/cadvisor/cadvisor:v0.55.1
     profiles: [monitoring, full]
     privileged: true
     devices: ["/dev/kmsg"]
@@ -747,7 +747,7 @@ services:
     restart: unless-stopped
 
   postgres-exporter:
-    image: quay.io/prometheuscommunity/postgres-exporter:v0.16.0
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.20.1
     profiles: [monitoring, full]
     environment:
       # DATA_SOURCE_URI carries no credentials; the superuser password is read
@@ -767,7 +767,7 @@ services:
     restart: unless-stopped
 
   redis-exporter:
-    image: oliver006/redis_exporter:v1.66.0
+    image: oliver006/redis_exporter:v1.88.0
     profiles: [monitoring, full]
     environment:
       REDIS_ADDR: redis://redis:6379
