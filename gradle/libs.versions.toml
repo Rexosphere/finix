@@ -1,5 +1,5 @@
 [versions]
-kotlin = "2.3.21"   # must match Gradle 9.6.1's embedded Kotlin
+kotlin = "2.4.10"   # must match Gradle 9.6.1's embedded Kotlin
 springBoot = "3.5.16"
 springCloud = "2025.0.0"   # release train aligned with Boot 3.5.x
 java = "21"
