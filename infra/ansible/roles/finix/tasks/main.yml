@@ -48,6 +48,10 @@
   ansible.builtin.template:
     src: finix.env.j2
     dest: "{{ finix_state_dir }}/finix.env"
+    # Readable by the deploy user: deploy.sh passes it to compose with
+    # --env-file, and compose reads it as whoever invoked it, not as root.
+    owner: "{{ finix_user }}"
+    group: "{{ finix_user }}"
     mode: "0640"
 
 - name: Install the Postgres backup script
