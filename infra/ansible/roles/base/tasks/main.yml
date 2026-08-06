@@ -34,21 +34,29 @@
 
 # Deliberately no JDK: nothing is built on this host any more (ADR-0007).
 
+# Everything below is gated on this rather than on per-command error strings:
+# mkswap refuses outright on a mounted swapfile ("is mounted; will not make
+# swapspace"), so re-running the playbook on a provisioned host would fail.
+- name: Check whether the swap file is already active
+  ansible.builtin.command: swapon --show=NAME --noheadings
+  register: active_swap
+  changed_when: false
+
 - name: Create swap file
   ansible.builtin.command: fallocate -l 4G /swapfile
   args:
     creates: /swapfile
+  when: "'/swapfile' not in active_swap.stdout"
 
 - name: Secure swap file
   ansible.builtin.file:
     path: /swapfile
     mode: "0600"
+  when: "'/swapfile' not in active_swap.stdout"
 
 - name: Format swap file
   ansible.builtin.command: mkswap /swapfile
-  register: mkswap
-  changed_when: "'Setting up swapspace' in mkswap.stdout"
-  failed_when: mkswap.rc != 0 and 'Device or resource busy' not in mkswap.stderr
+  when: "'/swapfile' not in active_swap.stdout"
 
 - name: Enable swap in fstab
   ansible.builtin.lineinfile:
@@ -58,9 +66,7 @@
 
 - name: Activate swap
   ansible.builtin.command: swapon /swapfile
-  register: swapon
-  changed_when: swapon.rc == 0
-  failed_when: swapon.rc != 0 and 'already active' not in swapon.stderr
+  when: "'/swapfile' not in active_swap.stdout"
 
 # Key injection stays the cloud provider's job; this only closes the doors.
 - name: Harden sshd
