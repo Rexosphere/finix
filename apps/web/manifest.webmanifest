@@ -3,8 +3,8 @@
   "short_name": "FINIX",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0c1322",
-  "theme_color": "#4edea3",
+  "background_color": "#0a1220",
+  "theme_color": "#3dd68c",
   "description": "Resilient Fabric — offline-first inclusion banking",
   "icons": [
     {
