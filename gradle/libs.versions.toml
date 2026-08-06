@@ -6,7 +6,7 @@ java = "21"
 
 bouncycastle = "1.82"
 springdoc = "2.8.17"
-resilience4j = "2.3.0"
+resilience4j = "2.4.0"
 kotlinLogging = "7.0.3"
 logstashEncoder = "8.0"
 otel = "2.11.0"
