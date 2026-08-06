@@ -72,7 +72,11 @@ class LedgerController(
 
 @RestController
 @RequestMapping("/api/v1/ledger")
-@Profile("dev", "default")
+// `dev` only, and deliberately not `default`: Spring activates the reserved `default` profile
+// whenever no profile has been selected, so listing it here would publish a ledger-corruption
+// endpoint on every ordinary boot -- no FINIX deployment sets SPRING_PROFILES_ACTIVE. Enabling
+// this controller must always be an explicit act. Guarded by LedgerTamperControllerProfileTest.
+@Profile("dev")
 class LedgerTamperController(
     private val injectTamper: InjectTamperUseCase,
 ) {
