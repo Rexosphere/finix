@@ -171,12 +171,9 @@
       try { return JSON.parse(text); } catch { return text; }
     }
 
+    // Same-origin admin nginx proxy only (never localhost fallback — that breaks CORS on the public domain).
     async function vault(path, method = "GET", body) {
-      try {
-        return await api(bases.vault, path, method, body);
-      } catch (e) {
-        return api("http://localhost:8086", path, method, body);
-      }
+      return api(bases.vault, path, method, body);
     }
 
     document.querySelectorAll("#tabs button").forEach((btn) => {
