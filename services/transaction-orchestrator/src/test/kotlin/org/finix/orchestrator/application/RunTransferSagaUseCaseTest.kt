@@ -175,6 +175,107 @@ class RunTransferSagaUseCaseTest {
         outboxTopics shouldBe listOf(Topics.TRANSACTION_INITIATED, Topics.TRANSACTION_FAILED)
     }
 
+    /**
+     * Downstreams stubbed to succeed, so a saga that slips past the risk gate reaches COMPLETED —
+     * i.e. a fail-open regression shows up as money actually moving, not as an unrelated mock error.
+     */
+    private fun stubSuccessfulTransfer() {
+        every { accounts.reserve(any(), any(), any()) } just runs
+        every { ledger.postJournal(any(), any()) } just runs
+        every { accounts.commitHold(any(), any()) } just runs
+        every { accounts.credit(any(), any(), any()) } just runs
+    }
+
+    @Test
+    fun `risk unavailable fails closed to step-up instead of moving money`() {
+        stubSuccessfulTransfer()
+        every {
+            risk.scoreTransfer(any(), any(), any(), any(), any(), any(), any(), any())
+        } throws DomainException(DomainError.Unavailable("risk-ai-service", "risk-ai-service is unreachable"))
+
+        val result = useCase.execute(from, to, "100.00".lkr())
+
+        result.state shouldBe SagaState.AWAITING_STEP_UP
+        result.riskDecision shouldBe "step_up"
+        result.riskScore shouldBe null
+        verify { accounts wasNot Called }
+        verify { ledger wasNot Called }
+        outboxTopics shouldBe listOf(Topics.TRANSACTION_INITIATED)
+    }
+
+    @Test
+    fun `risk timeout fails closed to step-up instead of moving money`() {
+        stubSuccessfulTransfer()
+        // Reactor's Mono.block(timeout) surfaces an expired call as IllegalStateException, which
+        // callDownstream does not translate — it must still be treated as "no assessment".
+        every {
+            risk.scoreTransfer(any(), any(), any(), any(), any(), any(), any(), any())
+        } throws IllegalStateException("Timeout on blocking read for 10000 MILLISECONDS")
+
+        val result = useCase.execute(from, to, "100.00".lkr())
+
+        result.state shouldBe SagaState.AWAITING_STEP_UP
+        verify { accounts wasNot Called }
+        verify { ledger wasNot Called }
+    }
+
+    @Test
+    fun `malformed risk decision is not treated as allow`() {
+        stubSuccessfulTransfer()
+        every {
+            risk.scoreTransfer(any(), any(), any(), any(), any(), any(), any(), any())
+        } returns RiskAssessment(score = 91, decision = "denied-by-model", reasons = listOf("garbled"))
+
+        val result = useCase.execute(from, to, "100.00".lkr())
+
+        result.state shouldBe SagaState.AWAITING_STEP_UP
+        result.riskDecision shouldBe "step_up"
+        verify { accounts wasNot Called }
+        verify { ledger wasNot Called }
+    }
+
+    @Test
+    fun `blank risk decision is not treated as allow`() {
+        stubSuccessfulTransfer()
+        every {
+            risk.scoreTransfer(any(), any(), any(), any(), any(), any(), any(), any())
+        } returns RiskAssessment(score = 5, decision = "  ")
+
+        val result = useCase.execute(from, to, "100.00".lkr())
+
+        result.state shouldBe SagaState.AWAITING_STEP_UP
+        verify { accounts wasNot Called }
+    }
+
+    @Test
+    fun `risk decision casing and padding do not change the gate`() {
+        stubSuccessfulTransfer()
+        every {
+            risk.scoreTransfer(any(), any(), any(), any(), any(), any(), any(), any())
+        } returns RiskAssessment(score = 88, decision = " BLOCK ", caseId = "case-2")
+
+        val result = useCase.execute(from, to, "600000.00".lkr())
+
+        result.state shouldBe SagaState.BLOCKED
+        verify { accounts wasNot Called }
+    }
+
+    @Test
+    fun `step-up forced by an unavailable risk service can still be completed with MFA`() {
+        every {
+            risk.scoreTransfer(any(), any(), any(), any(), any(), any(), any(), any())
+        } throws DomainException(DomainError.Unavailable("risk-ai-service", "connection refused"))
+        val suspended = useCase.execute(from, to, "100.00".lkr())
+        suspended.state shouldBe SagaState.AWAITING_STEP_UP
+
+        every { accounts.reserve(any(), any(), any()) } just runs
+        every { ledger.postJournal(any(), any()) } just runs
+        every { accounts.commitHold(any(), any()) } just runs
+        every { accounts.credit(any(), any(), any()) } just runs
+
+        useCase.completeStepUp(suspended.id, "123456").state shouldBe SagaState.COMPLETED
+    }
+
     @Test
     fun `non-domain reserve failure uses exception message in failure reason`() {
         every { accounts.reserve(any(), any(), any()) } throws IllegalStateException("boom")

@@ -12,7 +12,7 @@ import java.sql.Timestamp
 import java.util.Currency
 import java.util.UUID
 
-/** JDBC adapter over `transfer_saga` (V1__orchestrator.sql + V2__risk_fields.sql). */
+/** JDBC adapter over `transfer_saga` (V1 + V2__risk_fields + V3__hold_committed + V4__credit_outcome_unknown). */
 @Repository
 class JdbcSagaRepository(
     private val jdbc: NamedParameterJdbcTemplate,
@@ -33,6 +33,10 @@ class JdbcSagaRepository(
             .addValue("state", saga.state.name)
             .addValue("holdId", saga.holdId)
             .addValue("ledgerPosted", saga.ledgerPosted)
+            .addValue("holdCommitted", saga.holdCommitted)
+            .addValue("creditOutcomeUnknown", saga.creditOutcomeUnknown)
+            .addValue("creditRefused", saga.creditRefused)
+            .addValue("refundAttempted", saga.refundAttempted)
             .addValue("failureReason", saga.failureReason)
             .addValue("riskScore", saga.riskScore)
             .addValue("riskDecision", saga.riskDecision)
@@ -56,6 +60,10 @@ class JdbcSagaRepository(
         state = SagaState.valueOf(rs.getString("state")),
         holdId = rs.getObject("hold_id", UUID::class.java),
         ledgerPosted = rs.getBoolean("ledger_posted"),
+        holdCommitted = rs.getBoolean("hold_committed"),
+        creditOutcomeUnknown = rs.getBoolean("credit_outcome_unknown"),
+        creditRefused = rs.getBoolean("credit_refused"),
+        refundAttempted = rs.getBoolean("refund_attempted"),
         failureReason = rs.getString("failure_reason"),
         riskScore = rs.getInt("risk_score").takeUnless { rs.wasNull() },
         riskDecision = rs.getString("risk_decision"),
@@ -63,25 +71,43 @@ class JdbcSagaRepository(
         updatedAt = rs.getTimestamp("updated_at").toInstant(),
     )
 
-    private companion object {
+    internal companion object {
         const val COLUMNS = """
             id, from_account_id, to_account_id, amount_minor, currency, state, hold_id,
-            ledger_posted, failure_reason, risk_score, risk_decision, created_at, updated_at
+            ledger_posted, hold_committed, credit_outcome_unknown, credit_refused,
+            refund_attempted, failure_reason, risk_score, risk_decision, created_at, updated_at
         """
 
         const val SELECT_BY_ID = "SELECT $COLUMNS FROM transfer_saga WHERE id = :id"
 
+        /**
+         * Safety facts are merged with `OR`, never overwritten.
+         *
+         * `transfer_saga` has no optimistic lock, so this upsert is last-writer-wins. That is
+         * harmless for `state` or `failure_reason`, but a fact whose TRUE value means "do not
+         * financially reverse this transfer" must not be downgraded by a writer holding a stale
+         * copy: a concurrent admin compensation that read the row a moment before it was frozen
+         * would otherwise erase the freeze and go on to refund the sender. Making the merge
+         * monotonic puts that guarantee in the one place that sees every writer.
+         */
         const val UPSERT = """
             INSERT INTO transfer_saga (
                 id, from_account_id, to_account_id, amount_minor, currency, state, hold_id,
-                ledger_posted, failure_reason, risk_score, risk_decision, created_at, updated_at
+                ledger_posted, hold_committed, credit_outcome_unknown, credit_refused,
+                refund_attempted, failure_reason, risk_score, risk_decision, created_at, updated_at
             ) VALUES (
                 :id, :fromAccountId, :toAccountId, :amountMinor, :currency, :state, :holdId,
-                :ledgerPosted, :failureReason, :riskScore, :riskDecision, :createdAt, :updatedAt
+                :ledgerPosted, :holdCommitted, :creditOutcomeUnknown, :creditRefused,
+                :refundAttempted, :failureReason, :riskScore, :riskDecision, :createdAt, :updatedAt
             )
             ON CONFLICT (id) DO UPDATE SET
                 state          = EXCLUDED.state,
-                ledger_posted  = EXCLUDED.ledger_posted,
+                ledger_posted  = transfer_saga.ledger_posted OR EXCLUDED.ledger_posted,
+                hold_committed = transfer_saga.hold_committed OR EXCLUDED.hold_committed,
+                credit_outcome_unknown =
+                    transfer_saga.credit_outcome_unknown OR EXCLUDED.credit_outcome_unknown,
+                credit_refused = transfer_saga.credit_refused OR EXCLUDED.credit_refused,
+                refund_attempted = transfer_saga.refund_attempted OR EXCLUDED.refund_attempted,
                 failure_reason = EXCLUDED.failure_reason,
                 risk_score     = EXCLUDED.risk_score,
                 risk_decision  = EXCLUDED.risk_decision,
