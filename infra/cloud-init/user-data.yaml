@@ -69,6 +69,11 @@ write_files:
         reverse_proxy 127.0.0.1:8081
       }
 
+      # Grafana binds 127.0.0.1:3002 only; this is its sole public door.
+      grafana.roboti.qzz.io {
+        reverse_proxy 127.0.0.1:3002
+      }
+
   # --- Compose override: point Keycloak's issuer/hostname at the real domain ---
   # Ports are intentionally left alone here: docker's own iptables rules
   # bypass ufw, so port exposure is handled by ufw-docker below, not by
@@ -119,6 +124,21 @@ write_files:
           environment:
             SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: https://auth.roboti.qzz.io/realms/finix
 
+  # --- Grafana credentials, consumed by ${...} interpolation in the compose file ---
+  # Kept out of the compose override on purpose: interpolation variables do
+  # not require the `grafana` service to exist yet, so this file is harmless
+  # if it lands before the monitoring profile does. A service-level override
+  # would instead fail the whole `docker compose config`.
+  #
+  # CHANGE THE PASSWORD after provisioning — Grafana is publicly reachable.
+  - path: /opt/finix/monitoring.env
+    owner: finix:finix
+    permissions: "0600"
+    content: |
+      FINIX_GRAFANA_ADMIN_USER=admin
+      FINIX_GRAFANA_ADMIN_PASSWORD=change-me-before-first-boot
+      FINIX_GRAFANA_ROOT_URL=https://grafana.roboti.qzz.io
+
   # --- Docker log rotation (unbounded json-file logs will fill the disk otherwise) ---
   - path: /etc/docker/daemon.json
     owner: root:root
@@ -140,6 +160,7 @@ write_files:
       REPO_URL="https://github.com/Rexosphere/finix.git"
       APP_DIR="/opt/finix/app"
       COMPOSE=(docker compose \
+        --env-file /opt/finix/monitoring.env \
         -f "$APP_DIR/infra/compose/docker-compose.yml" \
         -f /opt/finix/docker-compose.override.yml \
         --profile full)

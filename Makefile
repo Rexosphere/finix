@@ -1,4 +1,4 @@
-.PHONY: help verify test demo demo-pull up up-pull down logs seed rebuild dist
+.PHONY: help verify test demo demo-pull up up-pull down logs seed rebuild dist monitoring monitoring-down
 
 COMPOSE := docker compose -f infra/compose/docker-compose.yml
 export COMPOSE_PROJECT_NAME ?= finix
@@ -32,6 +32,13 @@ logs: ## Tail compose logs
 
 seed: ## Seed personas into running stack
 	./scripts/seed.sh
+
+monitoring: ## Start Prometheus + Grafana + Loki alongside the core stack (Grafana on :3002)
+	$(COMPOSE) --profile monitoring up -d
+	@echo "Grafana   http://localhost:3002  (admin / $${FINIX_GRAFANA_ADMIN_PASSWORD:-admin})"
+
+monitoring-down: ## Stop the monitoring profile, keeping the core stack up
+	$(COMPOSE) --profile monitoring down
 
 demo: ## Build locally, start, wait healthy, seed, print URLs
 	./scripts/up.sh

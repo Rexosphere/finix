@@ -239,7 +239,32 @@ make rebuild SERVICE=account-service
 | `make rebuild SERVICE=…` | Rebuild + recreate one service locally |
 | `make seed` | Seed personas into a running stack |
 | `make logs` | Tail compose logs |
+| `make monitoring` | Start Prometheus + Grafana + Loki alongside the stack |
+| `make monitoring-down` | Stop the monitoring profile, leaving the stack up |
 | `make down` | Stop the stack and remove volumes |
+
+### Observability
+
+`make monitoring` brings up the `monitoring` profile — Prometheus, Grafana, Loki, Grafana Alloy,
+and exporters for the host, containers, Postgres and Redis. Grafana lands on
+<http://localhost:3002> (`admin` / `admin` locally) with two dashboards pre-provisioned from
+`infra/monitoring/grafana/dashboards/`.
+
+Every service exposes request metrics under the same names. The Spring Boot services get
+`http_server_requests_seconds` from Micrometer for free; the Go, Python and Node services emit the
+same metric name and the same `uri` / `method` / `status` / `outcome` labels by hand, so one Grafana
+panel covers all of them rather than one panel per language.
+
+`uri` is always the *route template* (`/v1/payments/{id}`), never the raw path — a payment id in the
+label would give the series unbounded cardinality.
+
+Logs are shipped by Alloy straight off the Docker socket into Loki, labelled with the compose
+service name so a log query and a metric query filter on the same `service` value.
+
+In production the stack is part of the `full` profile, so it deploys with everything else; Grafana
+is published on `127.0.0.1:3002` only and reached through Caddy at
+<https://grafana.roboti.qzz.io>. Its credentials come from `/opt/finix/monitoring.env` on the
+server and are never committed.
 
 ### Local build / tests only
 

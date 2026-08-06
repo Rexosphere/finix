@@ -35,6 +35,19 @@ spring:
       # + finix.keycloak.*. A client issuer-uri of localhost:8081 fails inside Docker
       # (localhost is the identity container, not Keycloak on the host).
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
 finix:
   keycloak:
     # Server-side token exchange (compose overrides to http://keycloak:8080).

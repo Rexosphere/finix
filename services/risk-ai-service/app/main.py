@@ -13,10 +13,12 @@ from app.model import RiskModel, amount_z_score
 from app.rules import Decision, decide, rules_engine
 from app.shield import AiShield, ServiceHealthSample
 from app.federated import fedavg_demo
+from app.metrics import setup_metrics
 
 ARTIFACT_DIR = Path(os.environ.get("FINIX_MODEL_DIR", Path(__file__).parent / "model_artifacts"))
 
 app = FastAPI(title="FINIX risk-ai-service", version="0.1.0")
+setup_metrics(app)
 model = RiskModel(ARTIFACT_DIR)
 shield = AiShield()
 CASES: list[dict[str, Any]] = []

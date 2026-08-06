@@ -10,6 +10,7 @@
 import express from "express";
 import { renderTemplate, listTemplates } from "./templates.js";
 import { MessageStore } from "./store.js";
+import { metricsMiddleware, metricsHandler } from "./metrics.js";
 
 const PORT = Number(process.env.PORT || 8093);
 const CHANNELS = new Set(["sms", "email", "push", "voice"]);
@@ -19,6 +20,9 @@ const app = express();
 const store = new MessageStore();
 
 app.use(express.json({ limit: "64kb" }));
+app.use(metricsMiddleware);
+
+app.get("/metrics", metricsHandler);
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", service: "notification-service" });

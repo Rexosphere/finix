@@ -40,7 +40,10 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./init-databases.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U finix"]
+      # -d postgres is load-bearing: pg_isready defaults the database name to
+      # the username, and no `finix` database exists, so every 5s probe logged
+      # `FATAL: database "finix" does not exist` (~17k lines/day) without it.
+      test: ["CMD-SHELL", "pg_isready -U finix -d postgres"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -89,6 +92,9 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
       KC_HTTP_PORT: "8080"
       KC_HEALTH_ENABLED: "true"
+      # Keycloak 26 serves /metrics on the management port (9000), which is
+      # never published to the host — Prometheus reaches it over the network.
+      KC_METRICS_ENABLED: "true"
       KC_HOSTNAME_STRICT: "false"
     volumes:
       - ../keycloak/finix-realm.json:/opt/keycloak/data/import/finix-realm.json:ro
@@ -400,9 +406,168 @@ services:
     networks: [finix]
     restart: unless-stopped
 
+  # ---------------------------------------------------------------------
+  # Observability. Profile `monitoring` so `make up` (core) stays lean;
+  # also in `full`, which is what deploy.sh runs on the server.
+  #
+  # Only Grafana publishes a port, and only on the loopback — Caddy on the
+  # host terminates TLS for grafana.roboti.qzz.io and proxies to it.
+  # Prometheus and Loki are reachable from the finix network only.
+  # ---------------------------------------------------------------------
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    profiles: [monitoring, full]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+      - --storage.tsdb.retention.size=20GB
+      - --web.enable-lifecycle
+    volumes:
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../monitoring/prometheus/rules:/etc/prometheus/rules:ro
+      - promdata:/prometheus
+    expose: ["9090"]
+    networks: [finix]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  loki:
+    image: grafana/loki:3.2.1
+    profiles: [monitoring, full]
+    # The image runs as uid 10001 but a fresh named volume is owned by root,
+    # so Loki cannot create /loki/chunks on first boot without this.
+    user: "0:0"
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - ../monitoring/loki/loki.yml:/etc/loki/loki.yml:ro
+      - lokidata:/loki
+    expose: ["3100"]
+    networks: [finix]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3100/ready || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  alloy:
+    image: grafana/alloy:v1.5.1
+    profiles: [monitoring, full]
+    # Needs to read the Docker socket to discover containers and tail logs.
+    user: "0:0"
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ../monitoring/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloydata:/var/lib/alloy/data
+    expose: ["12345"]
+    depends_on:
+      loki:
+        condition: service_started
+    networks: [finix]
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    profiles: [monitoring, full]
+    environment:
+      # Override on the server; never commit the real password.
+      GF_SECURITY_ADMIN_USER: ${FINIX_GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${FINIX_GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_SERVER_ROOT_URL: ${FINIX_GRAFANA_ROOT_URL:-http://localhost:3002}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_LOG_LEVEL: warn
+    volumes:
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    ports: ["127.0.0.1:3002:3000"]
+    depends_on:
+      prometheus:
+        condition: service_started
+      loki:
+        condition: service_started
+    networks: [finix]
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    profiles: [monitoring, full]
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/host/root
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc|var/lib/docker/.+)($$|/)
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/root:ro,rslave
+    expose: ["9100"]
+    networks: [finix]
+    restart: unless-stopped
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    profiles: [monitoring, full]
+    privileged: true
+    devices: ["/dev/kmsg"]
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    expose: ["8080"]
+    networks: [finix]
+    restart: unless-stopped
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.16.0
+    profiles: [monitoring, full]
+    environment:
+      DATA_SOURCE_NAME: postgresql://finix:finix@postgres:5432/postgres?sslmode=disable
+      PG_EXPORTER_AUTO_DISCOVER_DATABASES: "true"
+    expose: ["9187"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [finix]
+    restart: unless-stopped
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.66.0
+    profiles: [monitoring, full]
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    expose: ["9121"]
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks: [finix]
+    restart: unless-stopped
+
 networks:
   finix:
     driver: bridge
 
 volumes:
   pgdata:
+  promdata:
+  lokidata:
+  alloydata:
+  grafanadata:

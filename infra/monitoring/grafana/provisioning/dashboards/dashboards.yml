@@ -1,0 +1,15 @@
+apiVersion: 1
+
+providers:
+  - name: finix
+    orgId: 1
+    folder: FINIX
+    type: file
+    disableDeletion: false
+    # Dashboards are version-controlled in this repo, so let the files win
+    # on every restart rather than preserving in-UI edits.
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

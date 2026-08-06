@@ -1,0 +1,82 @@
+// Grafana Alloy — ships every container's stdout/stderr to Loki.
+//
+// Reads from the Docker socket rather than tailing /var/lib/docker/containers
+// files, so it picks up new containers on each refresh without a restart and
+// does not depend on the json-file log driver's on-disk layout.
+
+logging {
+  level  = "warn"
+  format = "logfmt"
+}
+
+discovery.docker "containers" {
+  host             = "unix:///var/run/docker.sock"
+  refresh_interval = "15s"
+}
+
+discovery.relabel "containers" {
+  targets = discovery.docker.containers.targets
+
+  // Docker reports names as "/finix-web-1"; strip the leading slash.
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/?(.*)"
+    target_label  = "container"
+  }
+
+  // The compose service name is the label that joins logs to metrics —
+  // Prometheus applies the same `service` label to every scrape target.
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "project"
+  }
+
+  // Drop anything not belonging to the finix compose project so a stray
+  // container on the host cannot flood the log volume.
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    regex         = "finix"
+    action        = "keep"
+  }
+}
+
+loki.source.docker "containers" {
+  host             = "unix:///var/run/docker.sock"
+  targets          = discovery.relabel.containers.output
+  forward_to       = [loki.process.finix.receiver]
+  refresh_interval = "15s"
+}
+
+loki.process "finix" {
+  forward_to = [loki.write.default.receiver]
+
+  stage.static_labels {
+    values = {
+      job = "docker",
+      env = "production",
+    }
+  }
+
+  // Spring Boot's default pattern starts with the ISO timestamp; lift the
+  // level out so Grafana can filter on it without a regex per query.
+  stage.regex {
+    expression = "(?P<level>\\b(TRACE|DEBUG|INFO|WARN|ERROR|FATAL)\\b)"
+  }
+
+  stage.labels {
+    values = {
+      level = "",
+    }
+  }
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

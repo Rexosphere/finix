@@ -27,9 +27,14 @@ func NewServer(mem *store.Memory, hub *connector.Hub) *Server {
 	return s
 }
 
-func (s *Server) Handler() http.Handler { return s.mux }
+func (s *Server) Handler() http.Handler { return s.instrument(s.mux) }
+
+// metricsPattern is the ServeMux pattern for the scrape endpoint; the
+// instrumentation middleware skips it so scrapes do not measure themselves.
+const metricsPattern = "GET /metrics"
 
 func (s *Server) routes() {
+	s.mux.Handle(metricsPattern, metricsHandler())
 	s.mux.HandleFunc("GET /health", s.health)
 	s.mux.HandleFunc("POST /v1/payments", s.createPayment)
 	s.mux.HandleFunc("GET /v1/payments/{id}", s.getPayment)

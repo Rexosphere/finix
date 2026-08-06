@@ -1,0 +1,118 @@
+# FINIX Prometheus scrape config.
+#
+# Every target is addressed by its compose service name on the `finix`
+# bridge network — nothing here depends on published host ports, so the
+# stack keeps working if those bindings are ever tightened.
+#
+# The `service` label is derived from the address rather than written out
+# per target, so adding a service means adding one line to a targets list.
+
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: finix
+    env: production
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Spring Boot services. enclave-runtime is deliberately absent: it exposes
+  # health only (see services/enclave-runtime/src/main/resources/application.yml)
+  # because a real Nitro-style enclave must not surface an actuator surface.
+  - job_name: finix-jvm
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - identity-service:8082
+          - account-service:8083
+          - ledger-service:8084
+          - transaction-orchestrator:8085
+          - vault-service:8086
+          - ussd-gateway:8087
+          - loan-service:8088
+          - compliance-service:8089
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: "([^:]+):.*"
+        target_label: service
+        replacement: "$1"
+
+  # Non-JVM services, each exposing a plain /metrics.
+  - job_name: finix-apps
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - risk-ai-service:8091
+          - payment-hub:8092
+          - notification-service:8093
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: "([^:]+):.*"
+        target_label: service
+        replacement: "$1"
+
+  # Keycloak 26 serves metrics on the separate management port 9000,
+  # gated by KC_METRICS_ENABLED=true.
+  - job_name: keycloak
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["keycloak:9000"]
+        labels:
+          service: keycloak
+
+  # Redpanda's curated public metrics set; /metrics is the far noisier
+  # internal seastar dump.
+  - job_name: redpanda
+    metrics_path: /public_metrics
+    static_configs:
+      - targets: ["redpanda:9644"]
+        labels:
+          service: redpanda
+
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+        labels:
+          service: postgres
+
+  - job_name: redis
+    static_configs:
+      - targets: ["redis-exporter:9121"]
+        labels:
+          service: redis
+
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]
+        labels:
+          service: host
+
+  # Per-container CPU/memory/network. cAdvisor labels every series with the
+  # compose service name, so it joins cleanly against the app metrics above.
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
+    metric_relabel_configs:
+      - source_labels: [container_label_com_docker_compose_service]
+        target_label: service
+      - regex: "container_label_.*"
+        action: labeldrop
+
+  - job_name: loki
+    static_configs:
+      - targets: ["loki:3100"]
+        labels:
+          service: loki
+
+  - job_name: alloy
+    static_configs:
+      - targets: ["alloy:12345"]
+        labels:
+          service: alloy

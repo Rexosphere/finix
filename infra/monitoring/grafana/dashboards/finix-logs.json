@@ -1,0 +1,127 @@
+{
+  "uid": "finix-logs",
+  "title": "FINIX / Logs",
+  "description": "Container logs shipped by Alloy into Loki, filterable by compose service and level.",
+  "tags": ["finix", "logs"],
+  "timezone": "browser",
+  "editable": true,
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "query",
+        "datasource": { "type": "loki", "uid": "finix-loki" },
+        "query": { "label": "service", "refId": "LokiVariableQueryEditor-VariableQuery", "type": 1 },
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      },
+      {
+        "name": "level",
+        "label": "Level",
+        "type": "custom",
+        "query": "TRACE,DEBUG,INFO,WARN,ERROR,FATAL",
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": { "text": "All", "value": "$__all" }
+      },
+      {
+        "name": "search",
+        "label": "Contains",
+        "type": "textbox",
+        "query": "",
+        "current": { "text": "", "value": "" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Log volume by service",
+      "gridPos": { "h": 7, "w": 16, "x": 0, "y": 0 },
+      "datasource": { "type": "loki", "uid": "finix-loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (service) (rate({job=\"docker\", service=~\"$service\"}[$__auto]))",
+          "legendFormat": "{{service}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "logs/s",
+          "min": 0,
+          "custom": { "drawStyle": "bars", "fillOpacity": 60, "showPoints": "never", "stacking": { "mode": "normal" } }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Error & warn rate",
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 0 },
+      "datasource": { "type": "loki", "uid": "finix-loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (level) (rate({job=\"docker\", service=~\"$service\", level=~\"WARN|ERROR|FATAL\"}[$__auto]))",
+          "legendFormat": "{{level}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "logs/s",
+          "min": 0,
+          "custom": { "drawStyle": "bars", "fillOpacity": 60, "showPoints": "never", "stacking": { "mode": "normal" } }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "ERROR" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "WARN" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }]
+          }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "type": "logs",
+      "title": "Logs",
+      "gridPos": { "h": 20, "w": 24, "x": 0, "y": 7 },
+      "datasource": { "type": "loki", "uid": "finix-loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{job=\"docker\", service=~\"$service\"} | level =~ \"$level\" |= \"$search\""
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    }
+  ]
+}

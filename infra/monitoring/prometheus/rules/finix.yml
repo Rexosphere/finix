@@ -1,0 +1,90 @@
+# Alerting rules. No Alertmanager is deployed yet, so these surface in
+# Grafana's "Alert rules" view and on the Prometheus /alerts page rather
+# than paging anyone. Wiring Alertmanager later needs no rule changes.
+
+groups:
+  - name: finix-availability
+    interval: 30s
+    rules:
+      - alert: TargetDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }}/{{ $labels.instance }} is not scrapeable"
+          description: "Prometheus has failed to scrape this target for 2 minutes."
+
+      - alert: ServiceRestarting
+        # Uptime resetting repeatedly means the container is crash-looping.
+        expr: changes(process_uptime_seconds[15m]) > 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }} restarted more than 3 times in 15m"
+
+  - name: finix-latency
+    interval: 30s
+    rules:
+      - alert: HighHttpErrorRate
+        expr: |
+          sum by (service) (rate(http_server_requests_seconds_count{outcome="SERVER_ERROR"}[5m]))
+            /
+          clamp_min(sum by (service) (rate(http_server_requests_seconds_count[5m])), 0.001)
+            > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }} is returning >5% 5xx"
+
+      - alert: HighRequestLatency
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (service, le) (rate(http_server_requests_seconds_bucket[5m]))
+          ) > 2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }} p95 latency above 2s"
+
+  - name: finix-resources
+    interval: 30s
+    rules:
+      - alert: JvmHeapPressure
+        # Services are capped at -Xmx192m, so sustained >90% heap is a real
+        # signal here rather than normal GC headroom.
+        expr: |
+          sum by (service) (jvm_memory_used_bytes{area="heap"})
+            /
+          sum by (service) (jvm_memory_max_bytes{area="heap"})
+            > 0.9
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }} heap above 90% of max"
+
+      - alert: HostDiskFillingUp
+        expr: |
+          node_filesystem_avail_bytes{mountpoint="/",fstype!="tmpfs"}
+            /
+          node_filesystem_size_bytes{mountpoint="/",fstype!="tmpfs"}
+            < 0.15
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Less than 15% disk free on /"
+
+      - alert: HostMemoryLow
+        expr: |
+          node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.10
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Less than 10% memory available on the host"
