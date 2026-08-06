@@ -2,7 +2,10 @@
 # Build from repo root:
 #   docker build -f services/payment-hub/Dockerfile -t finix-payment-hub .
 
-FROM golang:1.22-alpine@sha256:1699c10032ca2582ec89a24a1312d986a3f094aed3d5c1147b19880afe40e052 AS build
+# Tracks the `go` directive in go.mod (1.25). A builder older than that makes
+# the toolchain download a second Go at build time — slow, and impossible in an
+# air-gapped build.
+FROM golang:1.25-alpine@sha256:56961d79ea8129efddcc0b8643fd8a5416b4e6228cfd477e3fd61deb2672c587 AS build
 WORKDIR /src
 RUN apk add --no-cache git ca-certificates
 COPY services/payment-hub/go.mod services/payment-hub/go.sum* ./

@@ -759,9 +759,10 @@ services:
     secrets:
       - postgres_superuser_password
     expose: ["9187"]
-    depends_on:
-      postgres:
-        condition: service_healthy
+    # No depends_on: postgres lives in the core profile, and a cross-profile
+    # dependency makes `--profile monitoring` on its own an invalid project.
+    # The exporter retries its connection anyway, so the only cost of starting
+    # first is a few failed scrapes.
     networks: [finix]
     restart: unless-stopped
 
@@ -771,9 +772,7 @@ services:
     environment:
       REDIS_ADDR: redis://redis:6379
     expose: ["9121"]
-    depends_on:
-      redis:
-        condition: service_healthy
+    # See postgres-exporter: no cross-profile depends_on.
     networks: [finix]
     restart: unless-stopped
 

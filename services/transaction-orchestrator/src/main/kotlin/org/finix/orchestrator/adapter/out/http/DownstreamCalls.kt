@@ -47,11 +47,18 @@ internal fun <T> callDownstream(dependency: String, block: () -> T): T =
         throw DomainException(DomainError.Unavailable(dependency, "$dependency is unreachable: ${ex.message}"), ex)
     }
 
+/**
+ * Longest downstream body fragment kept in a saga failure reason. Enough to identify
+ * the fault, short enough that a stack trace or an HTML error page cannot flood the
+ * transfer record.
+ */
+private const val MAX_BODY_SUMMARY = 240
+
 /** Prefer problem+json `detail` over dumping the whole body into the saga failure reason. */
 internal fun summarizeDownstreamBody(body: String?): String {
     if (body.isNullOrBlank()) return "no body"
     val trimmed = body.trim()
-    if (!trimmed.startsWith("{")) return trimmed.take(240)
+    if (!trimmed.startsWith("{")) return trimmed.take(MAX_BODY_SUMMARY)
     return try {
         val detail = Regex("\"detail\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"")
             .find(trimmed)
@@ -63,8 +70,8 @@ internal fun summarizeDownstreamBody(body: String?): String {
             .find(trimmed)
             ?.groupValues
             ?.get(1)
-        detail ?: title ?: trimmed.take(240)
+        detail ?: title ?: trimmed.take(MAX_BODY_SUMMARY)
     } catch (_: Exception) {
-        trimmed.take(240)
+        trimmed.take(MAX_BODY_SUMMARY)
     }
 }

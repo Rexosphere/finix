@@ -80,7 +80,10 @@ jobs:
 
       - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
         with:
-          go-version: "1.22"
+          # From go.mod, not a literal: a hardcoded 1.22 against a go.mod that
+          # Dependabot has since bumped makes the toolchain switch mid-build and
+          # lose its own tools ("go: no such tool covdata").
+          go-version-file: services/payment-hub/go.mod
           cache-dependency-path: services/payment-hub/go.sum
 
       - name: gofmt
@@ -255,9 +258,20 @@ jobs:
           # leaked credential.
           fetch-depth: 0
 
-      - uses: gitleaks/gitleaks-action@83373cf2f8c4db6e24b41c1a9b086bb9619e9cd3 # v2.3.7
+      # The gitleaks *binary* is MIT-licensed and free; only the GitHub Action
+      # wrapper requires a paid licence for organisation-owned repositories
+      # ("missing gitleaks license"). Running the release directly keeps the scan
+      # and drops the licence wall.
+      - name: Install gitleaks
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_VERSION: 8.21.2
+        run: |
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
+
+      - name: Scan full history
+        run: gitleaks detect --source . --redact --no-banner --exit-code 1
 
   dependency-scan:
     name: Dependency CVEs
