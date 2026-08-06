@@ -1,0 +1,747 @@
+% FINIX — Phase 3 (FORTIFY) competition submission.
+% Compile: pdflatex -interaction=nonstopmode -halt-on-error docs/PHASE3-SUBMISSION.tex  (run twice for the ToC)
+% Every repository path cited here was verified to exist in the repository.
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[a4paper,margin=22mm,top=26mm,bottom=24mm]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{amsmath}
+\usepackage[hidelinks]{hyperref}
+
+% ---------------------------------------------------------------- palette
+\definecolor{finixnavy}{RGB}{16,42,74}
+\definecolor{finixteal}{RGB}{0,110,120}
+\definecolor{finixgrey}{RGB}{96,104,116}
+\definecolor{finixrule}{RGB}{205,212,222}
+\definecolor{finixbg}{RGB}{243,246,250}
+
+% ---------------------------------------------------------------- headings
+\titleformat{\section}{\color{finixnavy}\Large\bfseries}{\thesection}{0.7em}{}
+\titleformat{\subsection}{\color{finixnavy}\large\bfseries}{\thesubsection}{0.6em}{}
+\titleformat{\subsubsection}{\color{finixteal}\normalsize\bfseries}{}{0em}{}
+\titlespacing*{\section}{0pt}{14pt}{6pt}
+\titlespacing*{\subsection}{0pt}{11pt}{4pt}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+\fancyhead[L]{\small\color{finixnavy}\textbf{FINIX} \textcolor{finixgrey}{--- Phase 3 FORTIFY}}
+\fancyhead[R]{\small\color{finixgrey}Production Deployment \& Operational Evidence}
+\fancyfoot[C]{\small\color{finixgrey}\thepage}
+
+\setlist[itemize]{leftmargin=1.35em,itemsep=1.5pt,topsep=3pt,parsep=0pt}
+\setlist[enumerate]{leftmargin=1.6em,itemsep=1.5pt,topsep=3pt,parsep=0pt}
+\renewcommand{\arraystretch}{1.25}
+
+% ---------------------------------------------------------------- helpers
+\newcommand{\pth}[1]{\texttt{\small #1}}
+\newcommand{\chk}{\raisebox{0.4pt}{\framebox[2.6mm]{\rule{0pt}{1.6mm}}}}
+\newcommand{\rubric}[1]{{\small\textcolor{finixteal}{\textbf{Rubric:}~#1}}}
+
+% Screenshot placeholder — compiles with no image file present.
+\newcommand{\shot}[3]{%
+  \begin{center}
+  \fbox{%
+    \parbox{0.92\textwidth}{%
+      \vspace{3pt}\centering
+      {\footnotesize\textbf{\textcolor{finixnavy}{SCREENSHOT PLACEHOLDER --- #1}}}\\[3pt]
+      {\footnotesize #2}\\[3pt]
+      {\footnotesize\itshape\textcolor{finixgrey}{Evidence to capture: #3}}
+      \vspace{4pt}}}
+  \end{center}}
+
+% Numbered evidence figure placeholder for the evidence appendix.
+\newcommand{\evidence}[3]{%
+  \begin{center}
+  \fbox{%
+    \parbox{0.92\textwidth}{%
+      \vspace{4pt}\centering
+      {\small\textbf{\textcolor{finixnavy}{Figure #1 --- #2}}}\\[4pt]
+      \rule{0pt}{26mm}\\
+      {\footnotesize\itshape\textcolor{finixgrey}{Evidence to capture: #3}}
+      \vspace{5pt}}}
+  \end{center}
+  \vspace{2pt}}
+
+\begin{document}
+
+% ================================================================ title
+\begin{titlepage}
+\centering
+\vspace*{22mm}
+{\color{finixteal}\rule{0.55\textwidth}{1.2pt}}\\[10mm]
+{\Huge\bfseries\color{finixnavy} FINIX}\\[5mm]
+{\LARGE\color{finixnavy} Resilient Digital Banking Platform}\\[9mm]
+{\Large\bfseries\color{finixteal} Phase 3 --- FORTIFY}\\[4mm]
+{\large\color{finixnavy} Production Deployment \& Operational Evidence}\\[8mm]
+{\large\itshape\color{finixgrey} Deploy It. Automate It. Keep It Running.}\\[10mm]
+{\color{finixteal}\rule{0.55\textwidth}{1.2pt}}\\[14mm]
+
+\begin{tabular}{@{}r@{\hspace{1.5em}}l@{}}
+\textbf{\color{finixnavy}Team} & [TEAM NAME]\\
+\textbf{\color{finixnavy}Competition} & Duothan 6.0\\
+\textbf{\color{finixnavy}Date} & [SUBMISSION DATE]\\
+\end{tabular}
+
+\vspace{12mm}
+\begin{tabular}{@{}r@{\hspace{1.5em}}l@{}}
+\textbf{\color{finixnavy}Customer platform} & \url{https://roboti.qzz.io}\\
+\textbf{\color{finixnavy}Operations console} & \url{https://admin.roboti.qzz.io}\\
+\end{tabular}
+
+\vfill
+{\footnotesize\color{finixgrey} Every repository path cited in this document exists in the FINIX repository.}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% ================================================================ 1
+\section{Executive Summary}
+
+FINIX is a digital banking platform built from twelve independently deployable services, each
+owning its own logical database and communicating over HTTP and an event backbone. The platform
+covers the full retail banking path: \textbf{identity} and customer profiles, \textbf{accounts}
+with a reserve/commit balance model, \textbf{transaction orchestration} as a compensating saga, a
+\textbf{cryptographic ledger} with double-entry postings and a tamper-evident hash chain,
+\textbf{Vault} key custody with a 3-of-5 Shamir ceremony, \textbf{USSD} low-bandwidth banking,
+\textbf{loan} processing, \textbf{compliance} case management and sanctions screening, an
+\textbf{enclave runtime} for key reconstruction, \textbf{ML-assisted risk scoring},
+a \textbf{payment hub} emitting ISO 20022 pacs.008, and \textbf{notifications}.
+
+Phase 3 shifts the question from ``does it work?'' to ``does it keep working, and can you prove
+it?'' FINIX answers that with five operational commitments, each backed by artifacts in the
+repository: \textbf{deployment} of the exact images CI built for a given commit;
+\textbf{automation} spanning build, publish, provision and release; \textbf{reliability} through
+saga compensation, derived idempotency keys and an independently verifiable ledger;
+\textbf{observability} through a metrics, logs and tracing stack with alert rules; and
+\textbf{security engineering} across JWT identity, RFC 9449 DPoP verification, post-quantum
+anchor signatures, and development-only gating of sensitive endpoints.
+
+The platform runs live on a provisioned host behind a TLS-terminating reverse proxy:
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Customer platform} & \url{https://roboti.qzz.io}\\
+\textbf{Operations console} & \url{https://admin.roboti.qzz.io}\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ================================================================ 2
+\section{System Architecture}
+
+FINIX is layered so that a failure or a redeploy in one tier does not require coordinated change
+in another. Channels reach a single TLS edge; the edge reverse-proxies to services; services own
+their data and publish events; the observability tier watches all of it.
+
+\begin{center}
+\fbox{\parbox{0.95\textwidth}{\vspace{4pt}\centering
+{\small\textbf{\color{finixnavy}CHANNELS}}\\[3pt]
+\fbox{\small Web PWA}\quad\fbox{\small Admin Console}\quad\fbox{\small Offline Vouchers}\quad\fbox{\small USSD}\quad\fbox{\small Lite ($<$50\,KB)}\\[6pt]
+$\downarrow$\\[4pt]
+{\small\textbf{\color{finixnavy}EDGE}}\\[3pt]
+\fbox{\small Caddy --- automatic TLS}\quad\fbox{\small web nginx}\quad\fbox{\small admin nginx}\quad\fbox{\small Keycloak}\\[6pt]
+$\downarrow$\\[4pt]
+{\small\textbf{\color{finixnavy}SERVICES}}\\[3pt]
+\fbox{\small Identity}\;\fbox{\small Account}\;\fbox{\small Ledger}\;\fbox{\small Orchestrator}\;\fbox{\small Vault}\;\fbox{\small USSD Gateway}\\[3pt]
+\fbox{\small Loan}\;\fbox{\small Compliance}\;\fbox{\small Enclave Runtime}\;\fbox{\small Risk AI}\;\fbox{\small Payment Hub}\;\fbox{\small Notification}\\[6pt]
+$\downarrow$\\[4pt]
+{\small\textbf{\color{finixnavy}DATA / EVENT / SECURITY}}\\[3pt]
+\fbox{\small PostgreSQL --- database per service}\quad\fbox{\small Redis}\quad\fbox{\small Redpanda (Kafka API)}\quad\fbox{\small Keycloak realm}\quad\fbox{\small OPA}\\[6pt]
+$\downarrow$\\[4pt]
+{\small\textbf{\color{finixnavy}OBSERVABILITY}}\\[3pt]
+\fbox{\small Prometheus}\;\fbox{\small Alertmanager}\;\fbox{\small Grafana}\;\fbox{\small Loki}\;\fbox{\small Alloy}\;\fbox{\small Tempo}\\[3pt]
+\fbox{\small node-exporter}\;\fbox{\small cAdvisor}\;\fbox{\small postgres-exporter}\;\fbox{\small redis-exporter}\;\fbox{\small blackbox-exporter}
+\vspace{5pt}}}
+\end{center}
+
+\noindent\textbf{Architectural decisions are recorded, not implied.} The repository carries
+Architecture Decision Records at \pth{docs/adr/}, including a logical database per service
+(ADR-0003), post-quantum ML-DSA anchor signatures instead of BLS (ADR-0004), a transactional
+outbox rather than change-data-capture (ADR-0005), and deploying published images rather than
+server-side builds (ADR-0007).
+
+\shot{Production architecture / service topology}
+{Service topology as deployed, showing the edge, the running services and the data tier}
+{\pth{docker compose ps} on the production host, or the Grafana service-overview dashboard}
+
+% ================================================================ 3
+\section{Phase 3 Rubric Evidence}
+
+\subsection{A. Service Deployment \& Environment Consistency \hfill \rubric{15\%}}
+
+\subsubsection{What FINIX does}
+Every service ships as a container image built from a per-service \pth{Dockerfile}. The same
+Compose model describes the stack in every environment, with a production overlay applied on top,
+so a service behaves identically on a developer machine and on the production host. Images are
+addressed by an immutable \pth{sha-<short>} tag derived from the commit, which makes the deployed
+artifact traceable to a single revision. Service startup order is governed by health conditions
+rather than timing assumptions.
+
+\subsubsection{Repository evidence}
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+\textbf{Artifact} & \textbf{Path}\\
+\midrule
+Base stack model & \pth{infra/compose/docker-compose.yml}\\
+Production overlay & \pth{infra/compose/docker-compose.prod.yml}\\
+Scale overlay & \pth{infra/compose/docker-compose.scale.yml}\\
+Per-service images & \pth{services/*/Dockerfile}\\
+Database bootstrap & \pth{infra/compose/init-databases.sh}\\
+Local parity entrypoint & \pth{scripts/up.sh}, \pth{scripts/up-pull.sh}\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsubsection{Live proof}
+\shot{Running deployment}{\pth{docker compose ps} listing services and health state on the production host}{Terminal output on the server showing service names, status and health}
+
+\subsection{B. Build \& Release Automation \hfill \rubric{20\%}}
+
+\subsubsection{What FINIX does}
+Three GitHub Actions workflows carry a commit from push to production. Continuous integration
+compiles and tests the JVM modules and additionally runs the Go, Python and Node test suites and a
+supply-chain scan. A publish workflow builds and pushes each service image to GHCR tagged with the
+commit SHA. The deploy workflow then releases \emph{that exact image set} to the server. This is a
+deliberate design decision recorded in ADR-0007: production runs the artifact CI built and tested
+for the commit, rather than a rebuild performed on the server. A nightly chaos workflow exercises
+failure behaviour on a schedule.
+
+\subsubsection{Repository evidence}
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+\textbf{Stage} & \textbf{Path}\\
+\midrule
+Continuous integration & \pth{.github/workflows/ci.yml}\\
+Image publication & \pth{.github/workflows/publish-images.yml}\\
+Release to production & \pth{.github/workflows/deploy.yml}\\
+Scheduled chaos & \pth{.github/workflows/nightly-chaos.yml}\\
+Server-side release & \pth{infra/deploy/deploy.sh}\\
+Release rollback & \pth{infra/deploy/rollback.sh}\\
+Decision record & \pth{docs/adr/0007-deploy-published-images-not-server-builds.md}\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsubsection{Live proof}
+\shot{GitHub Actions --- successful build/release pipeline}{Workflow summary showing green jobs and the commit SHA}{Actions run page for the released commit: CI, publish-images and deploy all green}
+
+\subsection{C. Automated Infrastructure \& Configuration Management \hfill \rubric{15\%}}
+
+\subsubsection{What FINIX does}
+Host provisioning is expressed as Ansible roles rather than manual steps: base hardening and swap,
+Docker installation, the Caddy reverse proxy with automatic TLS, the FINIX application role, and a
+firewall role. Re-running the playbook is safe because the tasks are written to be idempotent.
+Application credentials are generated on the host and mounted as Docker secrets rather than being
+committed, with helper scripts for generation and rotation.
+
+\subsubsection{Repository evidence}
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+\textbf{Concern} & \textbf{Path}\\
+\midrule
+Playbook entrypoint & \pth{infra/ansible/site.yml}\\
+Roles & \pth{infra/ansible/roles/} (base, docker, caddy, finix, firewall)\\
+Inventories & \pth{infra/ansible/inventory/}\\
+Secret generation & \pth{scripts/gen-secrets.sh}\\
+Credential rotation & \pth{scripts/rotate-db-passwords.sh}\\
+Decision record & \pth{docs/adr/0006-generated-docker-secrets-with-vault-as-runtime-source.md}\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsubsection{Live proof}
+\shot{Infrastructure automation}{Ansible playbook run against the production host, or the resulting host state}{Playbook recap showing changed/ok task counts, or \pth{systemctl}/\pth{docker} state after provisioning}
+
+\subsection{D. Scalability, Availability \& Reliability \hfill \rubric{10\%}}
+
+\subsubsection{What FINIX does}
+Services are stateless at the request layer and hold state in PostgreSQL, so an instance can be
+replaced without losing work. A scale overlay exists for running additional replicas of a service.
+Availability is protected by container health checks and dependency-aware startup; reliability is
+protected in the application layer by saga compensation, derived idempotency keys, downstream call
+timeouts and resilience policies. Failure behaviour is exercised deliberately rather than assumed:
+the repository contains a chaos scenario that kills the ledger mid-saga and records the result.
+
+\subsubsection{Repository evidence}
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+\textbf{Mechanism} & \textbf{Path}\\
+\midrule
+Replica overlay & \pth{infra/compose/docker-compose.scale.yml}\\
+Chaos scenario \& results & \pth{tests/chaos/ledger-down.sh}, \pth{tests/chaos/RESULTS.md}\\
+Contract tests & \pth{tests/contract/}\\
+Load profile & \pth{tests/load/}\\
+Saga orchestration & \pth{services/transaction-orchestrator/src/main/kotlin/}\\
+Disaster-recovery runbook & \pth{docs/runbooks/dr-failover.md}\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsubsection{Live proof}
+\shot{Reliability / recovery evidence}{A dependency taken down mid-transaction and the platform's recorded response}{Chaos scenario output plus the saga's final state --- no stranded hold, no false COMPLETED}
+
+\subsection{E. Operational Visibility \& System Health \hfill \rubric{15\%}}
+
+\subsubsection{What FINIX does}
+Every JVM service exposes Spring Boot Actuator health and a Prometheus scrape endpoint; the Go,
+Python and Node services expose equivalents. Prometheus scrapes services and four exporters,
+evaluates alert rules and routes to Alertmanager. Alloy ships logs to Loki; Tempo receives OTLP
+traces. Grafana provisions its datasources from the repository so dashboards come up wired.
+
+\subsubsection{Repository evidence}
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+\textbf{Component} & \textbf{Path}\\
+\midrule
+Scrape configuration & \pth{infra/monitoring/prometheus/prometheus.yml}\\
+Alert rules & \pth{infra/monitoring/prometheus/rules/finix.yml}\\
+Alert routing & \pth{infra/monitoring/alertmanager/alertmanager.yml}\\
+Log shipping & \pth{infra/monitoring/alloy/}, \pth{infra/monitoring/loki/}\\
+Tracing & \pth{infra/monitoring/tempo/tempo.yml}\\
+Endpoint probing & \pth{infra/monitoring/blackbox/blackbox.yml}\\
+Dashboards \& datasources & \pth{infra/monitoring/grafana/}\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsubsection{Live proof}
+\shot{Grafana system overview}{Service availability, request health and resource behaviour across the stack}{Grafana dashboard with live panels and a visible time range}
+
+\subsection{F. Security \& Sensitive Data \hfill \rubric{15\%}}
+
+\subsubsection{What FINIX does}
+Security is implemented as a shared kernel rather than repeated per service: a single
+auto-configured filter chain gives every service JWT resource-server validation against Keycloak,
+realm-role mapping, stateless sessions and an RFC 9449 DPoP verification filter. Credentials are
+generated on the host and mounted as Docker secrets, never committed. Sensitive development
+endpoints --- the ledger tamper injector and the demo data seeders --- are gated so they are not
+registered on an ordinary production boot. Section~\ref{sec:security} states the current
+enforcement posture precisely.
+
+\subsubsection{Repository evidence}
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+\textbf{Control} & \textbf{Path}\\
+\midrule
+Shared security configuration & \pth{services/shared-kernel/src/main/kotlin/org/finix/kernel/security/}\\
+DPoP verification filter & \pth{services/shared-kernel/src/main/kotlin/org/finix/kernel/security/DPoPFilter.kt}\\
+Identity provider assets & \pth{infra/keycloak/}, \pth{infra/keycloak/spi/}\\
+Secret generation / rotation & \pth{scripts/gen-secrets.sh}, \pth{scripts/rotate-db-passwords.sh}\\
+Vault custody domain & \pth{services/vault-service/src/main/kotlin/org/finix/vault/domain/}\\
+Enclave assets & \pth{infra/enclave/}\\
+Key ceremony runbook & \pth{docs/runbooks/key-ceremony.md}\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsubsection{Live proof}
+\shot{Security scanning result}{Supply-chain and secret scanning stage from the CI run}{CI job output for the scanning step on the released commit}
+
+\subsection{G. Engineering Best Practices \hfill \rubric{5\%}}
+
+\subsubsection{What FINIX does}
+The codebase follows a hexagonal layout --- \pth{domain}, \pth{application}, \pth{adapter} --- with
+architecture tests enforcing the boundaries, static analysis and a coverage gate wired into the
+Gradle \pth{verify} task. Contribution process is documented, code ownership is declared, issue and
+pull-request templates are provided, and a pre-commit hook is checked in. Design decisions are
+captured as ADRs and operational procedures as runbooks.
+
+\subsubsection{Repository evidence}
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+\textbf{Practice} & \textbf{Path}\\
+\midrule
+Contribution guide & \pth{CONTRIBUTING.md}\\
+Code ownership & \pth{.github/CODEOWNERS}\\
+Review scaffolding & \pth{.github/pull\_request\_template.md}, \pth{.github/ISSUE\_TEMPLATE/}\\
+Pre-commit hook & \pth{.githooks/pre-commit}\\
+Decision records & \pth{docs/adr/}\\
+Runbooks & \pth{docs/runbooks/}\\
+Evidence map & \pth{docs/EVIDENCE.md}\\
+User guide & \pth{docs/USER-GUIDE.md}\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{H. Team Contributions \hfill \rubric{5\%}}
+
+Contribution detail is recorded in Section~\ref{sec:team}, mapped to repository evidence so each
+claim is checkable against commit history.
+
+% ================================================================ 4
+\section{Production Deployment}
+
+Production work is performed \textbf{on the server}, from artifacts that continuous integration
+already built and tested. No production image is produced on a developer machine.
+
+\subsection{Release path}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}p{4mm}lX@{}}
+\toprule
+& \textbf{Stage} & \textbf{What happens}\\
+\midrule
+1 & Source revision & A commit on the release branch fixes the exact revision to be deployed.\\
+2 & Build \& test & \pth{.github/workflows/ci.yml} compiles and tests the JVM modules and runs the Go, Python and Node suites plus supply-chain scanning.\\
+3 & Publish & \pth{.github/workflows/publish-images.yml} builds each service image and pushes it to GHCR tagged \pth{sha-<short>} for that commit.\\
+4 & Release & \pth{.github/workflows/deploy.yml} invokes \pth{infra/deploy/deploy.sh} on the host, which pulls the \pth{sha-<short>} image set and brings the stack up with \pth{--no-build}, recording the release.\\
+5 & Health verification & Container health checks and service health endpoints are polled until the stack reports healthy.\\
+6 & Smoke verification & A read-only smoke pass over the public edge confirms the customer and operations surfaces respond.\\
+7 & Revision record & The deployed revision is recorded from the host for the evidence pack.\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Rollback}
+
+Rollback is implemented as an ordinary deploy of an earlier recorded release:
+\pth{infra/deploy/rollback.sh} reads the release history, resolves the target revision and
+redeploys its published image set from GHCR --- a pull, not a rebuild. It accepts either the
+previous release or an explicit revision, and can list the release history.
+
+\subsection{Deployment evidence}
+
+\shot{Exact deployed revision}{The commit SHA the running stack was built from}{\pth{git rev-parse HEAD} on the production host, alongside the matching image tag}
+
+\shot{Running deployment / Compose services}{Service inventory and health as reported by the container runtime}{\pth{docker compose ps} on the production host}
+
+\shot{Live customer dashboard}{The customer platform served over TLS at \url{https://roboti.qzz.io}}{Browser window showing the customer landing experience and a valid certificate}
+
+\shot{Live operations dashboard}{The operations console served over TLS at \url{https://admin.roboti.qzz.io}}{Browser window showing the admin console}
+
+\shot{CI workflow and release evidence}{The pipeline run that produced the deployed images}{Actions summary plus the GHCR package listing showing the \pth{sha-<short>} tag}
+
+\noindent Final deployment evidence: [SCREENSHOT PLACEHOLDER --- see Section~\ref{sec:evidence}].
+
+% ================================================================ 5
+\section{Reliability \& Money Safety}
+
+A banking platform is judged on what happens when something fails midway. FINIX treats a transfer
+as a \textbf{saga}: a sequence of steps, each with a defined compensating action, whose progress is
+persisted so that a restart resumes from fact rather than from memory.
+
+\subsection{Transaction integrity}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+\textbf{Mechanism} & \textbf{Design}\\
+\midrule
+Saga orchestration & A transfer advances through persisted states; each downstream effect is recorded before the next is attempted.\\
+Compensation & Every forward step has an inverse. A failure after a debit releases or refunds rather than leaving funds stranded.\\
+Reserve / commit & Funds are reserved as a hold, then committed or released. A balance is never decremented speculatively.\\
+Idempotency & Mutating downstream calls carry an idempotency key so a retried request is recognised as the same logical operation rather than a new one.\\
+Fail-closed risk & A transfer proceeds only on an explicit risk decision; an indeterminate outcome does not become an implicit approval.\\
+Double-entry ledger & Every posting balances debits against credits; an unbalanced journal entry is rejected.\\
+Tamper-evident chain & Each journal entry carries the hash of its predecessor, so altering history breaks the chain at a determinable point.\\
+Merkle anchoring & Entry windows are summarised into a Merkle root and signed, yielding inclusion proofs verifiable independently of the service.\\
+Transactional outbox & Events are written in the same transaction as the state change, then published --- no lost or phantom events (ADR-0005).\\
+Timeouts \& health checks & Downstream calls are bounded; containers declare health so an unhealthy instance is visible.\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Independent verification}
+
+The ledger can be checked without trusting the service that produced it. \pth{scripts/verify-ledger.sh}
+walks the chain through the public verification endpoint, recomputes what it expects and reports
+the first break if one exists, then prints recent anchors. Inclusion proofs are Merkle paths that a
+judge can fold independently.
+
+\shot{Successful LKR 1 transfer}{A completed transfer between demo accounts, end to end}{Transfer confirmation in the customer UI plus the resulting saga state}
+
+\shot{Ledger verification after transfer}{Chain verification reporting a valid ledger, and the inclusion proof for the transfer}{Output of \pth{scripts/verify-ledger.sh}, or the verification page showing the chain and proof}
+
+\shot{Risk decision --- ALLOW / STEP-UP / BLOCK}{The three risk outcomes distinguished by the scoring service}{Three transfers producing an allow, a step-up challenge and a block, with the reason codes shown}
+
+% ================================================================ 6
+\section{Security Architecture}
+\label{sec:security}
+
+\subsection{Identity and session handling}
+
+Keycloak is the identity provider, holding the \pth{finix} realm, its clients and its roles.
+Services are configured as OAuth2 resource servers by the shared security kernel, which validates
+JWTs against the issuer and maps realm roles onto Spring authorities. Browser clients use an
+authorization-code flow with PKCE, and the web tier keeps token material in HttpOnly cookies rather
+than exposing it to page scripts. A Keycloak authenticator SPI is included at \pth{infra/keycloak/spi/}
+for login-risk enrichment.
+
+\subsection{Sender-constrained tokens (DPoP)}
+
+RFC 9449 DPoP verification capability is \textbf{implemented in the shared security layer and can be
+enabled per service}. \pth{DPoPFilter} verifies proof signature, the \pth{htm} and \pth{htu}
+bindings, the \pth{ath} access-token hash, proof freshness within a configured window, and
+\pth{jti} uniqueness against a replay store; where an access token carries a \pth{cnf.jkt}
+confirmation claim, the proof key thumbprint must match it. The filter is configuration-driven:
+\pth{finix.dpop.enabled} controls whether it runs at all and \pth{finix.dpop.required} controls
+whether a proof is mandatory for authenticated requests.
+
+\noindent\textbf{Current posture, stated precisely:} the services ship with
+\pth{finix.security.permit-all: true} and \pth{finix.dpop.required: false} in their
+\pth{application.yml}, which is the demonstration configuration. Request-path authentication and
+mandatory DPoP proofs are therefore \emph{available and configured but not currently enforced} in
+the deployed environment; the enforcement switch is a configuration change, not new code. This
+document does not claim otherwise.
+
+\subsection{Offline value transfer}
+
+Offline vouchers are signed on-device with ECDSA over a registered public key. Replay is prevented
+by three independent controls: a monotonic per-device sequence number, a single-use nonce, and a
+validity window. A device presenting a duplicate sequence or a reused nonce is rejected and
+quarantined, so the same voucher cannot be spent twice when connectivity returns.
+
+\subsection{Key custody --- demo-scale enclave boundary}
+
+The master key is split with Shamir secret sharing over GF(256) into five custodian shards with a
+3-of-5 reconstruction threshold, and Feldman verifiable secret sharing lets a shard be validated
+against public commitments before use. Shards are sealed with a hybrid X25519 + ML-KEM-768 scheme.
+Reconstruction is performed inside the enclave runtime, which returns the decrypted network
+configuration rather than the master key itself, and every reconstruction appends to an egress log.
+Ledger anchors are signed with post-quantum \textbf{ML-DSA} (ADR-0004).
+
+\noindent This is a \textbf{demo-scale enclave boundary}. The custodians are five logical
+identities rather than five physical devices, and the attestation document is a Nitro-format
+document signed by a build-time key rather than output from Nitro hardware. The cryptography ---
+Shamir, Feldman VSS, hybrid sealing and ML-DSA signing --- is genuinely implemented and is
+exercised by the test suite.
+
+\subsection{Development-only endpoints}
+
+Two categories of endpoint exist for demonstration and must never be reachable in production:
+
+\begin{itemize}
+  \item \textbf{Ledger tamper injector} --- deliberately corrupts an entry so that chain
+        verification can be shown detecting it. It is annotated \pth{@Profile("dev")} specifically,
+        rather than including Spring's reserved \pth{default} profile, so a service booted with no
+        profile selected never registers it. A dedicated test guards this.
+  \item \textbf{Demo data seeders} --- create the persona accounts and profiles used in the
+        walkthrough. These are separated into dedicated seeding beans under the same
+        development-only gating, so production returns not-found rather than depending on an
+        authorization rule to hold.
+\end{itemize}
+
+\subsection{Secret management}
+
+No credential is committed. Secrets are generated on the host by \pth{scripts/gen-secrets.sh},
+mounted into containers as Docker secrets, and rotatable via \pth{scripts/rotate-db-passwords.sh}
+(ADR-0006). Supply-chain and secret scanning run as part of continuous integration.
+
+\shot{Vault 3-of-5 ceremony}{A key ceremony reaching threshold and reconstructing inside the enclave}{Admin console ceremony view showing custodian approvals, threshold reached, and a non-empty egress log}
+
+\shot{Security / secret scanning}{The scanning stage of the pipeline reporting on the released commit}{CI job output for supply-chain and secret scanning}
+
+% ================================================================ 7
+\section{Observability}
+
+\subsection{What is instrumented}
+
+Each JVM service exposes Actuator health and a Prometheus endpoint; the Go, Python and Node
+services expose their own health and metrics surfaces. Prometheus scrapes those targets plus
+node-exporter (host), cAdvisor (containers), postgres-exporter (database) and redis-exporter
+(cache), with blackbox-exporter probing endpoints from the outside. Alert rules are evaluated in
+Prometheus and routed through Alertmanager. Alloy collects container logs into Loki, and Tempo
+receives OTLP traces from the services. Grafana provisions its datasources from the repository, so
+metrics, logs and traces are queryable from one place.
+
+\subsection{What a judge can inspect}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+\textbf{Question} & \textbf{Where it is answered}\\
+\midrule
+Is every service up? & Prometheus targets page; Grafana availability panels; container health state\\
+Is request handling healthy? & Request rate, error rate and latency panels per service\\
+How is the host behaving? & node-exporter and cAdvisor panels --- CPU, memory, container restarts\\
+What happened, and when? & Loki log search across services, correlated by trace and correlation id\\
+Did it recover? & Availability panel across the incident window, alongside the chaos scenario record\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\shot{Grafana system overview}{Cross-service availability and request health}{Grafana dashboard with populated panels and a visible time range}
+
+\shot{Prometheus targets / health}{Scrape targets and their up state}{Prometheus targets page showing services and exporters as up}
+
+\shot{Logs / operational visibility}{Aggregated logs for a real request path}{Loki query for a transfer, showing correlated entries across services}
+
+% ================================================================ 8
+\section{Resilient Banking Channels}
+
+Financial inclusion is a bandwidth and device problem as much as a software problem. FINIX
+therefore serves four distinct access conditions from the same core.
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}llX@{}}
+\toprule
+\textbf{Channel} & \textbf{Condition served} & \textbf{Design}\\
+\midrule
+Web PWA & Modern device, normal connectivity & Full customer experience: transfers, verification, history\\
+Offline vouchers & Intermittent or absent connectivity & Value transfer signed on-device and reconciled when connectivity returns, protected against replay\\
+USSD & Feature phone, no data plan & Menu-driven balance and transfer flows over a session protocol, with a simulator for demonstration\\
+Lite interface & Severely constrained bandwidth & A budgeted static page held under 50\,KB with zero client JavaScript, enforced by \pth{scripts/check-lite-budget.sh}\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\noindent The lite budget is not aspirational --- it is a build-time check that fails if the page
+exceeds its size ceiling or introduces a script tag.
+
+\shot{Customer dashboard}{The main customer experience on the live platform}{Browser at \url{https://roboti.qzz.io} showing the customer dashboard}
+
+\shot{Offline mode}{Voucher creation or reconciliation while disconnected}{Offline flow with the network disabled, then the reconciliation result}
+
+\shot{USSD}{A USSD session producing a balance or transfer}{USSD simulator showing the menu and the session response}
+
+\shot{Lite page}{The low-bandwidth interface and its transferred size}{Lite page with browser devtools showing transferred bytes under the budget}
+
+% ================================================================ 9
+\section{Live Demonstration Plan}
+
+The walkthrough is designed to fit inside seven minutes and to show running behaviour rather than
+slides.
+
+\begin{center}
+\begin{longtable}{@{}p{11mm}p{31mm}p{40mm}p{40mm}p{10mm}@{}}
+\toprule
+\textbf{Time} & \textbf{Action} & \textbf{What the judge sees} & \textbf{What it proves} & \textbf{Rubric}\\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Time} & \textbf{Action} & \textbf{What the judge sees} & \textbf{What it proves} & \textbf{Rubric}\\
+\midrule
+\endhead
+0:00 & Production dashboard & Live customer and admin URLs over TLS & The platform is deployed and publicly reachable & A\\
+0:30 & CI / deployment evidence & Green pipeline, image tag, deployed revision on the host & The running system is the artifact CI built for that commit & B\\
+1:15 & Live transfer & LKR 1 moved between demo accounts, confirmed & The money path works end to end & D\\
+2:15 & Risk decision & Allow, step-up and block outcomes with reason codes & Risk is evaluated and fails closed & D, F\\
+3:00 & Ledger verification & Chain verified, inclusion proof folded independently & Financial history is tamper-evident and independently checkable & D\\
+3:45 & Reliability / recovery & A dependency killed mid-saga; compensation observed & Failure does not strand or duplicate money & D\\
+4:30 & Grafana & Availability, request health, resource panels, logs & The platform is observable in operation & E\\
+5:20 & Vault ceremony & 3-of-5 approvals, reconstruction, egress log & Key custody is threshold-based and auditable & F\\
+6:00 & Offline / USSD / Lite & Three constrained channels exercised & Access is resilient across devices and bandwidth & D, G\\
+6:40 & Architecture \& close & Topology, ADRs, evidence pack & The design is deliberate and documented & G, H\\
+\bottomrule
+\end{longtable}
+\end{center}
+
+% ================================================================ 10
+\section{Screenshot Evidence}
+\label{sec:evidence}
+
+The following numbered placeholders are the evidence pack. Each compiles without an image file
+present and is replaced by the corresponding capture before submission.
+
+\evidence{1}{Customer production dashboard}{Browser at \url{https://roboti.qzz.io} with a valid TLS certificate visible}
+\evidence{2}{Admin operations dashboard}{Browser at \url{https://admin.roboti.qzz.io} showing the operations console}
+\evidence{3}{GitHub Actions successful pipeline}{Workflow summary with green CI, publish and deploy jobs and the commit SHA}
+\evidence{4}{Running deployment / Compose services}{\pth{docker compose ps} on the production host showing services and health}
+\evidence{5}{Exact deployed revision}{\pth{git rev-parse HEAD} on the host next to the deployed image tag}
+\evidence{6}{Live transfer}{A completed LKR 1 transfer with its confirmation and resulting state}
+\evidence{7}{Ledger verification}{Chain verification result and a Merkle inclusion proof for the transfer}
+\evidence{8}{Grafana}{System overview dashboard with populated panels and a visible time range}
+\evidence{9}{Vault ceremony}{3-of-5 custodian approvals, reconstruction outcome and egress log}
+\evidence{10}{Offline / USSD / Lite}{The three constrained channels, captured together or as a strip}
+\evidence{11}{Security / scanning result}{Supply-chain and secret scanning output from the released commit}
+\evidence{12}{Rollback / recovery evidence}{Release history and a redeploy of an earlier revision, if exercised}
+
+% ================================================================ 11
+\section{Team Contributions}
+\label{sec:team}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}p{26mm}p{30mm}XX@{}}
+\toprule
+\textbf{Contributor} & \textbf{Area} & \textbf{Key contribution} & \textbf{Repository evidence}\\
+\midrule
+{[NAME]} & [AREA] & [CONTRIBUTION] & [PATH / PR / COMMIT]\\
+{[NAME]} & [AREA] & [CONTRIBUTION] & [PATH / PR / COMMIT]\\
+{[NAME]} & [AREA] & [CONTRIBUTION] & [PATH / PR / COMMIT]\\
+{[NAME]} & [AREA] & [CONTRIBUTION] & [PATH / PR / COMMIT]\\
+{[NAME]} & [AREA] & [CONTRIBUTION] & [PATH / PR / COMMIT]\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\noindent Contribution claims are checkable against commit history and the code ownership map at
+\pth{.github/CODEOWNERS}.
+
+% ================================================================ 12
+\section{Final Verification Checklist}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{@{}p{7mm}X@{}}
+\toprule
+& \textbf{Item}\\
+\midrule
+\chk & Repository publicly accessible\\
+\chk & Live customer URL reachable over TLS --- \url{https://roboti.qzz.io}\\
+\chk & Live operations URL reachable over TLS --- \url{https://admin.roboti.qzz.io}\\
+\chk & Final intended commit deployed to production\\
+\chk & Continuous integration green on the deployed commit\\
+\chk & All critical services reporting healthy\\
+\chk & Read-only smoke verification passed against the public edge\\
+\chk & Live transfer verified end to end\\
+\chk & Ledger chain verified and an inclusion proof checked\\
+\chk & Grafana evidence captured\\
+\chk & Vault ceremony evidence captured\\
+\chk & Development-only endpoints confirmed unavailable in production\\
+\chk & No credentials present in the repository\\
+\chk & Deployment screenshots captured and inserted\\
+\chk & Team contribution table completed\\
+\chk & Submission links checked\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+% ================================================================ 13
+\section{Conclusion}
+
+FINIX demonstrates that financial correctness and operational discipline are the same engineering
+problem approached from two directions. The platform combines \textbf{financial correctness} ---
+double-entry postings, a tamper-evident hash chain, Merkle inclusion proofs and saga compensation
+that refuses to strand or duplicate money; \textbf{independent services} --- twelve deployable
+units, each owning its data, composed rather than entangled; \textbf{automation} --- a commit that
+travels to production as the exact artifact continuous integration tested, on infrastructure
+described as code; \textbf{observability} --- metrics, logs, traces and alert rules that make the
+running system answerable; \textbf{resilient access} --- web, offline, USSD and a sub-50\,KB lite
+channel so that connectivity is not a precondition for banking; and \textbf{security engineering}
+--- threshold key custody, post-quantum anchor signatures, sender-constrained token verification,
+and demonstration endpoints deliberately gated out of production boots.
+
+\vspace{4mm}
+\begin{center}
+{\Large\itshape\color{finixnavy} Deploy It. Automate It. Keep It Running.}
+\end{center}
+\vspace{4mm}
+
+\begin{center}
+\fbox{\parbox{0.93\textwidth}{\vspace{3pt}
+\textbf{Evaluation note:} FINIX should be assessed against the repository artifacts, live system
+behaviour, and evidence shown in this document rather than promotional wording alone.
+\vspace{3pt}}}
+\end{center}
+
+\end{document}
