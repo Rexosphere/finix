@@ -8,7 +8,23 @@
   ansible.builtin.file:
     path: "{{ finix_state_dir }}"
     state: directory
+    owner: "{{ finix_user }}"
+    group: "{{ finix_user }}"
     mode: "0755"
+
+# deploy.sh appends the release history here as the unprivileged deploy user. A
+# root-owned file makes a deploy that has already succeeded — images pulled,
+# every container healthy, personas seeded — fail on its very last line, and
+# leaves rollback with no history to roll back to.
+- name: Create the release history file
+  ansible.builtin.file:
+    path: "{{ finix_state_dir }}/releases.log"
+    state: touch
+    owner: "{{ finix_user }}"
+    group: "{{ finix_user }}"
+    mode: "0644"
+    modification_time: preserve
+    access_time: preserve
 
 - name: Ensure the application checkout exists
   ansible.builtin.git:
