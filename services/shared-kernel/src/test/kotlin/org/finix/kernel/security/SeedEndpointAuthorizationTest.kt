@@ -66,14 +66,23 @@ class SeedAuthorizationTestApp {
  */
 @RestController
 class StubEndpoints {
+    /**
+     * Bodies live as properties rather than inline literals so each handler returns a reference
+     * instead of a constant expression. The response text is unchanged — only the chain's
+     * authorization decision is under test, never the payload.
+     */
+    private val seedBody = "seeded"
+    private val accountsBody = "accounts"
+    private val tokenBody = "token"
+
     @PostMapping(SEED_PATH)
-    fun seed(): String = "seeded"
+    fun seed(): String = seedBody
 
     @GetMapping(PROTECTED_PATH)
-    fun accounts(): String = "accounts"
+    fun accounts(): String = accountsBody
 
     @PostMapping(PUBLIC_AUTH_PATH)
-    fun token(): String = "token"
+    fun token(): String = tokenBody
 }
 
 /**
