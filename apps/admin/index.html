@@ -2,139 +2,548 @@
 <html lang="en" class="dark">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#0a1220" />
+  <meta name="description" content="FINIX Ops Console — vault ceremony, risk shield, compliance, loans, payments and notifications." />
   <title>FINIX — Ops Console</title>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/theme.css" />
+
+  <!-- Critical paint: dark surface on the very first frame, before theme.css or webfonts land. -->
   <style>
+    html { color-scheme: dark; background: #0a1220; }
+    body { margin: 0; background: #0a1220; color: #e8edf8; font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif; }
+    /* Icons stay invisible until the icon font is confirmed loaded, so an
+       unreachable font CDN shows empty slots instead of ligature text. */
+    .material-symbols-outlined { visibility: hidden; }
+    html.icons-ready .material-symbols-outlined { visibility: visible; }
+  </style>
+  <noscript><style>.material-symbols-outlined { visibility: visible; }</style></noscript>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <!-- display=block for the icon font: never paints the raw ligature name ("lock", "key") while loading. -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/theme.css" />
+
+  <style>
+    /* ==========================================================
+       Page-scoped refinements. /css/theme.css is shared and stays
+       untouched — everything below only styles this console.
+       ========================================================== */
+
     .scanline {
-      background-image: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.12) 50%);
+      background-image: linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.12) 50%);
       background-size: 100% 4px;
     }
+
+    /* Icons get a fixed 1em box. Without it the browser reserves
+       fallback-font width for the ligature text while the icon font
+       loads, then collapses it — a visible shift on every load. */
+    .material-symbols-outlined {
+      display: inline-block;
+      inline-size: 1em;
+      block-size: 1em;
+      line-height: 1;
+      overflow: hidden;
+      flex: 0 0 auto;
+      vertical-align: -0.15em;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    /* ---- Focus: one consistent, high-contrast ring everywhere ---- */
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    [tabindex]:focus-visible {
+      outline: 2px solid var(--primary-fixed);
+      outline-offset: 3px;
+    }
+    :focus:not(:focus-visible) { outline: none; }
+
+    .skip-link {
+      position: absolute;
+      left: 0.75rem;
+      top: 0.75rem;
+      z-index: 60;
+      transform: translateY(-160%);
+      padding: 0.6rem 1rem;
+      border-radius: var(--radius-lg);
+      background: var(--surface-container-high);
+      border: 1px solid color-mix(in srgb, var(--primary) 45%, transparent);
+      color: var(--primary);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      transition: transform 0.18s var(--ease-out);
+    }
+    .skip-link:focus { transform: translateY(0); }
+
+    /* ---- Topbar ---- */
+    .topbar-inner { padding-block: 0.8rem; gap: 0.75rem 1rem; }
+    .brand .sub { color: var(--on-surface); font-weight: 500; font-size: 0.62em; letter-spacing: 0.02em; }
+    .topbar-actions .btn { min-height: 40px; padding: 0.4rem 0.85rem; }
+
+    /* ---- Tabs ---- */
+    .tabs-wrap { padding-top: 1.1rem; }
+    .tabs { margin-bottom: 0; gap: 0.25rem; }
+    .tabs button { white-space: nowrap; }
+
+    @media (max-width: 767px) {
+      /* Scroll the tab strip instead of wrapping it into three rows. */
+      .tabs {
+        width: 100%;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+        scroll-snap-type: x proximity;
+        -webkit-overflow-scrolling: touch;
+      }
+      .tabs::-webkit-scrollbar { display: none; }
+      .tabs button { scroll-snap-align: start; }
+    }
+
+    /* ---- Section headers ---- */
+    .page { padding-block: 1.5rem 3.5rem; }
+
+    .section-head {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 1rem 1.5rem;
+      padding-bottom: 1.15rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid color-mix(in srgb, var(--outline-variant) 35%, transparent);
+    }
+    .section-head .headline-xl { margin-bottom: 0.4rem; }
+    .section-head .lede {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+      font-size: 1rem;
+    }
+    .section-head .lede .material-symbols-outlined { color: var(--tertiary); font-size: 1.1rem; }
+
+    .metric { text-align: right; }
+    .metric p { margin: 0; }
+    .metric .value {
+      display: inline-block;
+      min-width: 3.5ch; /* "?/5" -> "3/5" never nudges the layout */
+      margin-top: 0.3rem;
+      font-size: 1.6rem;
+      color: var(--primary);
+      text-align: right;
+    }
+
+    @media (max-width: 640px) {
+      /* Wrapped onto its own line, a right-aligned metric just looks adrift. */
+      .section-head { align-items: flex-start; }
+      .metric, .metric .value { text-align: left; }
+    }
+
+    .panel-lede {
+      color: var(--on-surface-variant);
+      font-size: 1rem;
+      line-height: 1.6;
+      max-width: 58ch;
+      margin: 0 0 1.25rem;
+    }
+
+    .sub-head {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 1.6rem 0 0.6rem;
+      color: var(--on-surface);
+      font-size: 0.74rem;
+    }
+
+    .btn .material-symbols-outlined { font-size: 1.05rem; }
+
+    /* ---- Control rows: every input now carries a visible label ---- */
+    .control-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      gap: 0.75rem;
+    }
+    .control-row label.field { gap: 0.35rem; }
+    .control-row .field-sm { flex: 1 1 12rem; max-width: 15rem; }
+    .control-row .field-xs { flex: 1 1 7rem; max-width: 9rem; }
+    .control-row .btn { flex: 0 0 auto; }
+
+    @media (max-width: 560px) {
+      .control-row { align-items: stretch; }
+      .control-row label.field { flex-basis: 100%; max-width: none; }
+      .control-row .btn { width: 100%; }
+    }
+
+    /* ---- Custodian cards ---- */
+    .grid-custodians { gap: 0.9rem; }
+
+    .custodian {
+      min-height: 12.5rem; /* pending -> approved never resizes the grid */
+      display: flex;
+      flex-direction: column;
+      gap: 0.9rem;
+      padding: 1.2rem;
+      border-radius: var(--radius-xl);
+    }
+
+    .cust-top { display: flex; align-items: center; gap: 0.8rem; }
+
+    .cust-avatar {
+      width: 2.5rem;
+      height: 2.5rem;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border-radius: var(--radius-full);
+      background: color-mix(in srgb, var(--tertiary) 14%, transparent);
+      color: var(--tertiary);
+      font-size: 1.15rem;
+      transition: background 0.25s var(--ease-out), color 0.25s var(--ease-out);
+    }
+    .custodian.approved .cust-avatar {
+      background: color-mix(in srgb, var(--primary) 16%, transparent);
+      color: var(--primary);
+    }
+
+    .cust-id { min-width: 0; display: grid; gap: 0.1rem; }
+    .cust-name {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: -0.015em;
+      color: var(--on-surface);
+      line-height: 1.25;
+    }
+
+    .cust-foot { margin-top: auto; display: grid; gap: 0.8rem; justify-items: start; }
+    .cust-foot .pill { padding: 0.3rem 0.6rem; letter-spacing: 0.06em; }
+    .cust-foot .btn { width: 100%; min-height: 44px; }
+
+    .custodian.is-skeleton {
+      min-height: 12.5rem;
+      border-radius: var(--radius-xl);
+    }
+    .skel {
+      border-radius: var(--radius);
+      background: linear-gradient(
+        90deg,
+        var(--surface-container-low) 0%,
+        var(--surface-container-high) 50%,
+        var(--surface-container-low) 100%
+      );
+      background-size: 200% 100%;
+      animation: shimmer 1.4s linear infinite;
+    }
+    .custodian.is-skeleton .skel-avatar { width: 2.5rem; height: 2.5rem; border-radius: var(--radius-full); }
+    .custodian.is-skeleton .skel-line { height: 0.7rem; margin-top: 0.75rem; }
+    .custodian.is-skeleton .skel-line.w-60 { width: 60%; }
+    .custodian.is-skeleton .skel-line.w-35 { width: 35%; }
+    .custodian.is-skeleton .skel-btn { height: 44px; border-radius: var(--radius-lg); margin-top: auto; }
+
+    /* ---- Output surfaces ---- */
+    .pre {
+      font-size: 0.84rem;
+      line-height: 1.55;
+      min-height: 7rem;
+      max-height: 26rem;
+      overscroll-behavior: contain;
+      tab-size: 2;
+    }
+    .pre:empty::before {
+      content: attr(data-placeholder);
+      color: var(--outline);
+    }
+    .pre.is-error {
+      color: var(--error);
+      border-color: color-mix(in srgb, var(--error) 40%, transparent);
+      background: color-mix(in srgb, var(--error-container) 12%, var(--deep-ink));
+    }
+
+    #egress { min-height: 9rem; }
+
+    .log-slot {
+      display: flex;
+      /* flex-start, not center: a centered flex item clips its own overflow
+         out of reach when the log grows past max-height. */
+      align-items: flex-start;
+      gap: 0.6rem;
+      min-height: 3.4rem;
+      /* A gateway can answer with a whole HTML error page — cap it so the
+         column does not stretch to thousands of pixels. */
+      max-height: 12rem;
+      overflow: auto;
+      overscroll-behavior: contain;
+      margin: 0;
+      font-size: 0.82rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .log-slot:empty::before {
+      content: "Ceremony log — approvals and errors appear here.";
+      color: var(--outline);
+    }
+    .log-slot.err { border-color: color-mix(in srgb, var(--error) 40%, transparent); }
+    .log-slot.ok { border-color: color-mix(in srgb, var(--primary) 40%, transparent); }
+
+    /* Tables never widen the page — they scroll inside their own card. */
+    .table-card {
+      margin-top: 1rem;
+      min-height: 7rem;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      padding: 1.1rem 1.25rem;
+    }
+    .table-card table { min-width: 30rem; }
+    .table-card td { color: var(--on-surface); }
+    .table-card tr:last-child td { border-bottom: 0; }
+
+    .empty-state {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin: 0;
+      padding: 0.9rem 0;
+      color: var(--outline);
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .empty-state.is-error { color: var(--error); text-transform: none; letter-spacing: 0; font-size: 0.82rem; }
+
+    .split-sidebar { gap: 1.75rem; }
+
+    /* ---- Projector / large-screen readability ---- */
+    @media (min-width: 1500px) {
+      .section-head .lede, .panel-lede { font-size: 1.12rem; }
+      .metric .value { font-size: 1.9rem; }
+      .cust-name { font-size: 1.15rem; }
+      .pre, .log-slot { font-size: 0.95rem; }
+      .tabs button { font-size: 0.8rem; padding-inline: 1.05rem; }
+      .label-caps, .sub-head { font-size: 0.8rem; }
+      table { font-size: 1rem; }
+    }
+
+    /* ---- Motion ---- */
+    @media (prefers-reduced-motion: reduce) {
+      /* theme.css clamps durations to 0.01ms, which leaves infinite
+         loops repainting forever — stop them outright instead. */
+      .skel,
+      .is-loading::after,
+      .mesh-pill .dot,
+      .page-enter {
+        animation: none !important;
+      }
+      .skel { background: var(--surface-container-high); }
+      .page-enter { opacity: 1; transform: none; }
+      .skip-link { transition: none; }
+    }
   </style>
+
+  <!-- Runs after the stylesheets above are parsed, so the @font-face is
+       registered by now. Stays hidden if the icon font never arrives. -->
+  <script>
+    (function () {
+      var root = document.documentElement;
+      if (document.fonts && document.fonts.load) {
+        document.fonts.load('24px "Material Symbols Outlined"').then(
+          function (faces) { if (faces.length) root.classList.add("icons-ready"); },
+          function () {}
+        );
+      } else {
+        root.classList.add("icons-ready");
+      }
+    })();
+  </script>
 </head>
 <body class="mesh-grid">
+  <a class="skip-link" href="#main">Skip to content</a>
+
   <div class="shell">
     <header class="topbar">
       <div class="container topbar-inner">
-        <h1 class="brand">FINIX <span style="color:var(--on-surface);font-weight:500;font-size:0.65em">Ops</span></h1>
+        <h1 class="brand">FINIX <span class="sub">Ops</span></h1>
         <div class="topbar-actions">
-          <span class="mesh-pill" id="meshStatus"><span class="dot"></span> Institutional</span>
-          <a class="btn btn-secondary" href="http://localhost:3000/" style="min-height:40px;padding:0.4rem 0.8rem">Customer app</a>
+          <span class="mesh-pill" id="meshStatus" role="status" aria-live="polite"><span class="dot"></span> Institutional</span>
+          <a class="btn btn-secondary" href="http://localhost:3000/">Customer app</a>
         </div>
       </div>
     </header>
 
-    <div class="container" style="padding-top:1rem">
-      <nav class="tabs" id="tabs">
-        <button data-tab="ceremony" class="active" type="button">Ceremony</button>
-        <button data-tab="risk" type="button">Risk &amp; Shield</button>
-        <button data-tab="compliance" type="button">Compliance</button>
-        <button data-tab="loans" type="button">Loans</button>
-        <button data-tab="payments" type="button">Payments</button>
-        <button data-tab="notify" type="button">Notify</button>
-      </nav>
+    <div class="container tabs-wrap">
+      <div class="tabs" id="tabs" role="tablist" aria-label="Ops sections">
+        <button data-tab="ceremony" class="active" type="button" role="tab" id="tab-ceremony" aria-controls="ceremony" aria-selected="true" tabindex="0">Ceremony</button>
+        <button data-tab="risk" type="button" role="tab" id="tab-risk" aria-controls="risk" aria-selected="false" tabindex="-1">Risk &amp; Shield</button>
+        <button data-tab="compliance" type="button" role="tab" id="tab-compliance" aria-controls="compliance" aria-selected="false" tabindex="-1">Compliance</button>
+        <button data-tab="loans" type="button" role="tab" id="tab-loans" aria-controls="loans" aria-selected="false" tabindex="-1">Loans</button>
+        <button data-tab="payments" type="button" role="tab" id="tab-payments" aria-controls="payments" aria-selected="false" tabindex="-1">Payments</button>
+        <button data-tab="notify" type="button" role="tab" id="tab-notify" aria-controls="notify" aria-selected="false" tabindex="-1">Notify</button>
+      </div>
     </div>
 
-    <main class="page container page-enter">
-      <section class="tab-panel active" id="ceremony">
-        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:1rem;border-bottom:1px solid color-mix(in srgb, var(--outline-variant) 30%, transparent);padding-bottom:1rem;margin-bottom:1.5rem">
+    <main class="page container page-enter" id="main">
+      <section class="tab-panel active" id="ceremony" role="tabpanel" aria-labelledby="tab-ceremony">
+        <div class="section-head">
           <div>
             <h2 class="headline-xl">Vault Ceremony</h2>
-            <p class="lede" style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap">
-              <span class="material-symbols-outlined" style="color:var(--tertiary)">lock</span>
+            <p class="lede">
+              <span class="material-symbols-outlined" aria-hidden="true">lock</span>
               Shamir 3-of-5 · State <span class="pill" id="state">—</span>
             </p>
           </div>
-          <div style="text-align:right">
-            <p class="label-caps" style="margin:0">Approval progress</p>
-            <p style="margin:0.35rem 0 0"><span class="data-lg" style="color:var(--primary)" id="count">?/5</span></p>
+          <div class="metric">
+            <p class="label-caps">Approval progress</p>
+            <p><span class="data-lg value" id="count" role="status" aria-live="polite">?/5</span></p>
           </div>
         </div>
 
-        <div class="actions" style="margin:0 0 1.25rem">
+        <div class="actions" style="margin:0 0 1.5rem">
           <button class="btn btn-primary" id="seed" type="button">Seed ceremony</button>
           <button class="btn btn-secondary" id="refreshCeremony" type="button">Refresh</button>
           <button class="btn btn-primary" id="reconstruct" type="button">
-            <span class="material-symbols-outlined">key</span> Reconstruct
+            <span class="material-symbols-outlined" aria-hidden="true">key</span> Reconstruct
           </button>
         </div>
 
         <div class="split split-sidebar">
           <div>
-            <h3 class="headline-lg" style="font-size:1.35rem">Custodian verification</h3>
-            <div class="grid-custodians" id="custodians"></div>
+            <h3 class="label-caps sub-head">Custodian verification</h3>
+            <div class="grid-custodians" id="custodians" aria-busy="true">
+              <!-- Same box as a real card, so first paint has structure and nothing jumps. -->
+              <div class="custodian is-skeleton" aria-hidden="true"><div class="skel skel-avatar"></div><div class="skel skel-line w-60"></div><div class="skel skel-line w-35"></div><div class="skel skel-btn"></div></div>
+              <div class="custodian is-skeleton" aria-hidden="true"><div class="skel skel-avatar"></div><div class="skel skel-line w-60"></div><div class="skel skel-line w-35"></div><div class="skel skel-btn"></div></div>
+              <div class="custodian is-skeleton" aria-hidden="true"><div class="skel skel-avatar"></div><div class="skel skel-line w-60"></div><div class="skel skel-line w-35"></div><div class="skel skel-btn"></div></div>
+              <div class="custodian is-skeleton" aria-hidden="true"><div class="skel skel-avatar"></div><div class="skel skel-line w-60"></div><div class="skel skel-line w-35"></div><div class="skel skel-btn"></div></div>
+              <div class="custodian is-skeleton" aria-hidden="true"><div class="skel skel-avatar"></div><div class="skel skel-line w-60"></div><div class="skel skel-line w-35"></div><div class="skel skel-btn"></div></div>
+            </div>
           </div>
+
           <div style="display:grid;gap:1rem">
             <section class="panel">
-              <h3 class="headline-lg" style="font-size:1.25rem">Reconstruction</h3>
-              <p style="color:var(--on-surface-variant);margin:0 0 1rem">3 of 5 signatures unlock master-key reconstruction inside the enclave. Egress log never contains the key.</p>
-              <p class="label-caps">Egress log</p>
-              <pre class="pre scanline" id="egress">(empty)</pre>
+              <h3 class="headline-lg" style="font-size:1.2rem">Reconstruction</h3>
+              <p class="panel-lede" style="margin-bottom:1.1rem">3 of 5 signatures unlock master-key reconstruction inside the enclave. Egress log never contains the key.</p>
+              <h4 class="label-caps sub-head">Egress log</h4>
+              <pre class="pre scanline" id="egress" tabindex="0" aria-label="Egress log">(empty)</pre>
             </section>
-            <p id="clog" class="log"></p>
+            <p id="clog" class="log log-slot" role="status" aria-live="polite" tabindex="0"></p>
           </div>
         </div>
       </section>
 
-      <section class="tab-panel" id="risk">
-        <p class="lede">AI Shield quarantine and fraud cases.</p>
-        <div class="actions">
-          <input id="qService" value="payment-hub" style="max-width:220px" />
+      <section class="tab-panel" id="risk" role="tabpanel" aria-labelledby="tab-risk">
+        <h2 class="headline-lg">Risk &amp; Shield</h2>
+        <p class="panel-lede">AI Shield quarantine and fraud cases.</p>
+
+        <div class="control-row">
+          <label class="field field-sm">
+            <span class="cap">Service</span>
+            <input id="qService" value="payment-hub" spellcheck="false" />
+          </label>
           <button class="btn btn-primary" id="quarantine" type="button">Quarantine</button>
           <button class="btn btn-secondary" id="release" type="button">Release</button>
           <button class="btn btn-secondary" id="refreshRisk" type="button">Refresh</button>
         </div>
-        <h3 class="label-caps" style="margin:1.25rem 0 0.5rem;color:var(--on-surface)">Active quarantines</h3>
-        <pre class="pre" id="quarantines">[]</pre>
-        <h3 class="label-caps" style="margin:1.25rem 0 0.5rem;color:var(--on-surface)">Risk cases</h3>
-        <pre class="pre" id="riskCases">[]</pre>
+
+        <h3 class="label-caps sub-head">Active quarantines</h3>
+        <pre class="pre" id="quarantines" tabindex="0" data-placeholder="No quarantines loaded — press Refresh.">[]</pre>
+        <h3 class="label-caps sub-head">Risk cases</h3>
+        <pre class="pre" id="riskCases" tabindex="0" data-placeholder="No cases loaded — press Refresh.">[]</pre>
       </section>
 
-      <section class="tab-panel" id="compliance">
-        <p class="lede">AML / sanctions / SAR case register.</p>
-        <div class="actions">
+      <section class="tab-panel" id="compliance" role="tabpanel" aria-labelledby="tab-compliance">
+        <h2 class="headline-lg">Compliance</h2>
+        <p class="panel-lede">AML / sanctions / SAR case register.</p>
+
+        <div class="control-row">
           <button class="btn btn-primary" id="refreshCases" type="button">Refresh cases</button>
           <button class="btn btn-secondary" id="openDemoCase" type="button">Open demo FRAUD case</button>
         </div>
-        <div class="panel-muted" style="margin-top:1rem" id="casesTable"></div>
+
+        <div class="panel-muted table-card" id="casesTable" aria-live="polite">
+          <p class="empty-state"><span class="material-symbols-outlined" aria-hidden="true">inbox</span> Press “Refresh cases” to load</p>
+        </div>
       </section>
 
-      <section class="tab-panel" id="loans">
-        <p class="lede">SME micro-loan applications.</p>
-        <div class="actions">
-          <input id="loanAmount" value="LKR 50000.00" style="max-width:200px" />
+      <section class="tab-panel" id="loans" role="tabpanel" aria-labelledby="tab-loans">
+        <h2 class="headline-lg">Loans</h2>
+        <p class="panel-lede">SME micro-loan applications.</p>
+
+        <div class="control-row">
+          <label class="field field-sm">
+            <span class="cap">Principal</span>
+            <input id="loanAmount" value="LKR 50000.00" spellcheck="false" />
+          </label>
           <button class="btn btn-primary" id="applyLoan" type="button">Apply</button>
           <button class="btn btn-secondary" id="refreshLoans" type="button">Refresh</button>
         </div>
-        <div class="panel-muted" style="margin-top:1rem" id="loansTable"></div>
+
+        <div class="panel-muted table-card" id="loansTable" aria-live="polite">
+          <p class="empty-state"><span class="material-symbols-outlined" aria-hidden="true">inbox</span> Press “Refresh” to load loans</p>
+        </div>
       </section>
 
-      <section class="tab-panel" id="payments">
-        <p class="lede">Payment Hub — LankaPay / Visa / CBDC + pacs.008.</p>
-        <div class="actions">
-          <select id="scheme" style="max-width:160px"><option>LANKAPAY</option><option>VISA</option><option>CBDC</option></select>
-          <input id="payAmt" type="number" value="150000" title="minor units" style="max-width:160px" />
+      <section class="tab-panel" id="payments" role="tabpanel" aria-labelledby="tab-payments">
+        <h2 class="headline-lg">Payments</h2>
+        <p class="panel-lede">Payment Hub — LankaPay / Visa / CBDC + pacs.008.</p>
+
+        <div class="control-row">
+          <label class="field field-xs">
+            <span class="cap">Scheme</span>
+            <select id="scheme"><option>LANKAPAY</option><option>VISA</option><option>CBDC</option></select>
+          </label>
+          <label class="field field-xs">
+            <span class="cap">Amount (minor)</span>
+            <input id="payAmt" type="number" value="150000" inputmode="numeric" />
+          </label>
           <button class="btn btn-primary" id="sendPay" type="button">Send payment</button>
         </div>
-        <pre class="pre" id="payOut" style="margin-top:1rem"></pre>
+
+        <h3 class="label-caps sub-head">Result</h3>
+        <pre class="pre" id="payOut" tabindex="0" data-placeholder="Payment response and pacs.008 XML appear here."></pre>
       </section>
 
-      <section class="tab-panel" id="notify">
-        <p class="lede">Trilingual notification outbox (en / si / ta).</p>
-        <div class="actions">
-          <select id="locale" style="max-width:100px"><option>en</option><option>si</option><option>ta</option></select>
-          <select id="template" style="max-width:220px">
-            <option>transfer_receipt</option>
-            <option>step_up_challenge</option>
-            <option>loan_approved</option>
-            <option>fraud_alert</option>
-          </select>
+      <section class="tab-panel" id="notify" role="tabpanel" aria-labelledby="tab-notify">
+        <h2 class="headline-lg">Notify</h2>
+        <p class="panel-lede">Trilingual notification outbox (en / si / ta).</p>
+
+        <div class="control-row">
+          <label class="field field-xs" style="max-width:7rem">
+            <span class="cap">Locale</span>
+            <select id="locale"><option>en</option><option>si</option><option>ta</option></select>
+          </label>
+          <label class="field field-sm">
+            <span class="cap">Template</span>
+            <select id="template">
+              <option>transfer_receipt</option>
+              <option>step_up_challenge</option>
+              <option>loan_approved</option>
+              <option>fraud_alert</option>
+            </select>
+          </label>
           <button class="btn btn-primary" id="sendNotify" type="button">Send</button>
           <button class="btn btn-secondary" id="refreshNotify" type="button">Refresh</button>
         </div>
-        <pre class="pre" id="notifyOut" style="margin-top:1rem"></pre>
+
+        <h3 class="label-caps sub-head">Outbox</h3>
+        <pre class="pre" id="notifyOut" tabindex="0" data-placeholder="Queued messages appear here."></pre>
       </section>
     </main>
 
@@ -157,16 +566,6 @@
       notify: "/api/notify",
     };
 
-    function showErr(targetId, err) {
-      const msg = Finix.friendlyError(err);
-      if (targetId) {
-        $(targetId).textContent = msg;
-        $(targetId).className = "log err";
-      }
-      Finix.toast(msg, "err");
-      return msg;
-    }
-
     async function api(base, path, method = "GET", body) {
       const headers = {};
       if (body) headers["content-type"] = "application/json";
@@ -186,12 +585,59 @@
       return api(bases.vault, path, method, body);
     }
 
-    document.querySelectorAll("#tabs button").forEach((btn) => {
-      btn.onclick = () => {
-        document.querySelectorAll("#tabs button").forEach((b) => b.classList.remove("active"));
-        document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
-        btn.classList.add("active");
-        $(btn.dataset.tab).classList.add("active");
+    /** Consistent output rendering so success and failure never look alike. */
+    function showOut(el, value) {
+      el.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+      el.classList.remove("is-error");
+    }
+    function showErr(el, e) {
+      el.textContent = Finix.friendlyError(e);
+      el.classList.add("is-error");
+    }
+    function setLog(message, kind) {
+      const el = $("clog");
+      el.textContent = message;
+      el.className = "log log-slot" + (kind ? " " + kind : "");
+    }
+    /** Error state for slots that render markup (tables), matching the empty state. */
+    function showSlotErr(el, e) {
+      el.innerHTML = '<p class="empty-state is-error"><span class="material-symbols-outlined" aria-hidden="true">error</span> <span></span></p>';
+      el.querySelector(".empty-state span:last-child").textContent = Finix.friendlyError(e);
+    }
+    /** Log + toast the same friendly message, so the two never disagree. */
+    function failLog(e, prefix) {
+      const msg = Finix.friendlyError(e);
+      setLog(prefix ? prefix + msg : msg, "err");
+      Finix.toast(msg, "err");
+    }
+
+    const tabButtons = Array.prototype.slice.call(document.querySelectorAll("#tabs button"));
+    function activateTab(btn, moveFocus) {
+      tabButtons.forEach((b) => {
+        const on = b === btn;
+        b.classList.toggle("active", on);
+        b.setAttribute("aria-selected", on ? "true" : "false");
+        b.tabIndex = on ? 0 : -1;
+      });
+      document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+      $(btn.dataset.tab).classList.add("active");
+      if (moveFocus) btn.focus();
+      btn.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+    tabButtons.forEach((btn, i) => {
+      btn.onclick = () => activateTab(btn);
+      btn.onkeydown = (e) => {
+        const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+        if (step) {
+          e.preventDefault();
+          activateTab(tabButtons[(i + step + tabButtons.length) % tabButtons.length], true);
+        } else if (e.key === "Home") {
+          e.preventDefault();
+          activateTab(tabButtons[0], true);
+        } else if (e.key === "End") {
+          e.preventDefault();
+          activateTab(tabButtons[tabButtons.length - 1], true);
+        }
       };
     });
 
@@ -209,17 +655,20 @@
       $("custodians").innerHTML = names.map((n, i) => {
         const ok = approved.has(ids[i]);
         return `<div class="custodian ${ok ? "approved" : ""}">
-          <div style="display:flex;justify-content:space-between;gap:0.5rem;margin-bottom:0.65rem">
-            <div>
-              <div class="label-caps">Custodian</div>
-              <div class="data-md" style="color:var(--on-surface)">${n}</div>
-            </div>
-            <span class="material-symbols-outlined" style="color:${ok ? "var(--primary)" : "var(--tertiary)"}">${ok ? "check_circle" : "pending"}</span>
+          <div class="cust-top">
+            <span class="cust-avatar"><span class="material-symbols-outlined" aria-hidden="true">${ok ? "verified_user" : "shield"}</span></span>
+            <span class="cust-id">
+              <span class="label-caps">Custodian</span>
+              <span class="cust-name">${n}</span>
+            </span>
           </div>
-          <div class="pill ${ok ? "ok" : ""}">${ok ? "APPROVED" : "PENDING"}</div>
-          <button class="btn btn-secondary" style="margin-top:0.85rem;min-height:40px" data-i="${i}" ${ok ? "disabled" : ""} type="button">Approve</button>
+          <div class="cust-foot">
+            <span class="pill ${ok ? "ok" : ""}">${ok ? "APPROVED" : "PENDING"}</span>
+            <button class="btn btn-secondary" data-i="${i}" ${ok ? "disabled" : ""} type="button" aria-label="${ok ? "Approved" : "Approve"} ${n}">${ok ? "Approved" : "Approve"}</button>
+          </div>
         </div>`;
       }).join("");
+      $("custodians").setAttribute("aria-busy", "false");
       $("custodians").querySelectorAll("button[data-i]").forEach((b) => {
         b.onclick = async () => {
           const id = ids[Number(b.dataset.i)];
@@ -228,7 +677,7 @@
             Finix.toast(id + " approved", "ok");
             await refreshCeremony();
           } catch (e2) {
-            showErr("clog", e2);
+            failLog(e2);
           }
         };
       });
@@ -246,11 +695,10 @@
         renderCustodians(approvals);
         try {
           const egress = await vault("/api/v1/vault/ceremony/egress-log");
-          if (egress) $("egress").textContent = typeof egress === "string" ? egress : JSON.stringify(egress, null, 2);
+          if (egress) showOut($("egress"), egress);
         } catch (_) {}
       } catch (e) {
-        $("clog").textContent = "Vault unreachable — " + Finix.friendlyError(e);
-        $("clog").className = "log err";
+        setLog("Vault unreachable — " + Finix.friendlyError(e), "err");
         renderCustodians([]);
       }
     }
@@ -258,22 +706,21 @@
     $("seed").onclick = async () => {
       try {
         await vault("/api/v1/vault/admin/seed?force=true", "POST");
-        $("clog").textContent = "Seeded";
-        $("clog").className = "log ok";
+        setLog("Seeded", "ok");
         Finix.toast("Ceremony seeded", "ok");
         await refreshCeremony();
       } catch (e) {
-        showErr("clog", e);
+        failLog(e);
       }
     };
     $("reconstruct").onclick = async () => {
       try {
         const r = await vault("/api/v1/vault/ceremony/reconstruct", "POST");
-        $("egress").textContent = JSON.stringify(r, null, 2);
+        showOut($("egress"), r);
         Finix.toast("Reconstruct requested", "ok");
         await refreshCeremony();
       } catch (e) {
-        showErr("clog", e);
+        failLog(e);
       }
     };
     $("refreshCeremony").onclick = refreshCeremony;
@@ -294,10 +741,10 @@
     };
     async function refreshRisk() {
       try {
-        $("quarantines").textContent = JSON.stringify(await api(bases.risk, "/v1/shield/quarantines"), null, 2);
-        $("riskCases").textContent = JSON.stringify(await api(bases.risk, "/v1/cases"), null, 2);
+        showOut($("quarantines"), await api(bases.risk, "/v1/shield/quarantines"));
+        showOut($("riskCases"), await api(bases.risk, "/v1/cases"));
       } catch (e) {
-        $("quarantines").textContent = Finix.friendlyError(e);
+        showErr($("quarantines"), e);
       }
     }
     $("refreshRisk").onclick = refreshRisk;
@@ -307,11 +754,11 @@
         const cases = await api(bases.compliance, "/api/v1/cases");
         const list = Array.isArray(cases) ? cases : (cases.cases || []);
         $("casesTable").innerHTML = list.length
-          ? `<table><tr><th>Type</th><th>Status</th><th>Severity</th><th>Subject</th></tr>${
+          ? `<table><thead><tr><th scope="col">Type</th><th scope="col">Status</th><th scope="col">Severity</th><th scope="col">Subject</th></tr></thead><tbody>${
               list.map((c) => `<tr><td>${c.type}</td><td><span class="pill">${c.status}</span></td><td>${c.severity}</td><td>${c.subjectRef || c.subject || ""}</td></tr>`).join("")
-            }</table>`
-          : '<p class="label-caps">No cases yet</p>';
-      } catch (e) { $("casesTable").textContent = Finix.friendlyError(e); }
+            }</tbody></table>`
+          : '<p class="empty-state"><span class="material-symbols-outlined" aria-hidden="true">inbox</span> No cases yet</p>';
+      } catch (e) { showSlotErr($("casesTable"), e); }
     }
     $("refreshCases").onclick = refreshCases;
     $("openDemoCase").onclick = async () => {
@@ -331,11 +778,11 @@
         const loans = await api(bases.loan, `/api/v1/loans?borrowerUserId=${SME_USER}`);
         const list = Array.isArray(loans) ? loans : (loans.loans || []);
         $("loansTable").innerHTML = list.length
-          ? `<table><tr><th>Id</th><th>Principal</th><th>Status</th><th></th></tr>${
+          ? `<table><thead><tr><th scope="col">Id</th><th scope="col">Principal</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody>${
               list.map((l) => `<tr><td>${(l.id||"").toString().slice(0,8)}…</td><td class="data-md">${l.principal || l.principalAmount || ""}</td><td><span class="pill">${l.status}</span></td>
               <td><button class="btn btn-secondary" style="min-height:36px" data-decide="${l.id}" type="button">Decide</button></td></tr>`).join("")
-            }</table>`
-          : '<p class="label-caps">No loans yet — apply above</p>';
+            }</tbody></table>`
+          : '<p class="empty-state"><span class="material-symbols-outlined" aria-hidden="true">inbox</span> No loans yet — apply above</p>';
         $("loansTable").querySelectorAll("[data-decide]").forEach((b) => {
           b.onclick = async () => {
             try {
@@ -345,7 +792,7 @@
             } catch (e) { Finix.toast(Finix.friendlyError(e), "err"); }
           };
         });
-      } catch (e) { $("loansTable").textContent = Finix.friendlyError(e); }
+      } catch (e) { showSlotErr($("loansTable"), e); }
     }
     $("applyLoan").onclick = async () => {
       try {
@@ -372,10 +819,10 @@
         const xmlRes = await fetch(bases.pay + "/v1/payments/" + created.id + "/pacs008");
         const xml = await xmlRes.text();
         if (!xmlRes.ok) throw new Error(Finix.friendlyError(xml || xmlRes.status));
-        $("payOut").textContent = JSON.stringify(created, null, 2) + "\n\n" + xml;
+        showOut($("payOut"), JSON.stringify(created, null, 2) + "\n\n" + xml);
         Finix.toast("Payment created", "ok");
       } catch (e) {
-        $("payOut").textContent = Finix.friendlyError(e);
+        showErr($("payOut"), e);
         Finix.toast(Finix.friendlyError(e), "err");
       }
     };
@@ -386,18 +833,18 @@
           channel: "sms", locale: $("locale").value, template: $("template").value,
           to: "+94771110001", vars: { amount: "LKR 100.00", name: "Farmer" },
         });
-        $("notifyOut").textContent = JSON.stringify(r, null, 2);
+        showOut($("notifyOut"), r);
         Finix.toast("Notification queued", "ok");
       } catch (e) {
-        $("notifyOut").textContent = Finix.friendlyError(e);
+        showErr($("notifyOut"), e);
         Finix.toast(Finix.friendlyError(e), "err");
       }
     };
     $("refreshNotify").onclick = async () => {
       try {
-        $("notifyOut").textContent = JSON.stringify(await api(bases.notify, "/v1/messages"), null, 2);
+        showOut($("notifyOut"), await api(bases.notify, "/v1/messages"));
       } catch (e) {
-        $("notifyOut").textContent = Finix.friendlyError(e);
+        showErr($("notifyOut"), e);
       }
     };
 
