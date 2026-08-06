@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FINIX — Banking Operations Dashboard</title>
+  <meta name="description" content="FINIX read-only banking operations dashboard: live mesh health, risk AI, vault ceremony, compliance, loans, payment hub and notifications." />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/theme.css" />
+  <style>
+    /* judge.html-scoped additions — the shared design system does the heavy lifting. */
+    /* Grid items default to min-width:auto, which lets a wide child (a table with a
+       min-width, a long mono token) push the whole track past the viewport. Pinning
+       the tracks to zero keeps every scrollable region scrolling inside itself. */
+    .split > *,
+    .split > * > *,
+    .jv-hero > *,
+    .jv-grid > *,
+    .jv-stat-grid > *,
+    .tile-grid > *,
+    .grid-custodians > * { min-width: 0; }
+    .jv-scroll { max-width: 100%; }
+
+    .jv-nav {
+      position: sticky;
+      top: var(--jv-topbar-h, 62px);
+      z-index: 30;
+      background: color-mix(in srgb, var(--background) 88%, transparent);
+      backdrop-filter: blur(12px) saturate(1.15);
+      -webkit-backdrop-filter: blur(12px) saturate(1.15);
+      border-bottom: 1px solid var(--border-hairline);
+    }
+    .jv-nav-inner {
+      display: flex;
+      gap: 0.15rem;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding-block: 0.5rem;
+    }
+    .jv-nav-inner::-webkit-scrollbar { display: none; }
+    .jv-nav a {
+      flex: 0 0 auto;
+      padding: 0.4rem 0.7rem;
+      border-radius: var(--radius-lg);
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--on-surface-variant);
+      white-space: nowrap;
+    }
+    .jv-nav a:hover { color: var(--on-surface); background: color-mix(in srgb, var(--primary) 8%, transparent); }
+    .jv-nav a.active { color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, transparent); }
+
+    .jv-section { scroll-margin-top: var(--jv-sticky-h, 120px); padding-block: 2.25rem; border-top: 1px solid var(--border-hairline); }
+    .jv-section:first-of-type { border-top: none; }
+    .jv-section-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 0.75rem 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .jv-section-head .jv-eyebrow { display: flex; align-items: center; gap: 0.45rem; margin: 0 0 0.3rem; }
+
+    .jv-hero {
+      display: grid;
+      gap: 1.5rem;
+      padding-block: 2.25rem 0.5rem;
+      align-items: start;
+    }
+    @media (min-width: 980px) { .jv-hero { grid-template-columns: 1.15fr 0.85fr; } }
+    .jv-hero-badges { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 1.1rem; }
+
+    .jv-stat-grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+    .jv-stat {
+      padding: 0.95rem 1rem;
+      border-radius: var(--radius-xl);
+      background: var(--surface-container);
+      border: 1px solid var(--border-hairline);
+      display: grid;
+      gap: 0.15rem;
+      align-content: start;
+    }
+    .jv-stat .v {
+      font-family: var(--font-mono);
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+      color: var(--on-surface);
+    }
+    .jv-stat .v.mint { color: var(--primary); }
+    .jv-stat .v.gold { color: var(--tertiary); }
+    .jv-stat .v.bad { color: var(--error); }
+    .jv-stat .sub { font-family: var(--font-mono); font-size: 0.68rem; color: var(--outline); }
+
+    .jv-grid { display: grid; gap: 0.85rem; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+    .jv-grid.wide { grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
+
+    .jv-svc {
+      padding: 1rem 1.05rem;
+      border-radius: var(--radius-xl);
+      background: var(--slate-charcoal);
+      border: 1px solid var(--border-hairline);
+      display: grid;
+      gap: 0.55rem;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s ease;
+    }
+    .jv-svc::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--outline-variant); }
+    .jv-svc.up::before { background: linear-gradient(180deg, var(--primary), var(--primary-container)); }
+    .jv-svc.up { border-color: color-mix(in srgb, var(--primary) 32%, transparent); }
+    .jv-svc.degraded::before { background: var(--tertiary); }
+    .jv-svc.degraded { border-color: color-mix(in srgb, var(--tertiary) 35%, transparent); }
+    .jv-svc.down::before, .jv-svc.timeout::before { background: var(--error); }
+    .jv-svc.down, .jv-svc.timeout { border-color: color-mix(in srgb, var(--error) 32%, transparent); }
+    .jv-svc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.6rem; }
+    .jv-svc-name { font-family: var(--font-display); font-weight: 600; font-size: 1.02rem; color: var(--on-surface); }
+    .jv-svc-role { font-size: 0.85rem; color: var(--on-surface-variant); line-height: 1.45; }
+    .jv-svc-meta { display: flex; flex-wrap: wrap; gap: 0.35rem 0.9rem; align-items: center; }
+
+    .jv-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--outline); flex: 0 0 auto; }
+    .jv-dot.up { background: var(--primary); box-shadow: 0 0 8px color-mix(in srgb, var(--primary) 60%, transparent); }
+    .jv-dot.degraded { background: var(--tertiary); }
+    .jv-dot.down, .jv-dot.timeout { background: var(--error); }
+
+    .jv-bar { height: 5px; border-radius: var(--radius-full); background: var(--surface-container-lowest); overflow: hidden; }
+    .jv-bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--primary-container), var(--primary)); border-radius: inherit; transition: width 0.5s var(--ease-out); }
+    .jv-bar.gold > span { background: linear-gradient(90deg, var(--tertiary-container), var(--tertiary)); }
+    .jv-bar.bad > span { background: linear-gradient(90deg, var(--error-container), var(--error)); }
+
+    .jv-kv { display: grid; gap: 0.45rem; margin: 0; }
+    .jv-kv div { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; }
+    .jv-kv dt { font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--on-surface-variant); }
+    .jv-kv dd { margin: 0; font-family: var(--font-mono); font-size: 0.85rem; color: var(--on-surface); text-align: right; word-break: break-word; }
+
+    .jv-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .jv-scroll table { min-width: 480px; }
+
+    .jv-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+    .jv-li {
+      padding: 0.7rem 0.85rem;
+      border-radius: var(--radius-lg);
+      background: var(--surface-container-low);
+      border: 1px solid var(--border-hairline);
+      display: grid;
+      gap: 0.3rem;
+    }
+    .jv-li-top { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; justify-content: space-between; }
+    .jv-li-body { font-size: 0.87rem; color: var(--on-surface-variant); line-height: 1.5; }
+
+    .jv-cap { display: grid; gap: 0.5rem; padding: 1.1rem; border-radius: var(--radius-xl); background: var(--surface-container); border: 1px solid var(--border-hairline); align-content: start; }
+    .jv-cap .material-symbols-outlined { color: var(--primary); font-size: 1.4rem; }
+    .jv-cap h3 { font-family: var(--font-display); font-size: 1.02rem; font-weight: 600; margin: 0; color: var(--on-surface); }
+    .jv-cap p { margin: 0; font-size: 0.87rem; color: var(--on-surface-variant); line-height: 1.5; }
+
+    .jv-layer {
+      display: grid;
+      gap: 0.65rem 1rem;
+      padding: 0.95rem 1.05rem;
+      border-radius: var(--radius-xl);
+      background: var(--surface-container-low);
+      border: 1px solid var(--border-hairline);
+      border-left: 3px solid color-mix(in srgb, var(--primary) 55%, transparent);
+    }
+    @media (min-width: 760px) { .jv-layer { grid-template-columns: 190px 1fr; align-items: start; } }
+    .jv-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .jv-chip {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 0.22rem 0.55rem;
+      border-radius: var(--radius);
+      color: var(--on-surface-variant);
+      background: var(--surface-container-high);
+      border: 1px solid var(--border-hairline);
+      white-space: nowrap;
+    }
+    .jv-chip.mint { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 30%, transparent); background: color-mix(in srgb, var(--primary) 10%, transparent); }
+    .jv-chip.gold { color: var(--tertiary); border-color: color-mix(in srgb, var(--tertiary) 30%, transparent); background: color-mix(in srgb, var(--tertiary) 10%, transparent); }
+
+    .jv-skel { border-radius: var(--radius-lg); background: var(--surface-container-low); min-height: 14px; }
+    .jv-skel-stack { display: grid; gap: 0.55rem; }
+    .jv-empty { font-family: var(--font-mono); font-size: 0.78rem; color: var(--outline); padding: 0.9rem 0; }
+
+    .jv-tile-link { position: relative; }
+    .jv-tile-link[aria-disabled="true"] { opacity: 0.45; pointer-events: none; }
+
+    .jv-freshness { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; font-family: var(--font-mono); font-size: 0.7rem; color: var(--on-surface-variant); }
+    .jv-toggle { display: inline-flex; align-items: center; gap: 0.45rem; cursor: pointer; user-select: none; }
+    .jv-toggle input { width: auto; min-height: 0; margin: 0; accent-color: var(--primary); }
+
+    .jv-note {
+      display: flex;
+      gap: 0.6rem;
+      align-items: flex-start;
+      font-size: 0.82rem;
+      color: var(--on-surface-variant);
+      line-height: 1.5;
+    }
+    .jv-note .material-symbols-outlined { font-size: 1.05rem; color: var(--tertiary); }
+
+    .jv-lookup { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
+    .jv-lookup input { max-width: 340px; flex: 1 1 220px; }
+  </style>
+</head>
+<body class="mesh-grid">
+  <div class="shell">
+    <header class="topbar">
+      <div class="container topbar-inner">
+        <a class="brand" href="/judge.html">FINIX <span style="color:var(--on-surface);font-weight:500;font-size:0.65em">Operations</span></a>
+        <div class="topbar-actions">
+          <span class="badge-soft" title="This dashboard issues GET requests only."><span class="material-symbols-outlined" style="font-size:0.95rem">visibility</span> Read-only</span>
+          <span class="mesh-pill" id="meshStatus"><span class="dot"></span> Institutional</span>
+          <a class="btn btn-secondary" href="/index.html" style="min-height:40px;padding:0.4rem 0.8rem">Ops console</a>
+        </div>
+      </div>
+    </header>
+
+    <nav class="jv-nav" aria-label="Dashboard sections">
+      <div class="container jv-nav-inner" id="sectionNav">
+        <a href="#overview">Overview</a>
+        <a href="#health">Service health</a>
+        <a href="#risk">Risk AI</a>
+        <a href="#vault">Vault</a>
+        <a href="#compliance">Compliance</a>
+        <a href="#loans">Loans</a>
+        <a href="#payments">Payment hub</a>
+        <a href="#notifications">Notifications</a>
+        <a href="#capabilities">Capabilities</a>
+        <a href="#security">Security</a>
+        <a href="#demo">Demo map</a>
+      </div>
+    </nav>
+
+    <main class="page container page-enter">
+
+      <!-- ───────────────────────── Hero ───────────────────────── -->
+      <section class="jv-hero" id="overview">
+        <div>
+          <p class="label-caps jv-eyebrow" style="margin:0 0 0.55rem">
+            <span class="material-symbols-outlined" style="font-size:1rem;color:var(--primary)">hub</span>
+            Resilient Inclusive Banking Fabric
+          </p>
+          <h1 class="headline-xl">Banking operations, live across the mesh.</h1>
+          <p class="lede" style="max-width:40rem">
+            One console over ten independent services in four languages — vault custody, fraud AI,
+            compliance, lending, payment rails and customer messaging. Every panel on this page is a
+            live read of the running mesh: no cached fixtures, and no call that can change state.
+          </p>
+          <div class="jv-hero-badges">
+            <span class="jv-chip mint">Zero-trust</span>
+            <span class="jv-chip mint">Shamir 3-of-5</span>
+            <span class="jv-chip">Hash-chained ledger</span>
+            <span class="jv-chip">Offline-first</span>
+            <span class="jv-chip gold">Post-quantum</span>
+            <span class="jv-chip">USSD *334#</span>
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary" id="refreshNow" type="button">
+              <span class="material-symbols-outlined">refresh</span> Refresh now
+            </button>
+            <a class="btn btn-secondary" href="#demo">Demo navigation</a>
+          </div>
+          <p class="jv-freshness" style="margin:1.1rem 0 0">
+            <span><span class="jv-dot up" id="pulseDot"></span> <span id="lastUpdated">Loading live data…</span></span>
+            <span id="nextRefresh">·</span>
+            <label class="jv-toggle" for="autoRefresh">
+              <input type="checkbox" id="autoRefresh" checked /> Auto-refresh
+            </label>
+          </p>
+        </div>
+
+        <div class="panel" aria-labelledby="meshSummaryTitle">
+          <h2 class="label-caps" id="meshSummaryTitle" style="margin:0 0 0.9rem;color:var(--on-surface)">Mesh at a glance</h2>
+          <div class="jv-stat-grid" id="heroStats">
+            <div class="jv-stat"><span class="label-caps">Services up</span><span class="v mint" data-hero="services">—</span><span class="sub" data-hero="servicesSub">probing…</span></div>
+            <div class="jv-stat"><span class="label-caps">Vault ceremony</span><span class="v" data-hero="vault">—</span><span class="sub" data-hero="vaultSub">approvals</span></div>
+            <div class="jv-stat"><span class="label-caps">Risk cases</span><span class="v gold" data-hero="risk">—</span><span class="sub" data-hero="riskSub">blocked transfers</span></div>
+            <div class="jv-stat"><span class="label-caps">Compliance</span><span class="v" data-hero="compliance">—</span><span class="sub" data-hero="complianceSub">open cases</span></div>
+            <div class="jv-stat"><span class="label-caps">Loan book</span><span class="v" data-hero="loans">—</span><span class="sub" data-hero="loansSub">applications</span></div>
+            <div class="jv-stat"><span class="label-caps">Messages sent</span><span class="v" data-hero="notify">—</span><span class="sub" data-hero="notifySub">outbox</span></div>
+          </div>
+          <p class="jv-note" style="margin:1rem 0 0">
+            <span class="material-symbols-outlined">lock</span>
+            <span>Counters are derived from read-only endpoints proxied same-origin by the admin edge. A dash means that service did not answer in time.</span>
+          </p>
+        </div>
+      </section>
+
+      <!-- ─────────────────── Live service health ─────────────────── -->
+      <section class="jv-section" id="health">
+        <div class="jv-section-head">
+          <div>
+            <p class="label-caps jv-eyebrow"><span class="material-symbols-outlined" style="font-size:1rem;color:var(--primary)">monitor_heart</span> Live service health</p>
+            <h2 class="headline-lg">Seven services, probed continuously</h2>
+            <p class="lede">Each card is a live health probe through the same-origin edge proxy, with client-measured round-trip latency. Independent failure is expected — the mesh degrades, it does not collapse.</p>
+          </div>
+          <div style="text-align:right">
+            <p class="label-caps" style="margin:0">Mesh availability</p>
+            <p class="data-lg" style="margin:0.3rem 0 0;color:var(--primary)" id="healthPct">—</p>
+          </div>
+        </div>
+        <div class="jv-bar" style="margin-bottom:1.1rem"><span id="healthBar" style="width:0%"></span></div>
+        <div class="jv-grid wide" id="healthGrid" aria-live="polite"></div>
+      </section>
+
+      <!-- ───────────────────────── Risk AI ───────────────────────── -->
+      <section class="jv-section" id="risk">
+        <div class="jv-section-head">
+          <div>
+            <p class="label-caps jv-eyebrow"><span class="material-symbols-outlined" style="font-size:1rem;color:var(--tertiary)">neurology</span> Risk AI</p>
+            <h2 class="headline-lg">Fraud scoring, AI shield &amp; federated learning</h2>
+            <p class="lede">Rules dominate for explainability, the model nudges. Blocked transfers open a case automatically; the shield quarantines a service the moment its health signal degrades.</p>
+          </div>
+        </div>
+        <div class="split split-sidebar">
+          <div style="display:grid;gap:1rem">
+            <section class="panel-muted">
+              <h3 class="label-caps" style="margin:0 0 0.85rem;color:var(--on-surface)">Fraud cases opened by the model</h3>
+              <div id="riskCases"></div>
+            </section>
+          </div>
+          <div style="display:grid;gap:1rem">
+            <section class="panel">
+              <h3 class="label-caps" style="margin:0 0 0.75rem;color:var(--on-surface)">AI shield · active quarantines</h3>
+              <div id="riskShield"></div>
+            </section>
+            <section class="panel-muted">
+              <h3 class="label-caps" style="margin:0 0 0.75rem;color:var(--on-surface)">Federated learning</h3>
+              <div id="riskFederated"></div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <!-- ────────────────────────── Vault ────────────────────────── -->
+      <section class="jv-section" id="vault">
+        <div class="jv-section-head">
+          <div>
+            <p class="label-caps jv-eyebrow"><span class="material-symbols-outlined" style="font-size:1rem;color:var(--primary)">lock</span> Vault</p>
+            <h2 class="headline-lg">Master-key ceremony · Shamir 3-of-5</h2>
+            <p class="lede">The master key is split across five custodian institutions. Three signatures authorise reconstruction — and reconstruction happens only inside the enclave, never in this process.</p>
+          </div>
+          <div style="text-align:right">
+            <p class="label-caps" style="margin:0">Approvals</p>
+            <p class="data-lg" style="margin:0.3rem 0 0;color:var(--primary)" id="vaultCount">—</p>
+          </div>
+        </div>
+        <div class="split split-sidebar">
+          <div style="display:grid;gap:1rem">
+            <div class="jv-bar"><span id="vaultBar" style="width:0%"></span></div>
+            <div class="grid-custodians" id="custodians"></div>
+          </div>
+          <div style="display:grid;gap:1rem">
+            <section class="panel">
+              <h3 class="label-caps" style="margin:0 0 0.75rem;color:var(--on-surface)">Ceremony state</h3>
+              <div id="vaultMeta"></div>
+            </section>
+            <section class="panel-muted">
+              <h3 class="label-caps" style="margin:0 0 0.75rem;color:var(--on-surface)">Enclave egress log</h3>
+              <p style="margin:0 0 0.7rem;font-size:0.85rem;color:var(--on-surface-variant)">Everything that crossed the enclave boundary. Key material is never present.</p>
+              <div id="vaultEgress"></div>
+            </section>
+          </div>
+        </div>
+        <p class="jv-note" style="margin-top:1.1rem">
+          <span class="material-symbols-outlined">shield_person</span>
+          <span>Custodian approval and reconstruction are deliberately absent here — those are write operations and live in the <a href="/index.html">operator console</a> behind operator authority.</span>
+        </p>
+      </section>
+
+      <!-- ──────────────────────── Compliance ──────────────────────── -->
+      <section class="jv-section" id="compliance">
+        <div class="jv-section-head">
+          <div>
+            <p class="label-caps jv-eyebrow"><span class="material-symbols-outlined" style="font-size:1rem;color:var(--tertiary)">gavel</span> Compliance</p>
+            <h2 class="headline-lg">AML · sanctions · SAR register</h2>
+            <p class="lede">Every case that the mesh opened — whether raised by a screening hit, a risk-AI block, or an analyst — with its severity and current disposition.</p>
+          </div>
+        </div>
+        <div class="jv-stat-grid" style="margin-bottom:1rem" id="complianceStats"></div>
+        <section class="panel-muted">
+          <div id="complianceTable"></div>
+        </section>
+      </section>
+
+      <!-- ────────────────────────── Loans ────────────────────────── -->
+      <section class="jv-section" id="loans">
+        <div class="jv-section-head">
+          <div>
+            <p class="label-caps jv-eyebrow"><span class="material-symbols-outlined" style="font-size:1rem;color:var(--primary)">account_balance</span> Loans</p>
+            <h2 class="headline-lg">SME micro-lending book</h2>
+            <p class="lede">Applications scored against the shared credit model, with repayment schedules generated on decision. Amounts are read straight from the loan service.</p>
+          </div>
+        </div>
+        <div class="jv-stat-grid" style="margin-bottom:1rem" id="loanStats"></div>
+        <section class="panel-muted">
+          <div id="loanTable"></div>
+        </section>
+      </section>
+
+      <!-- ──────────────────────── Payment hub ──────────────────────── -->
+      <section class="jv-section" id="payments">
+        <div class="jv-section-head">
+          <div>
+            <p class="label-caps jv-eyebrow"><span class="material-symbols-outlined" style="font-size:1rem;color:var(--primary)">swap_horiz</span> Payment hub</p>
+            <h2 class="headline-lg">LankaPay · Visa · CBDC, ISO 20022 native</h2>
+            <p class="lede">The Go payment hub speaks three schemes behind one connector interface and emits pacs.008 for every accepted instruction. Traffic below is read from its Prometheus scrape.</p>
+          </div>
+        </div>
+        <div class="split split-sidebar">
+          <div style="display:grid;gap:1rem">
+            <section class="panel-muted">
+              <h3 class="label-caps" style="margin:0 0 0.85rem;color:var(--on-surface)">Request volume by endpoint</h3>
+              <div id="payMetrics"></div>
+            </section>
+            <section class="panel-muted">
+              <h3 class="label-caps" style="margin:0 0 0.5rem;color:var(--on-surface)">Inspect a payment · pacs.008</h3>
+              <p style="margin:0 0 0.75rem;font-size:0.85rem;color:var(--on-surface-variant)">Paste a payment id to fetch its record and the generated ISO 20022 message. Lookup only — nothing is created.</p>
+              <div class="jv-lookup">
+                <input id="payLookupId" type="text" inputmode="text" spellcheck="false" placeholder="payment id" aria-label="Payment id" />
+                <button class="btn btn-secondary" id="payLookupBtn" type="button">
+                  <span class="material-symbols-outlined">search</span> Inspect
+                </button>
+              </div>
+              <div id="payLookupOut" style="margin-top:0.9rem"></div>
+            </section>
+          </div>
+          <div style="display:grid;gap:1rem">
+            <section class="panel">
+              <h3 class="label-caps" style="margin:0 0 0.75rem;color:var(--on-surface)">Rails</h3>
+              <ul class="jv-list">
+                <li class="jv-li"><div class="jv-li-top"><strong class="data-md">LANKAPAY</strong><span class="jv-chip mint">Domestic RTGS</span></div><p class="jv-li-body" style="margin:0">Local clearing rail, minor-unit settlement in LKR.</p></li>
+                <li class="jv-li"><div class="jv-li-top"><strong class="data-md">VISA</strong><span class="jv-chip">Card scheme</span></div><p class="jv-li-body" style="margin:0">Cross-border card acquiring via the same connector contract.</p></li>
+                <li class="jv-li"><div class="jv-li-top"><strong class="data-md">CBDC</strong><span class="jv-chip gold">Central bank</span></div><p class="jv-li-body" style="margin:0">Central-bank digital currency leg for wholesale settlement.</p></li>
+              </ul>
+            </section>
+            <section class="panel-muted">
+              <h3 class="label-caps" style="margin:0 0 0.75rem;color:var(--on-surface)">Hub status</h3>
+              <div id="payHealth"></div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────────────────── Notifications ─────────────────────── -->
+      <section class="jv-section" id="notifications">
+        <div class="jv-section-head">
+          <div>
+            <p class="label-caps jv-eyebrow"><span class="material-symbols-outlined" style="font-size:1rem;color:var(--primary)">forum</span> Notifications</p>
+            <h2 class="headline-lg">Trilingual outbox — English · සිංහල · தமிழ்</h2>
+            <p class="lede">Inclusion is a delivery problem as much as a product one. Every customer-facing message renders in all three national languages across SMS, email, push and voice.</p>
+          </div>
+        </div>
+        <div class="jv-stat-grid" style="margin-bottom:1rem" id="notifyStats"></div>
+        <div class="split split-sidebar">
+          <section class="panel-muted">
+            <h3 class="label-caps" style="margin:0 0 0.85rem;color:var(--on-surface)">Recent messages</h3>
+            <div id="notifyList"></div>
+          </section>
+          <section class="panel">
+            <h3 class="label-caps" style="margin:0 0 0.75rem;color:var(--on-surface)">Registered templates</h3>
+            <div id="notifyTemplates"></div>
+          </section>
+        </div>
+      </section>
+
+      <!-- ────────────────── Enterprise capabilities ────────────────── -->
+      <section class="jv-section" id="capabilities">
+        <div class="jv-section-head">
+          <div>
+            <p class="label-caps jv-eyebrow"><span class="material-symbols-outlined" style="font-size:1rem;color:var(--primary)">workspaces</span> Enterprise capabilities</p>
+            <h2 class="headline-lg">What makes this a fabric, not an app</h2>
+            <p class="lede">Ten services, four languages, one contract discipline. The properties below are architectural commitments, not features toggled per deployment.</p>
+          </div>
+        </div>
+        <div class="jv-grid wide">
+          <article class="jv-cap mesh-glow">
+            <span class="material-symbols-outlined">lan</span>
+            <h3>Polyglot service mesh</h3>
+            <p>Kotlin core for the money-moving domain, Go for the payment rails, Python for risk models, Node for messaging. Each language sits where it earns its keep.</p>
+          </article>
+          <article class="jv-cap mesh-glow">
+            <span class="material-symbols-outlined">account_tree</span>
+            <h3>Saga orchestration</h3>
+            <p>Transfers run as compensating sagas across account, ledger and risk. A partial failure unwinds deterministically instead of leaving torn state.</p>
+          </article>
+          <article class="jv-cap mesh-glow">
+            <span class="material-symbols-outlined">database</span>
+            <h3>Database per service</h3>
+            <p>No shared schema, no cross-service joins. A compromised service reaches its own PostgreSQL instance and nothing else.</p>
+          </article>
+          <article class="jv-cap mesh-glow">
+            <span class="material-symbols-outlined">verified</span>
+            <h3>Tamper-evident ledger</h3>
+            <p>Append-only hash chain, Merkle-anchored and signed on a fixed cadence. Any retroactive edit breaks verification publicly.</p>
+          </article>
+          <article class="jv-cap mesh-glow">
+            <span class="material-symbols-outlined">wifi_off</span>
+            <h3>Offline-first inclusion</h3>
+            <p>Signed offline vouchers, a sub-50 KB low-data page, and USSD <code>*334#</code> for feature phones. Connectivity is a preference, not a requirement.</p>
+          </article>
+          <article class="jv-cap mesh-glow">
+            <span class="material-symbols-outlined">enhanced_encryption</span>
+            <h3>Post-quantum ready</h3>
+            <p>ML-KEM-768 key encapsulation and ML-DSA-65 signatures on the trust anchor, chosen against a long-horizon threat model.</p>
+          </article>
+          <article class="jv-cap mesh-glow">
+            <span class="material-symbols-outlined">bolt</span>
+            <h3>Idempotent write path</h3>
+            <p>Every state-changing call carries an idempotency key, so a retried transfer settles once regardless of network behaviour.</p>
+          </article>
+          <article class="jv-cap mesh-glow">
+            <span class="material-symbols-outlined">insights</span>
+            <h3>Uniform observability</h3>
+            <p>Micrometer-shaped Prometheus metrics from every runtime — JVM, Go and Node alike — so one dashboard query covers the whole mesh.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- ─────────────────── Security architecture ─────────────────── -->
+      <section class="jv-section" id="security">
+        <div class="jv-section-head">
+          <div>
+            <p class="label-caps jv-eyebrow"><span class="material-symbols-outlined" style="font-size:1rem;color:var(--tertiary)">security</span> Security architecture</p>
+            <h2 class="headline-lg">Six layers, no implicit trust</h2>
+            <p class="lede">Every hop is authenticated and every privileged action is split across parties. The layers below map one-to-one onto the deployed topology.</p>
+          </div>
+        </div>
+        <div style="display:grid;gap:0.75rem">
+          <div class="jv-layer">
+            <div><span class="label-caps">Layer 1</span><div class="data-md">Edge channels</div></div>
+            <div class="jv-chips"><span class="jv-chip">Web PWA</span><span class="jv-chip">Low-data &lt;50 KB</span><span class="jv-chip">USSD *334#</span><span class="jv-chip">ATM / POS</span></div>
+          </div>
+          <div class="jv-layer">
+            <div><span class="label-caps">Layer 2</span><div class="data-md">Security edge</div></div>
+            <div class="jv-chips"><span class="jv-chip mint">Kong gateway</span><span class="jv-chip mint">Keycloak OIDC</span><span class="jv-chip">PKCE BFF</span><span class="jv-chip">DPoP-bound tokens</span><span class="jv-chip">WebAuthn MFA</span><span class="jv-chip">5-minute lifetimes</span></div>
+          </div>
+          <div class="jv-layer">
+            <div><span class="label-caps">Layer 3</span><div class="data-md">Policy &amp; identity</div></div>
+            <div class="jv-chips"><span class="jv-chip">OPA authorisation</span><span class="jv-chip">Vault PKI</span><span class="jv-chip">mTLS service-to-service</span><span class="jv-chip">Adaptive login risk</span></div>
+          </div>
+          <div class="jv-layer">
+            <div><span class="label-caps">Layer 4</span><div class="data-md">Business services</div></div>
+            <div class="jv-chips"><span class="jv-chip">Identity</span><span class="jv-chip">Account</span><span class="jv-chip">Orchestrator</span><span class="jv-chip">Ledger</span><span class="jv-chip">Vault</span><span class="jv-chip">Payment hub</span><span class="jv-chip">Risk AI</span><span class="jv-chip">Loan</span><span class="jv-chip">Compliance</span><span class="jv-chip">Notification</span></div>
+          </div>
+          <div class="jv-layer">
+            <div><span class="label-caps">Layer 5</span><div class="data-md">Data &amp; events</div></div>
+            <div class="jv-chips"><span class="jv-chip">Kafka event mesh</span><span class="jv-chip">PostgreSQL per service</span><span class="jv-chip">Redis</span><span class="jv-chip">Encryption at rest</span></div>
+          </div>
+          <div class="jv-layer">
+            <div><span class="label-caps">Layer 6</span><div class="data-md">Trust anchor</div></div>
+            <div class="jv-chips"><span class="jv-chip gold">Enclave · reconstruct-only</span><span class="jv-chip gold">Shamir 3-of-5</span><span class="jv-chip">Merkle anchor</span><span class="jv-chip">ML-DSA-65 signatures</span></div>
+          </div>
+        </div>
+        <p class="jv-note" style="margin-top:1.1rem">
+          <span class="material-symbols-outlined">visibility_off</span>
+          <span>This dashboard is a layer-1 consumer. It reads through the admin edge proxy on the same origin and holds no credentials, no key material and no write capability.</span>
+        </p>
+      </section>
+
+      <!-- ────────────────────── Demo navigation ────────────────────── -->
+      <section class="jv-section" id="demo">
+        <div class="jv-section-head">
+          <div>
+            <p class="label-caps jv-eyebrow"><span class="material-symbols-outlined" style="font-size:1rem;color:var(--primary)">explore</span> Demo navigation</p>
+            <h2 class="headline-lg">Where to go next</h2>
+            <p class="lede">Operator surfaces are same-origin. Customer surfaces live on the public web host and are resolved from the current address at runtime.</p>
+          </div>
+        </div>
+        <h3 class="label-caps" style="margin:0 0 0.6rem;color:var(--on-surface)">Operator</h3>
+        <div class="tile-grid" style="margin-bottom:1.5rem">
+          <a class="tile" href="/index.html">
+            <span class="material-symbols-outlined" style="color:var(--primary)">lock</span>
+            <strong>Vault ceremony</strong>
+            <span class="code-hint">Seed · approve 3/5 · reconstruct</span>
+          </a>
+          <a class="tile" href="/index.html">
+            <span class="material-symbols-outlined" style="color:var(--tertiary)">shield</span>
+            <strong>Risk &amp; shield</strong>
+            <span class="code-hint">Quarantine · release · cases</span>
+          </a>
+          <a class="tile" href="/index.html">
+            <span class="material-symbols-outlined" style="color:var(--primary)">gavel</span>
+            <strong>Compliance desk</strong>
+            <span class="code-hint">Open and triage cases</span>
+          </a>
+          <a class="tile" href="/index.html">
+            <span class="material-symbols-outlined" style="color:var(--primary)">payments</span>
+            <strong>Payments &amp; notify</strong>
+            <span class="code-hint">pacs.008 · trilingual outbox</span>
+          </a>
+        </div>
+        <h3 class="label-caps" style="margin:0 0 0.6rem;color:var(--on-surface)">Customer <span id="customerHostHint" style="text-transform:none;letter-spacing:0"></span></h3>
+        <div class="tile-grid" id="customerTiles"></div>
+      </section>
+
+    </main>
+
+    <footer class="site-footer">
+      <p class="label-caps" style="color:var(--on-surface);margin:0">FINIX Mesh · Read-only operations dashboard</p>
+      <p class="jv-freshness" style="margin:0"><span id="footerUpdated">—</span></p>
+    </footer>
+  </div>
+
+  <script src="/js/finix.js"></script>
+  <script>
+  (function () {
+    "use strict";
+
+    /* ══════════════════════════════════════════════════════════════
+       Read-only transport.
+       Every network call on this page goes through readGet(). There is
+       no code path here that can issue a method other than GET: the
+       verb is a literal below and the caller cannot override it.
+       ══════════════════════════════════════════════════════════════ */
+
+    var TIMEOUT_MS = 7000;
+    var REFRESH_MS = 20000;
+
+    /** Same-origin API prefixes served by the admin nginx edge (apps/admin/nginx.conf). */
+    var API = {
+      vault: "/api/vault",
+      orchestrator: "/api/orchestrator",
+      risk: "/api/risk",
+      compliance: "/api/compliance",
+      loan: "/api/loan",
+      pay: "/api/pay",
+      notify: "/api/notify"
+    };
+
+    /**
+     * Issue one same-origin GET with a hard timeout.
+     * Resolves — never rejects — so a dead service degrades one panel
+     * instead of tearing down the whole refresh cycle.
+     */
+    async function readGet(path, opts) {
+      var options = opts || {};
+      var controller = new AbortController();
+      var timedOut = false;
+      var timer = setTimeout(function () {
+        timedOut = true;
+        controller.abort();
+      }, options.timeout || TIMEOUT_MS);
+      var started = (window.performance && performance.now) ? performance.now() : Date.now();
+
+      try {
+        var res = await fetch(path, {
+          method: "GET",
+          signal: controller.signal,
+          cache: "no-store",
+          credentials: "same-origin",
+          headers: { accept: options.accept || "application/json, text/plain;q=0.8, */*;q=0.5" }
+        });
+        var text = await res.text();
+        var data = text;
+        if (options.raw !== true) {
+          try { data = text ? JSON.parse(text) : null; } catch (_) { data = text; }
+        }
+        return {
+          ok: res.ok,
+          status: res.status,
+          data: data,
+          text: text,
+          ms: Math.round(((window.performance && performance.now) ? performance.now() : Date.now()) - started),
+          timedOut: false,
+          error: res.ok ? null : ("HTTP " + res.status)
+        };
+      } catch (err) {
+        return {
+          ok: false,
+          status: 0,
+          data: null,
+          text: "",
+          ms: Math.round(((window.performance && performance.now) ? performance.now() : Date.now()) - started),
+          timedOut: timedOut,
+          error: timedOut ? "timed out after " + Math.round((options.timeout || TIMEOUT_MS) / 1000) + "s" : "unreachable"
+        };
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    /* ───────────────────────── helpers ───────────────────────── */
+
+    var $ = function (id) { return document.getElementById(id); };
+
+    var ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+    function esc(value) {
+      if (value === null || value === undefined || value === "") return "—";
+      return String(value).replace(/[&<>"']/g, function (c) { return ESCAPES[c]; });
+    }
+
+    function skeleton(rows, height) {
+      var out = '<div class="jv-skel-stack" aria-hidden="true">';
+      for (var i = 0; i < (rows || 3); i++) {
+        out += '<div class="jv-skel is-loading" style="height:' + (height || 16) + 'px;width:' + (100 - i * 9) + '%"></div>';
+      }
+      return out + "</div>";
+    }
+
+    function failure(label, result) {
+      var reason = result && result.error ? result.error : "unavailable";
+      return '<div class="status-banner err" role="status">' +
+        '<span class="material-symbols-outlined">cloud_off</span>' +
+        '<span><strong>' + esc(label) + ' unavailable</strong><br />' +
+        '<span style="font-size:0.85rem;color:var(--on-surface-variant)">' + esc(reason) +
+        ' — the rest of the mesh keeps reporting.</span></span></div>';
+    }
+
+    function empty(message) {
+      return '<p class="jv-empty">' + esc(message) + '</p>';
+    }
+
+    function stat(label, value, sub, tone) {
+      return '<div class="jv-stat"><span class="label-caps">' + esc(label) + '</span>' +
+        '<span class="v ' + (tone || "") + '">' + esc(value) + "</span>" +
+        '<span class="sub">' + esc(sub || "") + "</span></div>";
+    }
+
+    function shortId(value) {
+      var s = String(value == null ? "" : value);
+      return s.length > 10 ? s.slice(0, 8) + "…" : (s || "—");
+    }
+
+    function clockTime(iso) {
+      if (!iso) return "—";
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return String(iso);
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    }
+
+    function pct(part, total) {
+      if (!total) return 0;
+      return Math.max(0, Math.min(100, Math.round((part / total) * 100)));
+    }
+
+    function setHero(key, value, sub, tone) {
+      var el = document.querySelector('[data-hero="' + key + '"]');
+      if (el) {
+        el.textContent = value == null ? "—" : String(value);
+        el.className = "v " + (tone || "");
+      }
+      if (sub !== undefined) {
+        var subEl = document.querySelector('[data-hero="' + key + 'Sub"]');
+        if (subEl) subEl.textContent = sub;
+      }
+    }
+
+    function asArray(payload, key) {
+      if (Array.isArray(payload)) return payload;
+      if (payload && Array.isArray(payload[key])) return payload[key];
+      return [];
+    }
+
+    /* ─────────────────── live service health ─────────────────── */
+
+    var SERVICES = [
+      { key: "vault", name: "Vault", stack: "Kotlin · Spring Boot", role: "Shamir 3-of-5 master-key custody", path: API.vault + "/actuator/health" },
+      { key: "orchestrator", name: "Orchestrator", stack: "Kotlin · Saga", role: "Transfer sagas with compensation", path: API.orchestrator + "/actuator/health" },
+      { key: "compliance", name: "Compliance", stack: "Kotlin · Spring Boot", role: "AML, sanctions and SAR cases", path: API.compliance + "/actuator/health" },
+      { key: "loan", name: "Loan", stack: "Kotlin · Spring Boot", role: "SME micro-lending and scoring", path: API.loan + "/actuator/health" },
+      { key: "risk", name: "Risk AI", stack: "Python · FastAPI", role: "Fraud scoring and AI shield", path: API.risk + "/health" },
+      { key: "pay", name: "Payment hub", stack: "Go", role: "LankaPay, Visa, CBDC, pacs.008", path: API.pay + "/health" },
+      { key: "notify", name: "Notification", stack: "Node · Express", role: "Trilingual customer messaging", path: API.notify + "/health" }
+    ];
+
+    var STATE_LABEL = { up: "OPERATIONAL", degraded: "DEGRADED", down: "UNREACHABLE", timeout: "TIMEOUT" };
+
+    function healthState(result) {
+      if (result.timedOut) return "timeout";
+      if (result.status === 0) return "down";
+      var reported = result.data && typeof result.data === "object"
+        ? (result.data.status || result.data.state || "")
+        : "";
+      if (result.ok) return String(reported).toUpperCase() === "DOWN" ? "degraded" : "up";
+      return String(reported).toUpperCase() === "DOWN" ? "degraded" : "down";
+    }
+
+    function healthCard(svc, result) {
+      var state = result ? healthState(result) : "loading";
+      var latency = result ? result.ms + " ms" : "…";
+      return '<article class="jv-svc ' + state + '">' +
+        '<div class="jv-svc-top">' +
+          '<div><div class="jv-svc-name">' + esc(svc.name) + "</div>" +
+          '<div class="label-caps" style="margin-top:0.15rem">' + esc(svc.stack) + "</div></div>" +
+          '<span class="pill ' + (state === "up" ? "ok" : (state === "degraded" ? "" : "bad")) + '">' +
+            '<span class="jv-dot ' + state + '"></span>' + esc(STATE_LABEL[state] || "PROBING") +
+          "</span>" +
+        "</div>" +
+        '<p class="jv-svc-role" style="margin:0">' + esc(svc.role) + "</p>" +
+        '<div class="jv-svc-meta">' +
+          '<span class="label-caps">RTT <span style="color:var(--on-surface)">' + esc(latency) + "</span></span>" +
+          '<span class="label-caps">HTTP <span style="color:var(--on-surface)">' + esc(result ? (result.status || "—") : "—") + "</span></span>" +
+        "</div>" +
+        "</article>";
+    }
+
+    function paintHealthSkeleton() {
+      $("healthGrid").innerHTML = SERVICES.map(function (s) { return healthCard(s, null); }).join("");
+    }
+
+    async function loadHealth() {
+      var results = await Promise.all(SERVICES.map(function (svc) { return readGet(svc.path); }));
+      var up = 0;
+      var html = SERVICES.map(function (svc, i) {
+        if (healthState(results[i]) === "up") up++;
+        return healthCard(svc, results[i]);
+      }).join("");
+      $("healthGrid").innerHTML = html;
+
+      var percentage = pct(up, SERVICES.length);
+      $("healthPct").textContent = up + "/" + SERVICES.length;
+      $("healthPct").style.color = up === SERVICES.length ? "var(--primary)" : (up === 0 ? "var(--error)" : "var(--tertiary)");
+      $("healthBar").style.width = percentage + "%";
+      $("healthBar").parentElement.className = "jv-bar" + (up === SERVICES.length ? "" : (up === 0 ? " bad" : " gold"));
+
+      setHero("services", up + "/" + SERVICES.length, percentage + "% of the mesh responding",
+        up === SERVICES.length ? "mint" : (up === 0 ? "bad" : "gold"));
+    }
+
+    /* ─────────────────────────  risk AI  ───────────────────────── */
+
+    function decisionTone(decision) {
+      var d = String(decision || "").toUpperCase();
+      if (d === "BLOCK" || d === "DENY") return "bad";
+      if (d === "ALLOW" || d === "APPROVE") return "ok";
+      return "";
+    }
+
+    async function loadRisk() {
+      var cases = await readGet(API.risk + "/v1/cases");
+      if (!cases.ok) {
+        $("riskCases").innerHTML = failure("Risk AI cases", cases);
+        setHero("risk", "—", "service unreachable", "gold");
+      } else {
+        var list = asArray(cases.data, "cases");
+        setHero("risk", list.length, list.length === 1 ? "case opened by the model" : "cases opened by the model", "gold");
+        $("riskCases").innerHTML = list.length
+          ? '<div class="jv-scroll"><table><thead><tr><th>Case</th><th>Score</th><th>Amount (minor)</th><th>Reasons</th><th>Status</th></tr></thead><tbody>' +
+              list.slice(0, 12).map(function (c) {
+                var score = Number(c.score);
+                var tone = score >= 70 ? "bad" : (score >= 40 ? "" : "ok");
+                return "<tr><td class=\"data\">" + esc(shortId(c.case_id)) + "</td>" +
+                  '<td><span class="pill ' + tone + '">' + esc(isNaN(score) ? "—" : score) + "</span></td>" +
+                  '<td class="data">' + esc(c.amount_minor) + "</td>" +
+                  "<td style=\"font-size:0.82rem;color:var(--on-surface-variant)\">" +
+                    esc((c.reasons || []).join(", ")) + "</td>" +
+                  '<td><span class="pill">' + esc(c.status) + "</span></td></tr>";
+              }).join("") +
+            "</tbody></table></div>" +
+            (list.length > 12 ? '<p class="jv-empty">Showing the 12 most recent of ' + list.length + ".</p>" : "")
+          : empty("No fraud cases — the model has not blocked a transfer yet.");
+      }
+
+      var shield = await readGet(API.risk + "/v1/shield/quarantines");
+      if (!shield.ok) {
+        $("riskShield").innerHTML = failure("AI shield", shield);
+      } else {
+        var q = asArray(shield.data, "quarantines");
+        $("riskShield").innerHTML = q.length
+          ? '<ul class="jv-list">' + q.map(function (r) {
+              return '<li class="jv-li"><div class="jv-li-top"><strong class="data-md">' + esc(r.service) + "</strong>" +
+                '<span class="pill bad">' + (r.active ? "QUARANTINED" : "RELEASED") + "</span></div>" +
+                '<p class="jv-li-body" style="margin:0">' + esc(r.reason) + " · " + esc(clockTime(r.at)) + "</p></li>";
+            }).join("") + "</ul>"
+          : '<div class="status-banner ok"><span class="material-symbols-outlined">verified_user</span>' +
+            "<span>No service is quarantined. All health signals are inside tolerance.</span></div>";
+      }
+
+      var fed = await readGet(API.risk + "/v1/federated/demo");
+      if (!fed.ok) {
+        $("riskFederated").innerHTML = failure("Federated learning", fed);
+      } else {
+        var f = fed.data || {};
+        var weights = Array.isArray(f.global_weights) ? f.global_weights : [];
+        $("riskFederated").innerHTML =
+          '<dl class="jv-kv">' +
+            "<div><dt>Algorithm</dt><dd>" + esc(f.algorithm) + "</dd></div>" +
+            "<div><dt>Participating banks</dt><dd>" + esc(f.banks) + "</dd></div>" +
+            "<div><dt>Global weights</dt><dd>" +
+              (weights.length ? weights.map(function (w) { return Number(w).toFixed(3); }).join(" · ") : "—") +
+            "</dd></div>" +
+          "</dl>" +
+          '<p class="jv-note" style="margin-top:0.8rem"><span class="material-symbols-outlined">science</span>' +
+          "<span>" + esc(f.note || "Weights are averaged across nodes; raw customer data never leaves its bank.") + "</span></p>";
+      }
+    }
+
+    /* ──────────────────────────  vault  ────────────────────────── */
+
+    var CUSTODIAN_NAMES = {
+      CENTRAL_BANK: "Central Bank",
+      GOVT_DR: "Government DR",
+      IEEE_VAULT: "IEEE Vault",
+      CLOUD_HSM_A: "Cloud HSM A",
+      CLOUD_HSM_B: "Cloud HSM B"
+    };
+
+    function custodianCard(id, approved) {
+      return '<div class="custodian' + (approved ? " approved" : "") + '">' +
+        '<div style="display:flex;justify-content:space-between;gap:0.5rem;margin-bottom:0.65rem">' +
+          '<div><div class="label-caps">Custodian</div>' +
+          '<div class="data-md" style="color:var(--on-surface)">' + esc(CUSTODIAN_NAMES[id] || id) + "</div></div>" +
+          '<span class="material-symbols-outlined" style="color:' + (approved ? "var(--primary)" : "var(--tertiary)") + '">' +
+            (approved ? "check_circle" : "pending") + "</span>" +
+        "</div>" +
+        '<div class="pill ' + (approved ? "ok" : "") + '">' + (approved ? "SIGNED" : "AWAITING") + "</div>" +
+        "</div>";
+    }
+
+    async function loadVault() {
+      var res = await readGet(API.vault + "/api/v1/vault/ceremony");
+      if (!res.ok) {
+        $("custodians").innerHTML = failure("Vault ceremony", res);
+        $("vaultMeta").innerHTML = empty("Ceremony state unavailable.");
+        $("vaultCount").textContent = "—";
+        $("vaultBar").style.width = "0%";
+        setHero("vault", "—", "service unreachable");
+      } else {
+        var c = res.data || {};
+        var custodians = Array.isArray(c.custodians) && c.custodians.length
+          ? c.custodians
+          : Object.keys(CUSTODIAN_NAMES);
+        var approvals = Array.isArray(c.approvals) ? c.approvals : [];
+        var approvedSet = {};
+        approvals.forEach(function (a) {
+          var id = typeof a === "string" ? a : (a && (a.custodianId || a.id || a.name));
+          if (id) approvedSet[id] = true;
+        });
+        var count = typeof c.approvalCount === "number" ? c.approvalCount : approvals.length;
+        var threshold = c.threshold || 3;
+
+        $("custodians").innerHTML = custodians.map(function (id) {
+          return custodianCard(id, !!approvedSet[id]);
+        }).join("");
+        $("vaultCount").textContent = count + "/" + threshold;
+        $("vaultBar").style.width = pct(count, threshold) + "%";
+        $("vaultBar").parentElement.className = "jv-bar" + (count >= threshold ? "" : " gold");
+
+        $("vaultMeta").innerHTML =
+          '<dl class="jv-kv">' +
+            "<div><dt>State</dt><dd>" + esc(c.state) + "</dd></div>" +
+            "<div><dt>Threshold</dt><dd>" + esc(threshold) + " of " + esc(c.shardCount || custodians.length) + "</dd></div>" +
+            "<div><dt>Signatures</dt><dd>" + esc(count) + "</dd></div>" +
+            "<div><dt>Ceremony</dt><dd>" + esc(shortId(c.id)) + "</dd></div>" +
+            "<div><dt>Updated</dt><dd>" + esc(clockTime(c.updatedAt)) + "</dd></div>" +
+          "</dl>";
+
+        setHero("vault", esc(c.state || "—"), count + " of " + threshold + " signatures",
+          count >= threshold ? "mint" : "gold");
+      }
+
+      var egress = await readGet(API.vault + "/api/v1/vault/ceremony/egress-log");
+      if (!egress.ok) {
+        $("vaultEgress").innerHTML = failure("Egress log", egress);
+      } else {
+        var entries = asArray(egress.data, "entries");
+        $("vaultEgress").innerHTML = entries.length
+          ? '<ul class="jv-list">' + entries.slice(-8).reverse().map(function (e) {
+              return '<li class="jv-li"><div class="jv-li-top">' +
+                '<span class="label-caps">' + esc(clockTime(e.recordedAt)) + "</span></div>" +
+                '<p class="jv-li-body" style="margin:0">' + esc(e.message) + "</p></li>";
+            }).join("") + "</ul>"
+          : empty("Egress log empty — the enclave boundary has not been crossed.");
+      }
+    }
+
+    /* ────────────────────────  compliance  ──────────────────────── */
+
+    var SEVERITY_TONE = { HIGH: "bad", CRITICAL: "bad", MEDIUM: "", LOW: "ok" };
+
+    async function loadCompliance() {
+      var res = await readGet(API.compliance + "/api/v1/cases");
+      if (!res.ok) {
+        $("complianceStats").innerHTML = "";
+        $("complianceTable").innerHTML = failure("Compliance register", res);
+        setHero("compliance", "—", "service unreachable");
+        return;
+      }
+      var list = asArray(res.data, "cases");
+      var open = list.filter(function (c) { return String(c.status).toUpperCase() !== "CLOSED"; }).length;
+      var high = list.filter(function (c) {
+        var s = String(c.severity).toUpperCase();
+        return s === "HIGH" || s === "CRITICAL";
+      }).length;
+      var types = {};
+      list.forEach(function (c) { types[c.type] = (types[c.type] || 0) + 1; });
+
+      $("complianceStats").innerHTML =
+        stat("Total cases", list.length, "all time") +
+        stat("Open", open, "awaiting disposition", open ? "gold" : "mint") +
+        stat("High severity", high, "HIGH or CRITICAL", high ? "bad" : "mint") +
+        stat("Case types", Object.keys(types).length, Object.keys(types).join(" · ") || "none");
+
+      setHero("compliance", open, open === 1 ? "open case" : "open cases", open ? "gold" : "mint");
+
+      $("complianceTable").innerHTML = list.length
+        ? '<div class="jv-scroll"><table><thead><tr><th>Type</th><th>Subject</th><th>Severity</th><th>Status</th><th>Opened</th></tr></thead><tbody>' +
+            list.slice(0, 15).map(function (c) {
+              return "<tr><td>" + esc(c.type) + "</td>" +
+                '<td class="data" style="font-size:0.8rem">' + esc(c.subjectRef) + "</td>" +
+                '<td><span class="pill ' + (SEVERITY_TONE[String(c.severity).toUpperCase()] || "") + '">' + esc(c.severity) + "</span></td>" +
+                '<td><span class="pill' + (String(c.status).toUpperCase() === "CLOSED" ? " ok" : "") + '">' + esc(c.status) + "</span></td>" +
+                "<td>" + esc(clockTime(c.openedAt)) + "</td></tr>";
+            }).join("") +
+          "</tbody></table></div>" +
+          (list.length > 15 ? '<p class="jv-empty">Showing 15 of ' + list.length + " cases.</p>" : "")
+        : empty("Register is clean — no AML, sanctions or fraud case has been opened.");
+    }
+
+    /* ──────────────────────────  loans  ────────────────────────── */
+
+    var LOAN_TONE = { APPROVED: "ok", DISBURSED: "ok", REJECTED: "bad", DECLINED: "bad" };
+
+    async function loadLoans() {
+      var res = await readGet(API.loan + "/api/v1/loans");
+      if (!res.ok) {
+        $("loanStats").innerHTML = "";
+        $("loanTable").innerHTML = failure("Loan book", res);
+        setHero("loans", "—", "service unreachable");
+        return;
+      }
+      var list = asArray(res.data, "loans");
+      var approved = list.filter(function (l) {
+        var s = String(l.status).toUpperCase();
+        return s === "APPROVED" || s === "DISBURSED";
+      }).length;
+      var pending = list.filter(function (l) {
+        var s = String(l.status).toUpperCase();
+        return s === "APPLIED" || s === "PENDING" || s === "UNDER_REVIEW";
+      }).length;
+      var total = 0;
+      list.forEach(function (l) {
+        var n = window.Finix ? Finix.moneyAmount(l.principal) : NaN;
+        if (!isNaN(n)) total += n;
+      });
+      var scored = list.filter(function (l) { return typeof l.creditScore === "number"; });
+      var avgScore = scored.length
+        ? Math.round(scored.reduce(function (a, l) { return a + l.creditScore; }, 0) / scored.length)
+        : null;
+
+      $("loanStats").innerHTML =
+        stat("Applications", list.length, "in the book") +
+        stat("Approved", approved, "or disbursed", approved ? "mint" : "") +
+        stat("Awaiting decision", pending, "queued for scoring", pending ? "gold" : "") +
+        stat("Principal", total ? "LKR " + total.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—", "gross exposure") +
+        stat("Avg credit score", avgScore === null ? "—" : avgScore, scored.length + " scored");
+
+      setHero("loans", list.length, approved + " approved · " + pending + " pending");
+
+      $("loanTable").innerHTML = list.length
+        ? '<div class="jv-scroll"><table><thead><tr><th>Loan</th><th>Principal</th><th>Term</th><th>Score</th><th>Status</th><th>Applied</th></tr></thead><tbody>' +
+            list.slice(0, 15).map(function (l) {
+              var money = window.Finix ? Finix.formatMoney(l.principal) : l.principal;
+              return "<tr><td class=\"data\">" + esc(shortId(l.id)) + "</td>" +
+                '<td class="data-md">' + esc(money) + "</td>" +
+                "<td>" + esc(l.termMonths) + " mo</td>" +
+                "<td>" + esc(l.creditScore) + "</td>" +
+                '<td><span class="pill ' + (LOAN_TONE[String(l.status).toUpperCase()] || "") + '">' + esc(l.status) + "</span></td>" +
+                "<td>" + esc(clockTime(l.appliedAt)) + "</td></tr>";
+            }).join("") +
+          "</tbody></table></div>" +
+          (list.length > 15 ? '<p class="jv-empty">Showing 15 of ' + list.length + " applications.</p>" : "")
+        : empty("No applications yet — the SME journey in the customer app opens one.");
+    }
+
+    /* ────────────────────────  payment hub  ─────────────────────── */
+
+    /** Parse Prometheus histogram counters into per-endpoint request totals. */
+    function parseRequestCounters(text) {
+      var rows = {};
+      String(text || "").split("\n").forEach(function (line) {
+        if (line.charAt(0) === "#") return;
+        var m = line.match(/^http_server_requests_seconds_(count|sum)\{([^}]*)\}\s+([0-9.eE+-]+)/);
+        if (!m) return;
+        var kind = m[1];
+        var value = Number(m[3]);
+        if (isNaN(value)) return;
+        var labels = {};
+        m[2].split(",").forEach(function (pair) {
+          var kv = pair.split("=");
+          if (kv.length === 2) labels[kv[0].trim()] = kv[1].replace(/^"|"$/g, "");
+        });
+        var key = (labels.method || "?") + " " + (labels.uri || "?");
+        if (!rows[key]) rows[key] = { key: key, count: 0, sum: 0 };
+        if (kind === "count") rows[key].count += value;
+        else rows[key].sum += value;
+      });
+      return Object.keys(rows).map(function (k) { return rows[k]; })
+        .sort(function (a, b) { return b.count - a.count; });
+    }
+
+    async function loadPayments() {
+      var health = await readGet(API.pay + "/health");
+      if (!health.ok) {
+        $("payHealth").innerHTML = failure("Payment hub", health);
+      } else {
+        var h = health.data || {};
+        $("payHealth").innerHTML =
+          '<dl class="jv-kv">' +
+            "<div><dt>Status</dt><dd>" + esc(h.status || "ok") + "</dd></div>" +
+            "<div><dt>Service</dt><dd>" + esc(h.service || "payment-hub") + "</dd></div>" +
+            "<div><dt>Round trip</dt><dd>" + esc(health.ms + " ms") + "</dd></div>" +
+            "<div><dt>Message format</dt><dd>ISO 20022 pacs.008</dd></div>" +
+          "</dl>";
+      }
+
+      var metrics = await readGet(API.pay + "/metrics", { raw: true, accept: "text/plain" });
+      if (metrics.status === 404) {
+        // Older hub builds do not expose the scrape endpoint — that is not an outage.
+        $("payMetrics").innerHTML = '<div class="status-banner warn"><span class="material-symbols-outlined">query_stats</span>' +
+          "<span>This payment-hub build does not expose a Prometheus scrape endpoint, so per-endpoint volume is unavailable.</span></div>";
+        return;
+      }
+      if (!metrics.ok) {
+        $("payMetrics").innerHTML = failure("Payment hub metrics", metrics);
+        return;
+      }
+      var rows = parseRequestCounters(metrics.text);
+      $("payMetrics").innerHTML = rows.length
+        ? '<div class="jv-scroll"><table><thead><tr><th>Endpoint</th><th>Requests</th><th>Avg latency</th></tr></thead><tbody>' +
+            rows.slice(0, 10).map(function (r) {
+              var avg = r.count ? (r.sum / r.count) * 1000 : 0;
+              return '<tr><td class="data" style="font-size:0.8rem">' + esc(r.key) + "</td>" +
+                '<td class="data-md">' + esc(r.count) + "</td>" +
+                "<td>" + esc(avg ? avg.toFixed(1) + " ms" : "—") + "</td></tr>";
+            }).join("") +
+          "</tbody></table></div>"
+        : empty("No traffic recorded yet — the hub has served no requests this run.");
+    }
+
+    async function inspectPayment() {
+      var id = String($("payLookupId").value || "").trim();
+      var out = $("payLookupOut");
+      if (!id) {
+        out.innerHTML = '<div class="status-banner warn"><span class="material-symbols-outlined">info</span>' +
+          "<span>Enter a payment id first.</span></div>";
+        return;
+      }
+      out.innerHTML = skeleton(3, 14);
+      var encoded = encodeURIComponent(id);
+      var record = await readGet(API.pay + "/v1/payments/" + encoded);
+      if (!record.ok) {
+        out.innerHTML = record.status === 404
+          ? '<div class="status-banner warn"><span class="material-symbols-outlined">search_off</span>' +
+            "<span>No payment with that id. The hub keeps its store in memory, so ids do not survive a restart.</span></div>"
+          : failure("Payment lookup", record);
+        return;
+      }
+      var pacs = await readGet(API.pay + "/v1/payments/" + encoded + "/pacs008", { raw: true, accept: "application/xml" });
+      out.innerHTML =
+        '<p class="label-caps" style="margin:0 0 0.4rem">Payment record</p>' +
+        '<pre class="pre">' + esc(JSON.stringify(record.data, null, 2)) + "</pre>" +
+        '<p class="label-caps" style="margin:0.9rem 0 0.4rem">pacs.008 message</p>' +
+        '<pre class="pre">' + (pacs.ok ? esc(pacs.text) : esc("Unavailable — " + pacs.error)) + "</pre>";
+    }
+
+    /* ───────────────────────  notifications  ─────────────────────── */
+
+    var LOCALE_LABEL = { en: "English", si: "සිංහල", ta: "தமிழ்" };
+
+    async function loadNotifications() {
+      var res = await readGet(API.notify + "/v1/messages");
+      if (!res.ok) {
+        $("notifyStats").innerHTML = "";
+        $("notifyList").innerHTML = failure("Notification outbox", res);
+        setHero("notify", "—", "service unreachable");
+      } else {
+        var list = asArray(res.data, "messages");
+        var channels = {};
+        var locales = {};
+        list.forEach(function (m) {
+          channels[m.channel] = (channels[m.channel] || 0) + 1;
+          locales[m.locale] = (locales[m.locale] || 0) + 1;
+        });
+        setHero("notify", list.length, list.length === 1 ? "message delivered" : "messages delivered");
+
+        $("notifyStats").innerHTML =
+          stat("Messages", list.length, "since start") +
+          stat("Channels used", Object.keys(channels).length, Object.keys(channels).join(" · ") || "none") +
+          stat("Locales used", Object.keys(locales).length, Object.keys(locales).map(function (l) {
+            return (LOCALE_LABEL[l] || l) + " " + locales[l];
+          }).join(" · ") || "none") +
+          stat("Latest", list.length ? clockTime(list[list.length - 1].sentAt) : "—", "outbox timestamp");
+
+        $("notifyList").innerHTML = list.length
+          ? '<ul class="jv-list">' + list.slice(-8).reverse().map(function (m) {
+              return '<li class="jv-li"><div class="jv-li-top">' +
+                '<strong class="data-md">' + esc(m.template) + "</strong>" +
+                '<span class="jv-chips"><span class="jv-chip mint">' + esc(m.channel) + "</span>" +
+                '<span class="jv-chip">' + esc(LOCALE_LABEL[m.locale] || m.locale) + "</span></span></div>" +
+                '<p class="jv-li-body" style="margin:0">' + esc(m.subject || "") + " — " + esc(m.body || "") + "</p>" +
+                '<p class="label-caps" style="margin:0">' + esc(m.to) + " · " + esc(clockTime(m.sentAt)) + "</p></li>";
+            }).join("") + "</ul>"
+          : empty("Outbox is empty — no customer message has been sent this run.");
+      }
+
+      var templates = await readGet(API.notify + "/v1/templates");
+      if (!templates.ok) {
+        $("notifyTemplates").innerHTML = failure("Templates", templates);
+      } else {
+        var names = asArray(templates.data, "templates");
+        $("notifyTemplates").innerHTML = names.length
+          ? '<div class="jv-chips">' + names.map(function (n) {
+              return '<span class="jv-chip mint">' + esc(n) + "</span>";
+            }).join("") + "</div>" +
+            '<p class="jv-note" style="margin-top:0.9rem"><span class="material-symbols-outlined">translate</span>' +
+            "<span>Each template renders in English, Sinhala and Tamil across SMS, email, push and voice.</span></p>"
+          : empty("No templates registered.");
+      }
+    }
+
+    /* ────────────────────── demo navigation ────────────────────── */
+
+    var CUSTOMER_ROUTES = [
+      { path: "/", icon: "home", title: "Customer home", hint: "Persona picker · PWA shell" },
+      { path: "/farmer.html", icon: "agriculture", title: "Farmer", hint: "Simple banking · subsidies" },
+      { path: "/sme.html", icon: "storefront", title: "SME", hint: "Business banking · lending" },
+      { path: "/elder.html", icon: "accessibility_new", title: "Elder", hint: "Calm high-contrast view" },
+      { path: "/lite.html", icon: "data_saver_on", title: "Low-data", hint: "Under 50 KB" },
+      { path: "/ussd.html", icon: "dialpad", title: "USSD", hint: "*334# feature-phone flow" },
+      { path: "/transfer.html", icon: "swap_horiz", title: "Transfer", hint: "Saga + step-up challenge" },
+      { path: "/verify.html", icon: "verified", title: "Ledger verify", hint: "Hash-chain proof" }
+    ];
+
+    /**
+     * Resolve the customer web host from the current address, so no host is
+     * baked into this file. Returns "" when it cannot be derived.
+     */
+    function customerOrigin() {
+      var loc = window.location;
+      if (loc.hostname.indexOf("admin.") === 0) {
+        return loc.protocol + "//" + loc.hostname.slice("admin.".length) + (loc.port ? ":" + loc.port : "");
+      }
+      if (loc.port === "3001") {
+        return loc.protocol + "//" + loc.hostname + ":3000";
+      }
+      return "";
+    }
+
+    function renderDemoNav() {
+      var origin = customerOrigin();
+      var hint = $("customerHostHint");
+      hint.textContent = origin ? "· " + origin.replace(/^https?:\/\//, "") : "· host not derivable from this address";
+      $("customerTiles").innerHTML = CUSTOMER_ROUTES.map(function (r) {
+        var href = origin ? origin + r.path : "";
+        return "<a class=\"tile jv-tile-link\"" +
+          (href ? ' href="' + esc(href) + '" rel="noopener"' : ' aria-disabled="true" title="Open the customer host directly"') +
+          ">" +
+          '<span class="material-symbols-outlined" style="color:var(--primary)">' + esc(r.icon) + "</span>" +
+          "<strong>" + esc(r.title) + "</strong>" +
+          '<span class="code-hint">' + esc(r.hint) + "</span></a>";
+      }).join("");
+    }
+
+    /* ────────────────────── refresh lifecycle ────────────────────── */
+
+    var PANELS = [loadHealth, loadRisk, loadVault, loadCompliance, loadLoans, loadPayments, loadNotifications];
+    var refreshing = false;
+    var timer = null;
+    var nextAt = 0;
+
+    function paintSkeletons() {
+      paintHealthSkeleton();
+      ["riskCases", "riskShield", "riskFederated", "vaultMeta", "vaultEgress",
+       "complianceTable", "loanTable", "payMetrics", "payHealth", "notifyList", "notifyTemplates"
+      ].forEach(function (id) {
+        var el = $(id);
+        if (el) el.innerHTML = skeleton(3, 14);
+      });
+      $("custodians").innerHTML = Object.keys(CUSTODIAN_NAMES).map(function (id) {
+        return custodianCard(id, false);
+      }).join("");
+    }
+
+    async function refreshAll() {
+      if (refreshing) return;
+      refreshing = true;
+      $("pulseDot").className = "jv-dot degraded";
+      try {
+        await Promise.all(PANELS.map(function (fn) {
+          return fn().catch(function (err) {
+            // A panel that throws must not stop the others.
+            if (window.console) console.warn("panel failed", err);
+          });
+        }));
+      } finally {
+        refreshing = false;
+        var when = new Date();
+        var stamp = "Live · updated " + when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        $("lastUpdated").textContent = stamp;
+        $("footerUpdated").textContent = stamp;
+        $("pulseDot").className = "jv-dot up";
+        nextAt = Date.now() + REFRESH_MS;
+      }
+    }
+
+    function scheduleRefresh() {
+      clearInterval(timer);
+      timer = setInterval(function () {
+        if (!$("autoRefresh").checked) return;
+        if (document.hidden) return; // do not poll a backgrounded tab
+        refreshAll();
+      }, REFRESH_MS);
+      nextAt = Date.now() + REFRESH_MS;
+    }
+
+    setInterval(function () {
+      var label = $("nextRefresh");
+      if (!$("autoRefresh").checked) { label.textContent = "· auto-refresh paused"; return; }
+      if (document.hidden) { label.textContent = "· paused while hidden"; return; }
+      var secs = Math.max(0, Math.ceil((nextAt - Date.now()) / 1000));
+      label.textContent = "· next in " + secs + "s";
+    }, 1000);
+
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden && $("autoRefresh").checked) refreshAll();
+    });
+
+    $("refreshNow").addEventListener("click", function () { refreshAll(); });
+    $("autoRefresh").addEventListener("change", function () {
+      if (this.checked) { refreshAll(); nextAt = Date.now() + REFRESH_MS; }
+    });
+    $("payLookupBtn").addEventListener("click", inspectPayment);
+    $("payLookupId").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") inspectPayment();
+    });
+
+    /**
+     * The topbar wraps to two rows on narrow screens, so the sticky section nav
+     * cannot assume a fixed header height — measure it instead.
+     */
+    function syncStickyOffsets() {
+      var topbar = document.querySelector(".topbar");
+      var nav = document.querySelector(".jv-nav");
+      if (!topbar || !nav) return;
+      var topbarH = topbar.offsetHeight;
+      document.documentElement.style.setProperty("--jv-topbar-h", topbarH + "px");
+      document.documentElement.style.setProperty("--jv-sticky-h", (topbarH + nav.offsetHeight + 16) + "px");
+    }
+    window.addEventListener("resize", syncStickyOffsets);
+    syncStickyOffsets();
+
+    /* Scroll-spy for the section nav. */
+    (function scrollSpy() {
+      var links = Array.prototype.slice.call(document.querySelectorAll("#sectionNav a"));
+      var byId = {};
+      links.forEach(function (a) { byId[a.getAttribute("href").slice(1)] = a; });
+      if (!("IntersectionObserver" in window)) return;
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          links.forEach(function (a) { a.classList.remove("active"); });
+          var link = byId[entry.target.id];
+          if (link) link.classList.add("active");
+        });
+      }, { rootMargin: "-130px 0px -65% 0px", threshold: 0 });
+      Object.keys(byId).forEach(function (id) {
+        var el = $(id);
+        if (el) observer.observe(el);
+      });
+    })();
+
+    /* Boot. */
+    if (window.Finix) Finix.bindMeshStatus("#meshStatus");
+    renderDemoNav();
+    paintSkeletons();
+    refreshAll();
+    scheduleRefresh();
+  })();
+  </script>
+</body>
+</html>

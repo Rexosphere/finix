@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#3dd68c" />
+  <meta name="description" content="FINIX Competition Mode — live, read-only view of the running banking mesh: service health, customer accounts, money movement and ledger integrity." />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <title>FINIX — Competition Mode</title>
+  <link rel="stylesheet" href="/css/theme.css" />
+  <style>
+    /* judge.html — page-scoped styles. No external assets: fonts fall back to the
+       system stack declared in theme.css, icons are inline SVG. */
+    .sr-only {
+      position: absolute;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .skip-link {
+      position: absolute;
+      left: 0.5rem;
+      top: -3rem;
+      z-index: 100;
+      padding: 0.65rem 1rem;
+      border-radius: var(--radius-lg);
+      background: var(--primary);
+      color: var(--on-primary);
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 700;
+      transition: top 0.2s var(--ease-out);
+    }
+    .skip-link:focus { top: 0.5rem; color: var(--on-primary); }
+
+    :where(a, button, input, [tabindex]):focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+      border-radius: var(--radius);
+    }
+
+    .j-icon { width: 1.15em; height: 1.15em; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+    .j-icon-lg { width: 1.5rem; height: 1.5rem; }
+
+    /* ── Hero ─────────────────────────────────────────────── */
+    .j-hero {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--border-hairline));
+      border-radius: calc(var(--radius-xl) + 6px);
+      background:
+        radial-gradient(ellipse 60% 90% at 12% 0%, rgba(11, 159, 106, 0.20), transparent 60%),
+        radial-gradient(ellipse 45% 80% at 92% 20%, rgba(228, 184, 74, 0.10), transparent 60%),
+        linear-gradient(168deg, color-mix(in srgb, var(--primary) 5%, var(--slate-charcoal)), var(--surface-container-lowest));
+      padding: clamp(1.4rem, 4vw, 2.75rem);
+    }
+
+    .j-hero::after {
+      content: "";
+      position: absolute;
+      inset: -40% -10% auto -10%;
+      height: 180%;
+      background: conic-gradient(from 180deg at 50% 50%, transparent 0deg, rgba(61, 214, 140, 0.10) 90deg, transparent 200deg, rgba(228, 184, 74, 0.06) 300deg, transparent 360deg);
+      animation: j-aurora 26s linear infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .j-hero > * { position: relative; z-index: 1; }
+
+    @keyframes j-aurora { to { transform: rotate(1turn); } }
+
+    .j-hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(2.1rem, 6.5vw, 3.75rem);
+      font-weight: 700;
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+      margin: 0.9rem 0 0.75rem;
+      background: linear-gradient(96deg, var(--on-surface) 8%, var(--primary-fixed) 52%, var(--tertiary) 96%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .j-hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.65rem;
+      margin-top: 1.6rem;
+      padding-top: 1.35rem;
+      border-top: 1px solid var(--border-hairline);
+    }
+
+    .j-tick {
+      flex: 1 1 8rem;
+      min-width: 6rem;
+      height: 4px;
+      border-radius: var(--radius-full);
+      background: color-mix(in srgb, var(--outline) 25%, transparent);
+      overflow: hidden;
+    }
+    .j-tick > i {
+      display: block;
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--primary-container), var(--primary-fixed));
+    }
+    .j-tick.paused > i { background: color-mix(in srgb, var(--tertiary) 70%, transparent); }
+
+    .j-kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.85rem;
+      margin-top: 1.75rem;
+    }
+
+    .j-kpi {
+      padding: 1.05rem 1.1rem;
+      border-radius: var(--radius-xl);
+      background: color-mix(in srgb, var(--surface-container-lowest) 72%, transparent);
+      border: 1px solid var(--border-hairline);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    .j-kpi .v {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: clamp(1.3rem, 3.4vw, 1.7rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--on-surface);
+      margin: 0.4rem 0 0.15rem;
+      display: block;
+      overflow-wrap: anywhere;
+    }
+    .j-kpi .v.ok { color: var(--primary); }
+    .j-kpi .v.warn { color: var(--tertiary); }
+    .j-kpi .v.bad { color: var(--error); }
+    .j-kpi .sub { font-size: 0.8rem; color: var(--on-surface-variant); margin: 0; }
+
+    /* ── Section scaffolding ──────────────────────────────── */
+    .j-section { margin-top: clamp(2.25rem, 6vw, 3.5rem); }
+
+    .j-section-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.1rem;
+    }
+    .j-section-head h2 { margin: 0; }
+    .j-section-head p { margin: 0.3rem 0 0; color: var(--on-surface-variant); font-size: 0.95rem; max-width: 46rem; }
+
+    .j-grid { display: grid; gap: 0.9rem; }
+    .j-grid-2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+    .j-grid-3 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 265px), 1fr)); }
+    .j-grid-4 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
+
+    .j-card {
+      background: var(--surface-container);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-xl);
+      padding: 1.15rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      transition: border-color 0.25s var(--ease-out), background 0.25s var(--ease-out);
+    }
+    .j-card:hover { border-color: color-mix(in srgb, var(--primary) 30%, transparent); }
+    .j-card.state-up { border-color: color-mix(in srgb, var(--primary) 30%, transparent); }
+    .j-card.state-down { border-color: color-mix(in srgb, var(--error) 38%, transparent); background: color-mix(in srgb, var(--error) 5%, var(--surface-container)); }
+    .j-card.state-wait { opacity: 0.85; }
+
+    .j-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.65rem; }
+    .j-card-title { font-family: var(--font-display); font-size: 1.02rem; font-weight: 600; margin: 0; letter-spacing: -0.015em; }
+    .j-card-sub { margin: 0.15rem 0 0; font-size: 0.83rem; color: var(--on-surface-variant); }
+
+    .j-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--outline); flex: none; }
+    .j-dot.up { background: var(--primary); box-shadow: 0 0 0 0 rgba(61, 214, 140, 0.55); animation: mesh-pulse 2.4s infinite; }
+    .j-dot.down { background: var(--error); }
+    .j-dot.wait { background: var(--tertiary); }
+
+    .j-metric-row { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; font-size: 0.85rem; color: var(--on-surface-variant); }
+    .j-metric-row .data-md { color: var(--on-surface); }
+
+    .j-spark { display: block; width: 100%; height: 34px; overflow: visible; }
+    .j-spark polyline { fill: none; stroke: var(--primary); stroke-width: 1.6; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+    .j-spark polygon { fill: color-mix(in srgb, var(--primary) 14%, transparent); stroke: none; }
+    .j-spark.bad polyline { stroke: var(--error); }
+    .j-spark.bad polygon { fill: color-mix(in srgb, var(--error) 14%, transparent); }
+
+    .j-path {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.02em;
+      color: var(--outline);
+      overflow-wrap: anywhere;
+      margin: 0;
+    }
+
+    /* ── Account cards ────────────────────────────────────── */
+    .j-amount {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: clamp(1.45rem, 4.2vw, 1.85rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--primary);
+      margin: 0.15rem 0 0;
+      overflow-wrap: anywhere;
+    }
+    .j-delta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.18rem 0.45rem;
+      border-radius: var(--radius);
+    }
+    .j-delta.up { color: var(--primary); background: color-mix(in srgb, var(--primary) 16%, transparent); }
+    .j-delta.down { color: var(--tertiary); background: color-mix(in srgb, var(--tertiary) 16%, transparent); }
+
+    @keyframes j-flash-up { from { background: color-mix(in srgb, var(--primary) 22%, var(--surface-container)); } to { background: var(--surface-container); } }
+    @keyframes j-flash-down { from { background: color-mix(in srgb, var(--tertiary) 20%, var(--surface-container)); } to { background: var(--surface-container); } }
+    .j-card.flash-up { animation: j-flash-up 1.6s var(--ease-out); }
+    .j-card.flash-down { animation: j-flash-down 1.6s var(--ease-out); }
+
+    .j-kv { display: grid; grid-template-columns: auto 1fr; gap: 0.3rem 0.9rem; font-size: 0.84rem; }
+    .j-kv dt { color: var(--on-surface-variant); }
+    .j-kv dd { margin: 0; text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+    /* ── Money movement ───────────────────────────────────── */
+    .j-flow-wrap { display: grid; gap: 1rem; }
+    @media (min-width: 940px) { .j-flow-wrap { grid-template-columns: 1.25fr 0.75fr; align-items: start; } }
+
+    .j-mesh { display: block; width: 100%; height: auto; max-height: 400px; }
+    .j-mesh .edge { stroke: color-mix(in srgb, var(--outline) 45%, transparent); stroke-width: 1.4; stroke-dasharray: 4 6; }
+    .j-mesh .edge.hot { stroke: var(--primary); stroke-dasharray: none; }
+    .j-mesh .node-ring { fill: var(--surface-container-low); stroke: color-mix(in srgb, var(--primary) 30%, transparent); stroke-width: 1.5; transition: stroke 0.4s var(--ease-out), fill 0.4s var(--ease-out); }
+    .j-mesh .node-ring.hot { stroke: var(--primary-fixed); fill: color-mix(in srgb, var(--primary) 14%, var(--surface-container-low)); }
+    .j-mesh .node-ring.stale { stroke: color-mix(in srgb, var(--error) 45%, transparent); }
+    .j-mesh .hub-ring { fill: color-mix(in srgb, var(--primary) 9%, var(--surface-container-lowest)); stroke: color-mix(in srgb, var(--primary) 45%, transparent); stroke-width: 1.6; }
+    .j-mesh .n-label { font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.09em; fill: var(--on-surface-variant); text-anchor: middle; }
+    .j-mesh .n-value { font-family: var(--font-mono); font-size: 13px; font-weight: 700; fill: var(--on-surface); text-anchor: middle; }
+    .j-mesh .flow-dot { fill: var(--primary-fixed); filter: drop-shadow(0 0 6px rgba(61, 214, 140, 0.85)); }
+
+    .j-bar-row { display: grid; gap: 0.3rem; margin-bottom: 0.85rem; }
+    .j-bar-row .top { display: flex; justify-content: space-between; gap: 0.75rem; font-size: 0.82rem; }
+    .j-bar-row .top b { font-weight: 600; color: var(--on-surface); }
+    .j-bar-row .top span { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--on-surface-variant); }
+    .j-bar { height: 8px; border-radius: var(--radius-full); background: var(--surface-container-lowest); border: 1px solid var(--border-hairline); overflow: hidden; }
+    .j-bar > i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, var(--primary-container), var(--primary-fixed)); transition: width 0.7s var(--ease-out); }
+    .j-bar.gold > i { background: linear-gradient(90deg, var(--tertiary-container), var(--tertiary)); }
+
+    .j-log { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; max-height: 15rem; overflow: auto; }
+    .j-log li {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.5rem 0.65rem;
+      border-radius: var(--radius-lg);
+      background: var(--surface-container-lowest);
+      border: 1px solid var(--border-hairline);
+      font-size: 0.82rem;
+    }
+    .j-log .t { font-family: var(--font-mono); font-size: 0.7rem; color: var(--outline); }
+    .j-log .amt { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 600; }
+    .j-log .amt.pos { color: var(--primary); }
+    .j-log .amt.neg { color: var(--tertiary); }
+
+    /* ── Ledger ───────────────────────────────────────────── */
+    .j-verdict {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.25rem;
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--border-hairline);
+      background: var(--surface-container-lowest);
+    }
+    .j-verdict.ok { border-color: color-mix(in srgb, var(--primary) 45%, transparent); background: color-mix(in srgb, var(--primary) 7%, var(--surface-container-lowest)); }
+    .j-verdict.bad { border-color: color-mix(in srgb, var(--error) 45%, transparent); background: color-mix(in srgb, var(--error) 7%, var(--surface-container-lowest)); }
+    .j-verdict .seal { width: 3rem; height: 3rem; border-radius: var(--radius-full); display: grid; place-items: center; flex: none; background: color-mix(in srgb, var(--primary) 16%, transparent); color: var(--primary); }
+    .j-verdict.bad .seal { background: color-mix(in srgb, var(--error) 16%, transparent); color: var(--error); }
+    .j-verdict h3 { margin: 0; font-family: var(--font-display); font-size: 1.15rem; letter-spacing: -0.02em; }
+    .j-verdict p { margin: 0.2rem 0 0; font-size: 0.87rem; color: var(--on-surface-variant); }
+
+    .j-table-wrap { overflow-x: auto; margin-top: 1rem; -webkit-overflow-scrolling: touch; }
+    .j-table-wrap table { min-width: 34rem; }
+    .j-hash { font-family: var(--font-mono); font-size: 0.72rem; color: var(--primary); overflow-wrap: anywhere; }
+
+    /* ── Channels & badges ────────────────────────────────── */
+    .j-channel {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      padding: 1.15rem;
+      border-radius: var(--radius-xl);
+      background: var(--surface-container);
+      border: 1px solid var(--border-hairline);
+      color: inherit;
+      text-decoration: none;
+      height: 100%;
+      transition: transform 0.2s var(--ease-out), border-color 0.2s var(--ease-out), background 0.2s var(--ease-out);
+    }
+    .j-channel:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--primary) 42%, transparent); background: var(--surface-container-high); color: inherit; }
+    .j-channel .glyph { width: 2.4rem; height: 2.4rem; border-radius: var(--radius-lg); display: grid; place-items: center; background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); }
+    .j-channel h3 { margin: 0; font-family: var(--font-display); font-size: 1.02rem; letter-spacing: -0.015em; }
+    .j-channel p { margin: 0; font-size: 0.85rem; color: var(--on-surface-variant); flex: 1; }
+
+    .j-badges { display: flex; flex-wrap: wrap; gap: 0.55rem; }
+    .j-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.5rem 0.8rem;
+      border-radius: var(--radius-full);
+      background: color-mix(in srgb, var(--primary) 7%, var(--surface-container-low));
+      border: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--on-surface);
+      transition: border-color 0.2s var(--ease-out), background 0.2s var(--ease-out);
+    }
+    .j-badge:hover { border-color: color-mix(in srgb, var(--primary) 42%, transparent); background: color-mix(in srgb, var(--primary) 11%, var(--surface-container-low)); }
+    .j-badge .j-icon { color: var(--primary); }
+    .j-badge.gold { background: color-mix(in srgb, var(--tertiary) 7%, var(--surface-container-low)); border-color: color-mix(in srgb, var(--tertiary) 20%, transparent); }
+    .j-badge.gold .j-icon { color: var(--tertiary); }
+
+    .j-skel { min-height: 1em; border-radius: var(--radius); }
+
+    @media (max-width: 560px) {
+      .j-hero-meta { gap: 0.5rem; }
+      .j-hero-meta .btn { flex: 1 1 auto; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .j-hero::after { animation: none; }
+      .j-card.flash-up, .j-card.flash-down { animation: none; }
+    }
+  </style>
+</head>
+<body class="mesh-grid">
+  <a class="skip-link" href="#main">Skip to live data</a>
+
+  <!-- Inline icon sprite — keeps the page free of any external request. -->
+  <svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
+    <defs>
+      <symbol id="ic-hub" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="5" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="12" cy="21" r="2"/><path d="M6.6 6.6 10 10m7.4-3.4L14 10m-2 4v5"/></symbol>
+      <symbol id="ic-check" viewBox="0 0 24 24"><path d="m4 12 5.5 5.5L20 7"/></symbol>
+      <symbol id="ic-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v6c0 4.2 2.9 7.7 7 9 4.1-1.3 7-4.8 7-9V6z"/><path d="m9 12 2 2 4-4"/></symbol>
+      <symbol id="ic-alert" viewBox="0 0 24 24"><path d="M12 4 2.5 20h19z"/><path d="M12 10v4m0 3h.01"/></symbol>
+      <symbol id="ic-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
+      <symbol id="ic-swap" viewBox="0 0 24 24"><path d="M4 8h13l-3-3m3 3-3 3"/><path d="M20 16H7l3-3m-3 3 3 3"/></symbol>
+      <symbol id="ic-wallet" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 14h2"/></symbol>
+      <symbol id="ic-phone" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M10 18h4"/></symbol>
+      <symbol id="ic-dial" viewBox="0 0 24 24"><circle cx="6" cy="6" r="1.6"/><circle cx="12" cy="6" r="1.6"/><circle cx="18" cy="6" r="1.6"/><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/><circle cx="12" cy="18" r="1.6"/></symbol>
+      <symbol id="ic-wifi-off" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M5 12.5a11 11 0 0 1 4-2.4M2 8.8A16 16 0 0 1 9 5.4m6 .3a16 16 0 0 1 7 3.1M15.5 12a11 11 0 0 1 3.5 1.9"/><path d="M12 19h.01"/></symbol>
+      <symbol id="ic-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z"/></symbol>
+      <symbol id="ic-leaf" viewBox="0 0 24 24"><path d="M20 4C10 4 4 9 4 16c0 2 1 4 1 4s2-9 15-11c0 0-4 8-12 9"/></symbol>
+      <symbol id="ic-store" viewBox="0 0 24 24"><path d="M4 9h16v11H4z"/><path d="M3 9l1.5-5h15L21 9"/><path d="M9 20v-6h6v6"/></symbol>
+      <symbol id="ic-accessible" viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="1.8"/><path d="M5 8.5h14M12 8.5V15m0 0-3 5m3-5 3 5"/></symbol>
+      <symbol id="ic-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+      <symbol id="ic-chain" viewBox="0 0 24 24"><path d="M10 13a4 4 0 0 0 5.7.4l3-3A4 4 0 0 0 13 4.7l-1.7 1.7"/><path d="M14 11a4 4 0 0 0-5.7-.4l-3 3A4 4 0 0 0 11 19.3l1.7-1.7"/></symbol>
+      <symbol id="ic-tree" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="2" y="16" width="6" height="5" rx="1"/><rect x="16" y="16" width="6" height="5" rx="1"/><path d="M12 8v4M5 16v-4h14v4"/></symbol>
+      <symbol id="ic-cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M10 3v3m4-3v3m-4 12v3m4-3v3M3 10h3m-3 4h3m12-4h3m-3 4h3"/></symbol>
+      <symbol id="ic-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8"/><path d="M20 4v4h-4"/></symbol>
+      <symbol id="ic-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+      <symbol id="ic-play" viewBox="0 0 24 24"><path d="M7 4l12 8-12 8z"/></symbol>
+      <symbol id="ic-scale" viewBox="0 0 24 24"><path d="M12 4v16M6 8h12M6 8l-3 6h6zm12 0 3 6h-6z"/></symbol>
+      <symbol id="ic-doc" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></symbol>
+    </defs>
+  </svg>
+
+  <div class="shell">
+    <header class="topbar">
+      <div class="container topbar-inner">
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+          <a href="/" class="brand">FINIX</a>
+          <span class="mesh-pill" id="meshStatus"><span class="dot"></span> Mesh Active</span>
+        </div>
+        <div class="topbar-actions">
+          <nav class="nav-links" aria-label="Channels">
+            <a href="/">Identity</a>
+            <a href="/transfer.html">Send</a>
+            <a href="/ussd.html">USSD</a>
+            <a href="/lite.html">Lite</a>
+            <a href="/verify.html">Verify</a>
+            <a class="active" aria-current="page" href="/judge.html">Competition</a>
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <main class="page container page-enter" id="main">
+
+      <!-- ── Hero ─────────────────────────────────────────── -->
+      <section class="j-hero" aria-labelledby="heroTitle">
+        <p class="badge-soft" style="margin:0">
+          <svg class="j-icon" aria-hidden="true"><use href="#ic-hub"></use></svg>
+          Competition mode · read-only telemetry
+        </p>
+        <h1 class="j-hero-title" id="heroTitle">The mesh, live<br />and provable.</h1>
+        <p class="lede" style="max-width:44rem">
+          Everything below is read straight off the running FINIX stack on this origin — no mock data, no
+          replay. Service health, customer balances, money in motion and ledger integrity, refreshed every
+          ten seconds.
+        </p>
+
+        <div class="j-kpis" id="kpiStrip">
+          <div class="j-kpi">
+            <p class="label-caps" style="margin:0">Services online</p>
+            <span class="v" id="kpiServices" aria-live="polite">—</span>
+            <p class="sub" id="kpiServicesSub">probing health endpoints…</p>
+          </div>
+          <div class="j-kpi">
+            <p class="label-caps" style="margin:0">Custody under ledger</p>
+            <span class="v" id="kpiCustody" aria-live="polite">—</span>
+            <p class="sub" id="kpiCustodySub">sum of demo account ledger balances</p>
+          </div>
+          <div class="j-kpi">
+            <p class="label-caps" style="margin:0">Journal entries verified</p>
+            <span class="v" id="kpiEntries" aria-live="polite">—</span>
+            <p class="sub" id="kpiEntriesSub">hash-chained, append-only</p>
+          </div>
+          <div class="j-kpi">
+            <p class="label-caps" style="margin:0">Chain integrity</p>
+            <span class="v" id="kpiChain" aria-live="polite">—</span>
+            <p class="sub" id="kpiChainSub">re-walked on every refresh</p>
+          </div>
+        </div>
+
+        <div class="j-hero-meta">
+          <span class="label-caps" id="lastUpdated" role="status">Loading live data…</span>
+          <div class="j-tick" id="tickBar" aria-hidden="true"><i></i></div>
+          <button class="btn btn-secondary" type="button" id="refreshNow" style="min-height:40px">
+            <svg class="j-icon" aria-hidden="true"><use href="#ic-refresh"></use></svg>
+            Refresh now
+          </button>
+          <button class="btn btn-secondary" type="button" id="autoToggle" aria-pressed="true" style="min-height:40px">
+            <svg class="j-icon" aria-hidden="true" id="autoIcon"><use href="#ic-pause"></use></svg>
+            <span id="autoLabel">Pause auto-refresh</span>
+          </button>
+        </div>
+
+        <div class="status-banner err hidden" id="globalBanner" role="status">
+          <svg class="j-icon j-icon-lg" aria-hidden="true"><use href="#ic-alert"></use></svg>
+          <div><strong id="globalBannerTitle"></strong><div id="globalBannerBody" style="margin-top:0.25rem"></div></div>
+        </div>
+      </section>
+
+      <!-- ── Service status ───────────────────────────────── -->
+      <section class="j-section" aria-labelledby="svcTitle">
+        <div class="j-section-head">
+          <div>
+            <h2 class="headline-lg" id="svcTitle">Live service status</h2>
+            <p>Each card polls its service's <code class="j-path">/actuator/health</code> probe through the
+              same-origin gateway and plots the last twenty round-trip latencies.</p>
+          </div>
+          <span class="label-caps" id="svcSummary" aria-live="polite">—</span>
+        </div>
+        <div class="j-grid j-grid-4" id="serviceGrid" aria-busy="true"></div>
+      </section>
+
+      <!-- ── Accounts ─────────────────────────────────────── -->
+      <section class="j-section" aria-labelledby="acctTitle">
+        <div class="j-section-head">
+          <div>
+            <h2 class="headline-lg" id="acctTitle">Live customer accounts</h2>
+            <p>The three seeded demo personas, straight from the account service. Balances flash when the
+              amount changes between polls.</p>
+          </div>
+          <span class="label-caps" id="acctSummary" aria-live="polite">—</span>
+        </div>
+        <div class="j-grid j-grid-3" id="accountGrid" aria-busy="true"></div>
+      </section>
+
+      <!-- ── Money movement ───────────────────────────────── -->
+      <section class="j-section" aria-labelledby="flowTitle">
+        <div class="j-section-head">
+          <div>
+            <h2 class="headline-lg" id="flowTitle">Money movement</h2>
+            <p>Balance deltas observed between refreshes are drawn as flows across the mesh. Run a transfer
+              in another tab and it lands here within ten seconds.</p>
+          </div>
+        </div>
+
+        <div class="j-flow-wrap">
+          <div class="panel mesh-glow" style="padding:1rem">
+            <svg class="j-mesh" viewBox="0 0 440 300" role="img" aria-labelledby="meshTitle meshDesc" id="meshSvg">
+              <title id="meshTitle">Money movement mesh</title>
+              <desc id="meshDesc">Three customer accounts connected to the shared ledger hub.</desc>
+              <g>
+                <line class="edge" id="edge-farmer" x1="80" y1="72" x2="220" y2="150"></line>
+                <line class="edge" id="edge-sme" x1="360" y1="72" x2="220" y2="150"></line>
+                <line class="edge" id="edge-elder" x1="220" y1="252" x2="220" y2="150"></line>
+              </g>
+              <g id="flowLayer"></g>
+              <g>
+                <circle class="hub-ring" cx="220" cy="150" r="50"></circle>
+                <text class="n-label" x="220" y="143">LEDGER</text>
+                <text class="n-value" x="220" y="162" id="hubValue">—</text>
+                <text class="n-label" x="220" y="178" id="hubSub" style="font-size:8px">entries</text>
+              </g>
+              <g id="nodeLayer">
+                <g>
+                  <circle class="node-ring" id="node-farmer" cx="80" cy="72" r="42"></circle>
+                  <text class="n-label" x="80" y="66">FARMER</text>
+                  <text class="n-value" x="80" y="84" id="nodeval-farmer">—</text>
+                </g>
+                <g>
+                  <circle class="node-ring" id="node-sme" cx="360" cy="72" r="42"></circle>
+                  <text class="n-label" x="360" y="66">SME</text>
+                  <text class="n-value" x="360" y="84" id="nodeval-sme">—</text>
+                </g>
+                <g>
+                  <circle class="node-ring" id="node-elder" cx="220" cy="252" r="42"></circle>
+                  <text class="n-label" x="220" y="246">ELDER</text>
+                  <text class="n-value" x="220" y="264" id="nodeval-elder">—</text>
+                </g>
+              </g>
+            </svg>
+          </div>
+
+          <div style="display:grid;gap:1rem">
+            <div class="panel-muted">
+              <p class="label-caps" style="margin:0 0 0.85rem;color:var(--on-surface)">Custody distribution</p>
+              <div id="barChart" aria-busy="true">
+                <p class="j-path" style="margin:0">Waiting for account data…</p>
+              </div>
+              <div class="j-metric-row" style="border-top:1px solid var(--border-hairline);padding-top:0.7rem;margin-top:0.3rem">
+                <span>Total</span><span class="data-md" id="custodyTotal">—</span>
+              </div>
+            </div>
+
+            <div class="panel-muted">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:0.75rem;flex-wrap:wrap">
+                <p class="label-caps" style="margin:0;color:var(--on-surface)">Movement log</p>
+                <span class="label-caps" id="movedTotal">Moved this session · —</span>
+              </div>
+              <ul class="j-log" id="flowLog" aria-live="polite" aria-relevant="additions">
+                <li><span>No movement observed yet</span><span class="t">watching</span></li>
+              </ul>
+            </div>
+
+            <div class="panel-muted">
+              <p class="label-caps" style="margin:0 0 0.5rem;color:var(--on-surface)">Ledger growth</p>
+              <svg class="j-spark" id="entriesSpark" viewBox="0 0 100 34" preserveAspectRatio="none" role="img" aria-label="Journal entry count over the current session"></svg>
+              <p class="j-path" style="margin:0.4rem 0 0" id="entriesSparkNote">entries checked per refresh</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Ledger verification ──────────────────────────── -->
+      <section class="j-section" aria-labelledby="ledgerTitle">
+        <div class="j-section-head">
+          <div>
+            <h2 class="headline-lg" id="ledgerTitle">Ledger verification</h2>
+            <p>The ledger service re-walks the SHA-256 hash chain on demand and publishes signed Merkle
+              anchors. Inclusion proofs are recomputed here, in your browser.</p>
+          </div>
+        </div>
+
+        <div class="j-verdict" id="chainVerdict">
+          <span class="seal"><svg class="j-icon j-icon-lg" aria-hidden="true"><use href="#ic-shield"></use></svg></span>
+          <div>
+            <h3 id="chainVerdictTitle">Checking hash chain…</h3>
+            <p id="chainVerdictBody">Calling the ledger verification endpoint.</p>
+          </div>
+        </div>
+
+        <div class="j-grid j-grid-2" style="margin-top:1rem">
+          <div class="panel-muted">
+            <p class="label-caps" style="margin:0 0 0.85rem;color:var(--on-surface)">Signed Merkle anchors</p>
+            <div class="j-table-wrap">
+              <table>
+                <caption class="sr-only">Most recent ledger anchors with their Merkle roots</caption>
+                <thead>
+                  <tr><th scope="col">Window</th><th scope="col">Entries</th><th scope="col">Merkle root</th><th scope="col">Anchored</th></tr>
+                </thead>
+                <tbody id="anchorRows">
+                  <tr><td colspan="4" class="j-path">Loading anchors…</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="j-path" style="margin-top:0.75rem">Roots are signed with ML-DSA-65 (post-quantum). Signature bytes are served but not verified client-side — the browser has no ML-DSA primitive.</p>
+          </div>
+
+          <div class="panel-muted">
+            <p class="label-caps" style="margin:0 0 0.55rem;color:var(--on-surface)">In-browser inclusion proof</p>
+            <p style="margin:0 0 0.9rem;font-size:0.88rem;color:var(--on-surface-variant)">
+              Paste a transaction ID from a completed transfer. The proof is fetched read-only and the
+              Merkle path is re-hashed locally with WebCrypto — the server is never trusted for the answer.
+            </p>
+            <label class="field" for="proofTx">
+              <span class="cap">Transaction ID</span>
+              <input id="proofTx" name="proofTx" placeholder="uuid from /transfer.html" autocomplete="off" spellcheck="false" />
+            </label>
+            <button class="btn btn-primary btn-block" type="button" id="proofBtn" style="margin-top:0.9rem">
+              <svg class="j-icon" aria-hidden="true"><use href="#ic-tree"></use></svg>
+              Verify inclusion
+            </button>
+            <div class="status-banner hidden" id="proofBanner" role="status" style="margin-top:0.9rem"></div>
+            <dl class="j-kv hidden" id="proofDetail" style="margin-top:0.9rem"></dl>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Channels ─────────────────────────────────────── -->
+      <section class="j-section" aria-labelledby="chanTitle">
+        <div class="j-section-head">
+          <div>
+            <h2 class="headline-lg" id="chanTitle">Access channels</h2>
+            <p>One ledger, five ways in — chosen by the bandwidth and hardware the customer actually has.</p>
+          </div>
+        </div>
+        <div class="j-grid j-grid-3" id="channelGrid"></div>
+      </section>
+
+      <!-- ── Feature badges ───────────────────────────────── -->
+      <section class="j-section" aria-labelledby="featTitle">
+        <div class="j-section-head">
+          <div>
+            <h2 class="headline-lg" id="featTitle">What is running underneath</h2>
+            <p>Properties this stack holds in code, not on a slide.</p>
+          </div>
+        </div>
+        <div class="j-badges" id="badgeStrip"></div>
+      </section>
+
+    </main>
+
+    <footer class="site-footer">
+      <p class="label-caps" style="color:var(--on-surface);margin:0">FINIX Mesh · Competition mode · read-only</p>
+      <div class="links">
+        <a href="/">Identity</a>
+        <a href="/transfer.html">Send money</a>
+        <a href="/offline.html">Offline vouchers</a>
+        <a href="/ussd.html">USSD *334#</a>
+        <a href="/verify.html">Verify receipt</a>
+      </div>
+    </footer>
+  </div>
+
+  <script src="/js/finix.js"></script>
+  <script>
+  (function () {
+    "use strict";
+
+    /* ──────────────────────────────────────────────────────────────
+       Configuration. Every URL is same-origin and relative; the nginx
+       config in apps/web/nginx.conf proxies /api/<svc>/… and /lite/….
+       This page issues GET and HEAD requests only.
+       ────────────────────────────────────────────────────────────── */
+    var REFRESH_MS = 10000;
+    var TIMEOUT_MS = 6000;
+    var HISTORY = 20;
+
+    var SERVICES = [
+      { key: "account", name: "Account Service", role: "Balances, holds, credits", upstream: "account-service:8083", path: "/api/account/actuator/health" },
+      { key: "orchestrator", name: "Orchestrator", role: "Transfer saga + risk gate", upstream: "transaction-orchestrator:8085", path: "/api/orchestrator/actuator/health" },
+      { key: "ledger", name: "Ledger Service", role: "Hash chain + Merkle anchors", upstream: "ledger-service:8084", path: "/api/ledger/actuator/health" },
+      { key: "ussd", name: "USSD Gateway", role: "*334# and zero-JS lite", upstream: "ussd-gateway:8087", path: "/api/ussd/actuator/health" }
+    ];
+
+    var URLS = {
+      account: function (id) { return "/api/account/api/v1/accounts/" + encodeURIComponent(id); },
+      ledgerVerify: "/api/ledger/api/v1/ledger/verify",
+      ledgerAnchors: "/api/ledger/api/v1/ledger/anchors",
+      ledgerProof: function (tx) { return "/api/ledger/api/v1/ledger/proof/" + encodeURIComponent(tx); },
+      liteProbe: "/lite/balance?phone=" + encodeURIComponent("+94771110001")
+    };
+
+    var FALLBACK_PERSONAS = {
+      farmer: { key: "farmer", label: "Farmer", phone: "+94771110001", accountId: "a2222222-2222-4222-8222-222222222201", accountNumber: "FINIX-SAV-00000001", route: "/farmer.html", blurb: "Simple banking · crops & subsidies" },
+      sme: { key: "sme", label: "SME", phone: "+94771110002", accountId: "a2222222-2222-4222-8222-222222222202", accountNumber: "FINIX-CUR-00000002", route: "/sme.html", blurb: "Business & lending" },
+      elder: { key: "elder", label: "Elder", phone: "+94771110003", accountId: "a2222222-2222-4222-8222-222222222203", accountNumber: "FINIX-SAV-00000003", route: "/elder.html", blurb: "Calm high-contrast view" }
+    };
+
+    var HAS_FINIX = typeof window.Finix === "object" && window.Finix !== null;
+    var PERSONAS = HAS_FINIX && window.Finix.PERSONAS ? window.Finix.PERSONAS : FALLBACK_PERSONAS;
+    var ORDER = ["farmer", "sme", "elder"];
+    var PERSONA_ICON = { farmer: "ic-leaf", sme: "ic-store", elder: "ic-accessible" };
+    var NODE_POS = { farmer: { x: 80, y: 72 }, sme: { x: 360, y: 72 }, elder: { x: 220, y: 252 } };
+    var HUB = { x: 220, y: 150 };
+
+    /* ── Small utilities ─────────────────────────────────────── */
+    var $ = function (id) { return document.getElementById(id); };
+
+    var reducedMotion = window.matchMedia
+      ? window.matchMedia("(prefers-reduced-motion: reduce)")
+      : { matches: false };
+
+    function esc(value) {
+      return String(value == null ? "" : value).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+
+    function money(value) {
+      if (HAS_FINIX && typeof window.Finix.formatMoney === "function") return window.Finix.formatMoney(value);
+      return value == null ? "—" : String(value);
+    }
+
+    function amount(value) {
+      if (HAS_FINIX && typeof window.Finix.moneyAmount === "function") {
+        var n = window.Finix.moneyAmount(value);
+        return isFinite(n) ? n : NaN;
+      }
+      var m = String(value || "").match(/([-\d.]+)\s*$/);
+      return m ? Number(m[1]) : NaN;
+    }
+
+    /** Compact money for the tight SVG nodes: 1.25M / 120.4k / 940. */
+    function compact(n) {
+      if (!isFinite(n)) return "—";
+      var abs = Math.abs(n);
+      if (abs >= 1e6) return (n / 1e6).toFixed(2) + "M";
+      if (abs >= 1e3) return (n / 1e3).toFixed(1) + "k";
+      return n.toFixed(0);
+    }
+
+    function num(n) {
+      return isFinite(n) ? n.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—";
+    }
+
+    function signed(n) {
+      var body = Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return (n < 0 ? "−" : "+") + body;
+    }
+
+    function clockTime(date) {
+      try { return date.toLocaleTimeString(undefined, { hour12: false }); } catch (e) { return date.toISOString().slice(11, 19); }
+    }
+
+    function shortHash(hex) {
+      if (!hex) return "—";
+      return hex.length <= 20 ? hex : hex.slice(0, 10) + "…" + hex.slice(-8);
+    }
+
+    /* ── Transport: GET / HEAD only, always aborted on timeout ── */
+    function request(url, method) {
+      var controller = new AbortController();
+      var timer = setTimeout(function () { controller.abort(); }, TIMEOUT_MS);
+      var started = (window.performance && performance.now) ? performance.now() : Date.now();
+      var verb = method === "HEAD" ? "HEAD" : "GET";
+
+      return fetch(url, {
+        method: verb,
+        headers: { accept: "application/json, text/plain, text/html;q=0.5" },
+        cache: "no-store",
+        credentials: "same-origin",
+        signal: controller.signal
+      }).then(function (res) {
+        var elapsed = Math.round(((window.performance && performance.now) ? performance.now() : Date.now()) - started);
+        if (verb === "HEAD") {
+          if (!res.ok) { throw decorate(new Error("HTTP " + res.status), res.status, elapsed); }
+          return { data: null, ms: elapsed, status: res.status };
+        }
+        return res.text().then(function (text) {
+          var data = text;
+          try { data = text ? JSON.parse(text) : null; } catch (e) { /* keep raw text */ }
+          if (!res.ok) {
+            var message = (data && data.detail) || (data && data.message) || ("HTTP " + res.status);
+            throw decorate(new Error(message), res.status, elapsed);
+          }
+          return { data: data, ms: elapsed, status: res.status };
+        });
+      }).catch(function (err) {
+        if (err && err.name === "AbortError") throw decorate(new Error("timed out after " + TIMEOUT_MS + " ms"), 0, TIMEOUT_MS);
+        throw err;
+      }).then(function (ok) {
+        clearTimeout(timer);
+        return ok;
+      }, function (err) {
+        clearTimeout(timer);
+        throw err;
+      });
+    }
+
+    function decorate(err, status, ms) { err.status = status; err.ms = ms; return err; }
+
+    /* ── State ───────────────────────────────────────────────── */
+    var state = {
+      services: {},
+      accounts: {},
+      ledger: { verify: null, anchors: null, verifyError: null, anchorsError: null },
+      entries: [],
+      flows: [],
+      moved: 0,
+      lite: { status: "wait", detail: "not probed yet" },
+      lastUpdated: null,
+      paused: false,
+      inFlight: false,
+      nextAt: Date.now() + REFRESH_MS
+    };
+
+    SERVICES.forEach(function (svc) {
+      state.services[svc.key] = { status: "wait", detail: "probing…", latency: null, history: [] };
+    });
+    ORDER.forEach(function (key) {
+      state.accounts[key] = { data: null, error: null, previous: null, delta: 0 };
+    });
+
+    /* ── Sparkline ───────────────────────────────────────────── */
+    function sparkline(svg, values, bad) {
+      if (!svg) return;
+      svg.classList.toggle("bad", !!bad);
+      if (!values.length) { svg.innerHTML = ""; return; }
+      var max = Math.max.apply(null, values);
+      var min = Math.min.apply(null, values);
+      var span = (max - min) || 1;
+      var step = values.length > 1 ? 100 / (values.length - 1) : 0;
+      var points = values.map(function (v, i) {
+        var x = values.length > 1 ? i * step : 50;
+        var y = 31 - ((v - min) / span) * 28;
+        return x.toFixed(2) + "," + y.toFixed(2);
+      });
+      var area = "0,34 " + points.join(" ") + " 100,34";
+      svg.innerHTML = '<polygon points="' + esc(area) + '"></polygon><polyline points="' + esc(points.join(" ")) + '"></polyline>';
+    }
+
+    /* ── Renderers ───────────────────────────────────────────── */
+    function renderServices() {
+      var grid = $("serviceGrid");
+      var up = 0;
+      var html = SERVICES.map(function (svc) {
+        var s = state.services[svc.key];
+        if (s.status === "up") up++;
+        var cls = s.status === "up" ? "state-up" : (s.status === "down" ? "state-down" : "state-wait");
+        var pill = s.status === "up" ? "UP" : (s.status === "down" ? "DOWN" : "…");
+        return '' +
+          '<article class="j-card ' + cls + '">' +
+            '<div class="j-card-top">' +
+              '<div>' +
+                '<h3 class="j-card-title">' + esc(svc.name) + '</h3>' +
+                '<p class="j-card-sub">' + esc(svc.role) + '</p>' +
+              '</div>' +
+              '<span class="pill ' + (s.status === "up" ? "ok" : (s.status === "down" ? "bad" : "")) + '">' +
+                '<span class="j-dot ' + esc(s.status) + '"></span>' + pill +
+              '</span>' +
+            '</div>' +
+            '<div class="j-metric-row">' +
+              '<span>Round trip</span>' +
+              '<span class="data-md">' + (s.latency == null ? "—" : esc(s.latency) + " ms") + '</span>' +
+            '</div>' +
+            '<svg class="j-spark" viewBox="0 0 100 34" preserveAspectRatio="none" role="img" ' +
+              'aria-label="' + esc(svc.name) + ' latency, last ' + s.history.length + ' samples" ' +
+              'id="spark-' + esc(svc.key) + '"></svg>' +
+            '<p class="j-card-sub">' + esc(s.detail) + '</p>' +
+            '<p class="j-path">' + esc(svc.upstream) + ' · <span>' + esc(svc.path) + '</span></p>' +
+          '</article>';
+      }).join("");
+
+      grid.innerHTML = html;
+      grid.setAttribute("aria-busy", "false");
+      SERVICES.forEach(function (svc) {
+        var s = state.services[svc.key];
+        sparkline($("spark-" + svc.key), s.history, s.status === "down");
+      });
+
+      $("svcSummary").textContent = up + " / " + SERVICES.length + " reachable";
+      var kpi = $("kpiServices");
+      kpi.textContent = up + " / " + SERVICES.length;
+      kpi.className = "v " + (up === SERVICES.length ? "ok" : (up === 0 ? "bad" : "warn"));
+      $("kpiServicesSub").textContent = up === SERVICES.length
+        ? "every proxied service answering"
+        : (SERVICES.length - up) + " not answering on this origin";
+    }
+
+    function renderAccounts() {
+      var grid = $("accountGrid");
+      var loaded = 0;
+      var total = 0;
+
+      var html = ORDER.map(function (key) {
+        var persona = PERSONAS[key] || FALLBACK_PERSONAS[key];
+        var slot = state.accounts[key];
+        var a = slot.data;
+        if (a) {
+          loaded++;
+          var ledger = amount(a.ledgerBalance);
+          if (isFinite(ledger)) total += ledger;
+        }
+        var holds = a && a.openHolds ? a.openHolds.length : 0;
+        var deltaChip = slot.delta && Math.abs(slot.delta) >= 0.005
+          ? '<span class="j-delta ' + (slot.delta > 0 ? "up" : "down") + '">' + esc(signed(slot.delta)) + '</span>'
+          : "";
+
+        return '' +
+          '<article class="j-card" id="acct-' + esc(key) + '">' +
+            '<div class="j-card-top">' +
+              '<div>' +
+                '<h3 class="j-card-title">' +
+                  '<svg class="j-icon" aria-hidden="true"><use href="#' + esc(PERSONA_ICON[key] || "ic-wallet") + '"></use></svg> ' +
+                  esc(persona.label) +
+                '</h3>' +
+                '<p class="j-card-sub">' + esc(a ? a.accountNumber : persona.accountNumber) + '</p>' +
+              '</div>' +
+              (a
+                ? '<span class="pill ' + (a.status === "ACTIVE" ? "ok" : "") + '">' + esc(a.status) + '</span>'
+                : '<span class="pill bad">' + (slot.error ? "ERROR" : "…") + '</span>') +
+            '</div>' +
+            (a
+              ? '<div>' +
+                  '<p class="label-caps" style="margin:0">Available' + (deltaChip ? " " + deltaChip : "") + '</p>' +
+                  '<p class="j-amount">' + esc(money(a.availableBalance)) + '</p>' +
+                '</div>' +
+                '<dl class="j-kv">' +
+                  '<dt>Ledger</dt><dd>' + esc(money(a.ledgerBalance)) + '</dd>' +
+                  '<dt>Held</dt><dd>' + esc(money(a.heldBalance)) + '</dd>' +
+                  '<dt>Type</dt><dd>' + esc(a.type) + '</dd>' +
+                  '<dt>Open holds</dt><dd>' + esc(holds) + '</dd>' +
+                  '<dt>Version</dt><dd>' + esc(a.version) + '</dd>' +
+                '</dl>'
+              : '<p class="j-card-sub">' + esc(slot.error || "Loading account…") + '</p>') +
+            '<div class="actions" style="margin-top:auto">' +
+              '<a class="btn btn-secondary" style="min-height:40px" href="' + esc(persona.route) + '">Open dashboard</a>' +
+            '</div>' +
+          '</article>';
+      }).join("");
+
+      grid.innerHTML = html;
+      grid.setAttribute("aria-busy", "false");
+
+      // Flash the cards whose balance moved on this refresh.
+      ORDER.forEach(function (key) {
+        var slot = state.accounts[key];
+        if (!slot.delta || Math.abs(slot.delta) < 0.005) return;
+        var card = $("acct-" + key);
+        if (card && !reducedMotion.matches) card.classList.add(slot.delta > 0 ? "flash-up" : "flash-down");
+      });
+
+      $("acctSummary").textContent = loaded + " / " + ORDER.length + " accounts live";
+
+      var kpi = $("kpiCustody");
+      kpi.textContent = loaded ? "LKR " + num(total) : "—";
+      kpi.className = "v" + (loaded === ORDER.length ? " ok" : "");
+      $("kpiCustodySub").textContent = loaded === ORDER.length
+        ? "sum of demo account ledger balances"
+        : "partial — " + (ORDER.length - loaded) + " account(s) unavailable";
+
+      renderBars(total);
+      renderMesh(total);
+    }
+
+    function renderBars(total) {
+      var host = $("barChart");
+      var rows = ORDER.map(function (key) {
+        var slot = state.accounts[key];
+        var persona = PERSONAS[key] || FALLBACK_PERSONAS[key];
+        var value = slot.data ? amount(slot.data.ledgerBalance) : NaN;
+        var pct = (isFinite(value) && total > 0) ? Math.max(1, (value / total) * 100) : 0;
+        return '' +
+          '<div class="j-bar-row">' +
+            '<div class="top"><b>' + esc(persona.label) + '</b><span>' +
+              (isFinite(value) ? esc(money(slot.data.ledgerBalance)) + " · " + pct.toFixed(1) + "%" : "—") +
+            '</span></div>' +
+            '<div class="j-bar' + (key === "elder" ? " gold" : "") + '"><i style="width:' + pct.toFixed(2) + '%"></i></div>' +
+          '</div>';
+      }).join("");
+      host.innerHTML = rows;
+      host.setAttribute("aria-busy", "false");
+      $("custodyTotal").textContent = total > 0 ? "LKR " + num(total) : "—";
+    }
+
+    function renderMesh(total) {
+      ORDER.forEach(function (key) {
+        var slot = state.accounts[key];
+        var value = slot.data ? amount(slot.data.ledgerBalance) : NaN;
+        var label = $("nodeval-" + key);
+        if (label) label.textContent = isFinite(value) ? compact(value) : "—";
+        var ring = $("node-" + key);
+        if (ring) ring.classList.toggle("stale", !slot.data);
+      });
+
+      var entries = state.ledger.verify ? state.ledger.verify.checkedEntries : null;
+      $("hubValue").textContent = entries == null ? "—" : num(entries);
+      $("meshSvg").querySelector("#meshDesc").textContent =
+        "Ledger hub holding " + (entries == null ? "an unknown number of" : num(entries)) + " journal entries, with " +
+        ORDER.map(function (k) {
+          var slot = state.accounts[k];
+          var v = slot.data ? amount(slot.data.ledgerBalance) : NaN;
+          return (PERSONAS[k] || FALLBACK_PERSONAS[k]).label + " at " + (isFinite(v) ? "LKR " + num(v) : "unknown");
+        }).join(", ") + ". Total custody LKR " + num(total) + ".";
+    }
+
+    /** One travelling dot along the node↔hub edge. Cleans itself up. */
+    function animateFlow(key, outbound) {
+      var layer = $("flowLayer");
+      var pos = NODE_POS[key];
+      if (!layer || !pos) return;
+
+      var edge = $("edge-" + key);
+      if (edge) {
+        edge.classList.add("hot");
+        setTimeout(function () { edge.classList.remove("hot"); }, 1400);
+      }
+      var ring = $("node-" + key);
+      if (ring) {
+        ring.classList.add("hot");
+        setTimeout(function () { ring.classList.remove("hot"); }, 1400);
+      }
+      if (reducedMotion.matches) return;
+
+      var from = outbound ? pos : HUB;
+      var to = outbound ? HUB : pos;
+      var dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      dot.setAttribute("class", "flow-dot");
+      dot.setAttribute("r", "5");
+      dot.setAttribute("cx", String(from.x));
+      dot.setAttribute("cy", String(from.y));
+      layer.appendChild(dot);
+
+      var start = null;
+      var duration = 950;
+      function frame(ts) {
+        if (start === null) start = ts;
+        var t = Math.min(1, (ts - start) / duration);
+        var eased = 1 - Math.pow(1 - t, 3);
+        dot.setAttribute("cx", String(from.x + (to.x - from.x) * eased));
+        dot.setAttribute("cy", String(from.y + (to.y - from.y) * eased));
+        dot.setAttribute("opacity", String(t < 0.85 ? 1 : (1 - t) / 0.15));
+        if (t < 1) requestAnimationFrame(frame);
+        else if (dot.parentNode) dot.parentNode.removeChild(dot);
+      }
+      requestAnimationFrame(frame);
+    }
+
+    function renderFlowLog() {
+      var host = $("flowLog");
+      if (!state.flows.length) {
+        host.innerHTML = '<li><span>No movement observed yet</span><span class="t">watching</span></li>';
+      } else {
+        host.innerHTML = state.flows.slice(0, 12).map(function (f) {
+          return '<li><span>' + esc(f.label) + '</span>' +
+            '<span><span class="amt ' + (f.delta > 0 ? "pos" : "neg") + '">' + esc(signed(f.delta)) + '</span> ' +
+            '<span class="t">' + esc(f.time) + '</span></span></li>';
+        }).join("");
+      }
+      $("movedTotal").textContent = "Moved this session · LKR " +
+        state.moved.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function renderLedger() {
+      var verdict = $("chainVerdict");
+      var v = state.ledger.verify;
+      verdict.classList.remove("ok", "bad");
+
+      if (state.ledger.verifyError) {
+        verdict.classList.add("bad");
+        $("chainVerdictTitle").textContent = "Ledger service unreachable";
+        $("chainVerdictBody").textContent = state.ledger.verifyError;
+        setKpi("kpiChain", "OFFLINE", "bad", "ledger verification endpoint not answering");
+      } else if (v && v.valid) {
+        verdict.classList.add("ok");
+        $("chainVerdictTitle").textContent = "Hash chain valid";
+        $("chainVerdictBody").textContent =
+          num(v.checkedEntries) + " journal entries re-walked; every entry links to its predecessor.";
+        setKpi("kpiChain", "VALID", "ok", "re-walked on every refresh");
+      } else if (v) {
+        verdict.classList.add("bad");
+        $("chainVerdictTitle").textContent = "Chain break detected";
+        $("chainVerdictBody").textContent =
+          "First break at sequence " + (v.firstBreakSequence == null ? "unknown" : v.firstBreakSequence) +
+          (v.detail ? " — " + v.detail : "") + ".";
+        setKpi("kpiChain", "BROKEN", "bad", "break at sequence " + (v.firstBreakSequence == null ? "?" : v.firstBreakSequence));
+      }
+
+      var kpiEntries = $("kpiEntries");
+      kpiEntries.textContent = v ? num(v.checkedEntries) : "—";
+      kpiEntries.className = "v";
+
+      var anchors = state.ledger.anchors;
+      var body = $("anchorRows");
+      if (state.ledger.anchorsError) {
+        body.innerHTML = '<tr><td colspan="4" class="j-path">' + esc(state.ledger.anchorsError) + '</td></tr>';
+      } else if (!anchors) {
+        body.innerHTML = '<tr><td colspan="4" class="j-path">Loading anchors…</td></tr>';
+      } else if (!anchors.length) {
+        body.innerHTML = '<tr><td colspan="4" class="j-path">No anchor published yet — anchors are cut per window of journal entries.</td></tr>';
+      } else {
+        body.innerHTML = anchors.slice(-6).reverse().map(function (a) {
+          var when = "—";
+          try { when = clockTime(new Date(a.anchoredAt)); } catch (e) { /* leave dash */ }
+          return '<tr>' +
+            '<td class="data">' + esc(a.windowStartSeq) + '–' + esc(a.windowEndSeq) + '</td>' +
+            '<td class="data">' + esc(a.entryCount) + '</td>' +
+            '<td><span class="j-hash" title="' + esc(a.merkleRoot) + '">' + esc(shortHash(a.merkleRoot)) + '</span></td>' +
+            '<td class="data">' + esc(when) + '</td>' +
+            '</tr>';
+        }).join("");
+      }
+
+      $("kpiEntriesSub").textContent = anchors && anchors.length
+        ? anchors.length + " signed anchor(s) published"
+        : "hash-chained, append-only";
+
+      sparkline($("entriesSpark"), state.entries, false);
+      $("entriesSparkNote").textContent = state.entries.length
+        ? state.entries.length + " sample(s) · latest " + num(state.entries[state.entries.length - 1]) + " entries"
+        : "entries checked per refresh";
+    }
+
+    function setKpi(id, value, cls, sub) {
+      var el = $(id);
+      el.textContent = value;
+      el.className = "v " + cls;
+      var subEl = $(id + "Sub");
+      if (subEl && sub) subEl.textContent = sub;
+    }
+
+    /* ── Channels ────────────────────────────────────────────── */
+    var CHANNELS = [
+      { icon: "ic-globe", title: "Web / PWA", href: "/", copy: "Full dashboard, installable, offline shell cached by a service worker.", status: function () { return { kind: "ok", text: "This page" }; } },
+      { icon: "ic-dial", title: "USSD *334#", href: "/ussd.html", copy: "Feature-phone menu over the Africa's Talking callback contract — no data plan.", status: function () { return svcChip("ussd"); } },
+      { icon: "ic-phone", title: "Lite (zero-JS)", href: "/lite.html", copy: "Server-rendered balance under 50 KB for 2G links and locked-down handsets.", status: function () { return { kind: state.lite.status === "up" ? "ok" : (state.lite.status === "down" ? "bad" : ""), text: state.lite.detail }; } },
+      { icon: "ic-wifi-off", title: "Offline vouchers", href: "/offline.html", copy: "Device-signed vouchers queued locally and reconciled when the mesh returns.", status: function () { return navigator.onLine ? { kind: "ok", text: "Browser online" } : { kind: "", text: "Browser offline — still usable" }; } },
+      { icon: "ic-shield", title: "Independent verify", href: "/verify.html", copy: "Re-check the hash chain and a Merkle inclusion proof without trusting the bank.", status: function () { return svcChip("ledger"); } },
+      { icon: "ic-swap", title: "Send money", href: "/transfer.html", copy: "Saga-orchestrated transfer with risk scoring and OTP step-up.", status: function () { return svcChip("orchestrator"); } }
+    ];
+
+    function svcChip(key) {
+      var s = state.services[key];
+      if (!s || s.status === "wait") return { kind: "", text: "Probing" };
+      return s.status === "up" ? { kind: "ok", text: "Service up" } : { kind: "bad", text: "Service down" };
+    }
+
+    function renderChannels() {
+      $("channelGrid").innerHTML = CHANNELS.map(function (c) {
+        var chip = c.status();
+        return '' +
+          '<a class="j-channel" href="' + esc(c.href) + '">' +
+            '<span class="glyph"><svg class="j-icon j-icon-lg" aria-hidden="true"><use href="#' + esc(c.icon) + '"></use></svg></span>' +
+            '<h3>' + esc(c.title) + '</h3>' +
+            '<p>' + esc(c.copy) + '</p>' +
+            '<span class="pill ' + esc(chip.kind) + '"><span class="j-dot ' +
+              (chip.kind === "ok" ? "up" : (chip.kind === "bad" ? "down" : "wait")) + '"></span>' + esc(chip.text) + '</span>' +
+          '</a>';
+      }).join("");
+    }
+
+    /* ── Feature badges ──────────────────────────────────────── */
+    var BADGES = [
+      { icon: "ic-chain", text: "SHA-256 hash-chained ledger" },
+      { icon: "ic-tree", text: "Merkle anchors, ML-DSA-65 signed", gold: true },
+      { icon: "ic-swap", text: "Saga orchestration + compensation" },
+      { icon: "ic-shield", text: "Zero-trust JWT resource servers" },
+      { icon: "ic-lock", text: "DPoP sender-constrained tokens" },
+      { icon: "ic-bolt", text: "Idempotency keys on writes" },
+      { icon: "ic-doc", text: "Transactional outbox → Kafka" },
+      { icon: "ic-cpu", text: "Virtual threads (Loom)" },
+      { icon: "ic-scale", text: "OPA / Rego authorization policies" },
+      { icon: "ic-alert", text: "AI risk scoring with step-up OTP", gold: true },
+      { icon: "ic-wifi-off", text: "Offline-first vouchers + PWA" },
+      { icon: "ic-dial", text: "USSD & zero-JS lite channels" },
+      { icon: "ic-wallet", text: "Exact minor-unit money, no floats" },
+      { icon: "ic-check", text: "Contract, e2e, load & chaos suites" }
+    ];
+
+    function renderBadges() {
+      $("badgeStrip").innerHTML = BADGES.map(function (b) {
+        return '<span class="j-badge' + (b.gold ? " gold" : "") + '">' +
+          '<svg class="j-icon" aria-hidden="true"><use href="#' + esc(b.icon) + '"></use></svg>' + esc(b.text) + '</span>';
+      }).join("");
+    }
+
+    /* ── Loaders ─────────────────────────────────────────────── */
+    function loadService(svc) {
+      return request(svc.path, "GET").then(function (res) {
+        var s = state.services[svc.key];
+        var reported = res.data && res.data.status ? String(res.data.status) : "UP";
+        s.status = reported === "UP" ? "up" : "down";
+        s.detail = "Health reports " + reported + " · HTTP " + res.status;
+        s.latency = res.ms;
+        s.history.push(res.ms);
+        if (s.history.length > HISTORY) s.history.shift();
+      }).catch(function (err) {
+        var s = state.services[svc.key];
+        s.status = "down";
+        s.detail = "Unreachable — " + (err.message || "network error");
+        s.latency = null;
+      });
+    }
+
+    function loadAccount(key) {
+      var persona = PERSONAS[key] || FALLBACK_PERSONAS[key];
+      return request(URLS.account(persona.accountId), "GET").then(function (res) {
+        var slot = state.accounts[key];
+        var next = amount(res.data.ledgerBalance);
+        var prev = slot.previous;
+        slot.delta = 0;
+
+        if (prev != null && isFinite(prev) && isFinite(next) && Math.abs(next - prev) >= 0.005) {
+          slot.delta = next - prev;
+          state.moved += Math.max(0, slot.delta);
+          state.flows.unshift({
+            label: persona.label + " · " + res.data.accountNumber,
+            delta: slot.delta,
+            time: clockTime(new Date())
+          });
+          if (state.flows.length > 40) state.flows.length = 40;
+          animateFlow(key, slot.delta < 0);
+        }
+
+        if (isFinite(next)) slot.previous = next;
+        slot.data = res.data;
+        slot.error = null;
+      }).catch(function (err) {
+        var slot = state.accounts[key];
+        slot.data = null;
+        slot.delta = 0;
+        slot.error = "Account unavailable — " + (err.message || "network error");
+      });
+    }
+
+    function loadLedger() {
+      var verify = request(URLS.ledgerVerify, "GET").then(function (res) {
+        state.ledger.verify = res.data;
+        state.ledger.verifyError = null;
+        var count = Number(res.data.checkedEntries);
+        if (isFinite(count)) {
+          state.entries.push(count);
+          if (state.entries.length > HISTORY * 3) state.entries.shift();
+        }
+      }).catch(function (err) {
+        state.ledger.verify = null;
+        state.ledger.verifyError = err.message || "network error";
+      });
+
+      var anchors = request(URLS.ledgerAnchors, "GET").then(function (res) {
+        state.ledger.anchors = Array.isArray(res.data) ? res.data : [];
+        state.ledger.anchorsError = null;
+      }).catch(function (err) {
+        state.ledger.anchors = null;
+        state.ledger.anchorsError = "Anchors unavailable — " + (err.message || "network error");
+      });
+
+      return Promise.all([verify, anchors]);
+    }
+
+    /** Single HEAD probe proving the zero-JS channel serves HTML. Never on a timer. */
+    function probeLite() {
+      state.lite = { status: "wait", detail: "Probing" };
+      return request(URLS.liteProbe, "HEAD").then(function (res) {
+        state.lite = { status: "up", detail: "Served in " + res.ms + " ms" };
+      }).catch(function (err) {
+        state.lite = { status: "down", detail: "Unreachable" };
+        return err;
+      });
+    }
+
+    /* ── Refresh cycle ───────────────────────────────────────── */
+    function banner(show, title, body) {
+      var el = $("globalBanner");
+      el.classList.toggle("hidden", !show);
+      if (show) {
+        $("globalBannerTitle").textContent = title;
+        $("globalBannerBody").textContent = body;
+      }
+    }
+
+    function refreshAll() {
+      if (state.inFlight) return Promise.resolve();
+      state.inFlight = true;
+      state.nextAt = Date.now() + REFRESH_MS;
+      $("serviceGrid").setAttribute("aria-busy", "true");
+      $("accountGrid").setAttribute("aria-busy", "true");
+
+      var jobs = SERVICES.map(loadService)
+        .concat(ORDER.map(loadAccount))
+        .concat([loadLedger()]);
+
+      return Promise.all(jobs).then(function () {
+        state.lastUpdated = new Date();
+        renderServices();
+        renderAccounts();
+        renderFlowLog();
+        renderLedger();
+        renderChannels();
+
+        var down = SERVICES.filter(function (s) { return state.services[s.key].status !== "up"; });
+        if (down.length === SERVICES.length) {
+          banner(true, "No backend reachable from this origin",
+            "Every proxied service failed to answer. If you are running locally, start the stack with `make demo` and reload.");
+        } else if (down.length) {
+          banner(true, down.length + " service(s) not answering",
+            down.map(function (s) { return s.name; }).join(", ") + " — the rest of the page keeps updating.");
+        } else {
+          banner(false);
+        }
+
+        $("lastUpdated").textContent = "Updated " + clockTime(state.lastUpdated) +
+          (state.paused ? " · auto-refresh paused" : " · refreshing every 10 s");
+      }).catch(function (err) {
+        banner(true, "Refresh failed", String((err && err.message) || err));
+      }).then(function () {
+        state.inFlight = false;
+        $("serviceGrid").setAttribute("aria-busy", "false");
+        $("accountGrid").setAttribute("aria-busy", "false");
+      });
+    }
+
+    /* ── Auto-refresh timer + countdown ──────────────────────── */
+    var bar = $("tickBar");
+    var barFill = bar.querySelector("i");
+
+    setInterval(function () {
+      if (state.paused || document.hidden) {
+        bar.classList.add("paused");
+        barFill.style.width = "100%";
+        return;
+      }
+      bar.classList.remove("paused");
+      var remaining = Math.max(0, state.nextAt - Date.now());
+      barFill.style.width = (100 - (remaining / REFRESH_MS) * 100).toFixed(1) + "%";
+      if (remaining <= 0 && !state.inFlight) refreshAll();
+    }, 250);
+
+    document.addEventListener("visibilitychange", function () {
+      // Catch up immediately when the judge comes back to the tab.
+      if (!document.hidden && !state.paused) refreshAll();
+    });
+
+    $("refreshNow").addEventListener("click", function () {
+      refreshAll();
+      probeLite().then(renderChannels);
+    });
+
+    $("autoToggle").addEventListener("click", function () {
+      state.paused = !state.paused;
+      this.setAttribute("aria-pressed", String(!state.paused));
+      $("autoLabel").textContent = state.paused ? "Resume auto-refresh" : "Pause auto-refresh";
+      $("autoIcon").innerHTML = '<use href="#' + (state.paused ? "ic-play" : "ic-pause") + '"></use>';
+      if (!state.paused) { state.nextAt = Date.now() + REFRESH_MS; refreshAll(); }
+      if (state.lastUpdated) {
+        $("lastUpdated").textContent = "Updated " + clockTime(state.lastUpdated) +
+          (state.paused ? " · auto-refresh paused" : " · refreshing every 10 s");
+      }
+    });
+
+    /* ── In-browser Merkle inclusion proof ───────────────────── */
+    function hasSubtle() {
+      return typeof crypto !== "undefined" && crypto.subtle && typeof crypto.subtle.digest === "function";
+    }
+
+    function sha256Hex() {
+      var chunks = Array.prototype.slice.call(arguments);
+      var total = chunks.reduce(function (n, c) { return n + c.length; }, 0);
+      var buf = new Uint8Array(total);
+      var offset = 0;
+      chunks.forEach(function (c) { buf.set(c, offset); offset += c.length; });
+      return crypto.subtle.digest("SHA-256", buf).then(function (digest) {
+        return Array.prototype.map.call(new Uint8Array(digest), function (b) {
+          return b.toString(16).padStart(2, "0");
+        }).join("");
+      });
+    }
+
+    function unhex(hex) {
+      var out = new Uint8Array(hex.length / 2);
+      for (var i = 0; i < out.length; i++) out[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+      return out;
+    }
+
+    /* Mirrors the server's domain separation: 0x00 for leaves, 0x01 for internal nodes. */
+    function recomputeRoot(proof) {
+      return sha256Hex(new Uint8Array([0x00]), unhex(proof.entryHash)).then(function (start) {
+        var steps = proof.merklePath || [];
+        return steps.reduce(function (chain, step) {
+          return chain.then(function (current) {
+            var sibling = unhex(step.siblingHash);
+            var cur = unhex(current);
+            return step.isLeftSibling
+              ? sha256Hex(new Uint8Array([0x01]), sibling, cur)
+              : sha256Hex(new Uint8Array([0x01]), cur, sibling);
+          });
+        }, Promise.resolve(start));
+      });
+    }
+
+    function proofBanner(kind, title, body) {
+      var el = $("proofBanner");
+      el.className = "status-banner " + kind;
+      el.classList.remove("hidden");
+      el.innerHTML = '<svg class="j-icon j-icon-lg" aria-hidden="true"><use href="#' +
+        (kind === "ok" ? "ic-check" : "ic-alert") + '"></use></svg>' +
+        '<div><strong>' + esc(title) + '</strong><div style="margin-top:0.25rem">' + esc(body) + '</div></div>';
+    }
+
+    $("proofBtn").addEventListener("click", function () {
+      var tx = $("proofTx").value.trim();
+      var detail = $("proofDetail");
+      detail.classList.add("hidden");
+
+      if (!tx) {
+        proofBanner("warn", "Transaction ID required", "Complete a transfer on /transfer.html and paste its ID here.");
+        return;
+      }
+
+      var btn = this;
+      btn.disabled = true;
+      proofBanner("", "Fetching proof…", "GET " + URLS.ledgerProof(tx));
+
+      request(URLS.ledgerProof(tx), "GET").then(function (res) {
+        var proof = res.data;
+        var rows = [
+          ["Sequence", proof.sequence],
+          ["Entry hash", shortHash(proof.entryHash)],
+          ["Leaf index", proof.leafIndex == null ? "—" : proof.leafIndex],
+          ["Tree size", proof.treeSize == null ? "—" : proof.treeSize],
+          ["Path length", (proof.merklePath || []).length],
+          ["Server verdict", proof.inclusion]
+        ];
+
+        if (proof.merkleRoot == null || proof.leafIndex == null) {
+          proofBanner("warn", "Entry not anchored yet",
+            "The journal entry exists, but no Merkle anchor covers it so far. Inclusion cannot be proved until the next anchor window closes.");
+          renderProofRows(rows);
+          return;
+        }
+        if (!hasSubtle()) {
+          proofBanner("warn", "Cannot verify locally",
+            "WebCrypto is unavailable on an insecure origin. Serve over HTTPS or localhost to recompute the Merkle root in-browser.");
+          renderProofRows(rows.concat([["Server root", shortHash(proof.merkleRoot)]]));
+          return;
+        }
+
+        return recomputeRoot(proof).then(function (computed) {
+          var ok = computed === proof.merkleRoot;
+          proofBanner(ok ? "ok" : "err",
+            ok ? "Inclusion proved in your browser" : "Merkle mismatch",
+            ok
+              ? "Recomputed root matches the anchored root for sequence " + proof.sequence + "."
+              : "Recomputed root does not match the anchored root — the served proof is not consistent.");
+          renderProofRows(rows.concat([
+            ["Anchored root", shortHash(proof.merkleRoot)],
+            ["Recomputed", shortHash(computed)]
+          ]));
+        });
+      }).catch(function (err) {
+        var msg = err.status === 404
+          ? "No journal entry for that transaction ID."
+          : (err.message || "network error");
+        proofBanner("err", "Proof unavailable", msg);
+      }).then(function () {
+        btn.disabled = false;
+      });
+    });
+
+    function renderProofRows(rows) {
+      var detail = $("proofDetail");
+      detail.innerHTML = rows.map(function (r) {
+        return '<dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd>';
+      }).join("");
+      detail.classList.remove("hidden");
+    }
+
+    /* ── Boot ────────────────────────────────────────────────── */
+    if (HAS_FINIX && typeof window.Finix.bindMeshStatus === "function") {
+      window.Finix.bindMeshStatus("#meshStatus");
+    }
+    window.addEventListener("online", renderChannels);
+    window.addEventListener("offline", renderChannels);
+
+    renderBadges();
+    renderChannels();
+    renderServices();
+    renderAccounts();
+    renderFlowLog();
+    refreshAll();
+    probeLite().then(renderChannels);
+  })();
+  </script>
+</body>
+</html>
