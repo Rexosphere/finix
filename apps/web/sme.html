@@ -117,7 +117,7 @@
         bal.textContent = "Unavailable";
         const err = document.getElementById("acctError");
         err.classList.remove("hidden");
-        err.textContent = "Could not load account. " + e.message;
+        err.textContent = "Could not load account. " + Finix.friendlyError(e);
       }
     }
     document.getElementById("refresh").onclick = load;

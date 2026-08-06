@@ -147,7 +147,7 @@
           try { await reg.sync.register("finix-offline-reconcile"); } catch (_) {}
         }
       } catch (e) {
-        Finix.toast(String(e), "err");
+        Finix.toast(Finix.friendlyError(e), "err");
       }
     };
 
@@ -169,8 +169,8 @@
         $("latestMeta").textContent = `reconciled ${ok} · failed ${fail}`;
         Finix.toast(ok ? `Settled ${ok} voucher(s)` : "Nothing settled", ok ? "ok" : "warn");
       } catch (e) {
-        $("latestMeta").textContent = String(e);
-        Finix.toast(String(e), "err");
+        $("latestMeta").textContent = Finix.friendlyError(e);
+        Finix.toast(Finix.friendlyError(e), "err");
       }
       await refreshOutbox();
     };

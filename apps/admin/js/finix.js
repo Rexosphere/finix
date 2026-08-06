@@ -71,6 +71,27 @@
     return Number(value);
   }
 
+  function friendlyError(raw) {
+    if (raw == null) return "Request failed";
+    if (raw instanceof Error) {
+      if (raw.data && typeof raw.data === "object") {
+        return raw.data.detail || raw.data.title || raw.data.message || friendlyError(raw.message);
+      }
+      return friendlyError(raw.message);
+    }
+    if (typeof raw === "object") {
+      return raw.detail || raw.title || raw.message || JSON.stringify(raw);
+    }
+    const text = String(raw).replace(/^Error:\s*/, "");
+    try {
+      const j = JSON.parse(text);
+      if (j && typeof j === "object") {
+        return j.detail || j.title || j.message || text;
+      }
+    } catch (_) {}
+    return text || "Request failed";
+  }
+
   async function api(base, path, opts = {}) {
     const headers = Object.assign({}, opts.headers || {});
     if (opts.body && !headers["content-type"]) headers["content-type"] = "application/json";
@@ -84,7 +105,7 @@
     let data = text;
     try { data = text ? JSON.parse(text) : null; } catch (_) {}
     if (!res.ok) {
-      const err = new Error(typeof data === "string" ? data : (data?.message || text || res.status));
+      const err = new Error(friendlyError(data != null ? data : (text || res.status)));
       err.status = res.status;
       err.data = data;
       throw err;
@@ -195,6 +216,7 @@
     formatMoney,
     moneyAmount,
     api,
+    friendlyError,
     getAccount,
     listAccounts,
     transfer,

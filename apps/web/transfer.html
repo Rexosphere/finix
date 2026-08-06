@@ -150,8 +150,8 @@
           showResult("warn", res.state, res.failureReason || "");
         }
       } catch (e) {
-        showResult("err", "Transfer failed", e.message);
-        Finix.toast(e.message, "err");
+        showResult("err", "Transfer failed", Finix.friendlyError(e));
+        Finix.toast(Finix.friendlyError(e), "err");
       } finally {
         btn.disabled = false;
       }
@@ -174,7 +174,7 @@
           showResult("warn", res.state, res.failureReason || "");
         }
       } catch (e) {
-        Finix.toast(e.message, "err");
+        Finix.toast(Finix.friendlyError(e), "err");
       }
     };
   </script>

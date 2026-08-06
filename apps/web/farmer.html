@@ -122,7 +122,7 @@
         bal.textContent = "Unavailable";
         const err = document.getElementById("acctError");
         err.classList.remove("hidden");
-        err.textContent = "Could not load account — is compose running? " + e.message;
+        err.textContent = "Could not load account — is compose running? " + Finix.friendlyError(e);
       }
     }
 

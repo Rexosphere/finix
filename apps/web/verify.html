@@ -104,7 +104,7 @@
       try {
         const verify = await fetch(`${base}/api/v1/ledger/verify`).then(async (r) => {
           const t = await r.text();
-          if (!r.ok) throw new Error(t || r.status);
+          if (!r.ok) throw new Error(Finix.friendlyError(t || r.status));
           return JSON.parse(t);
         });
         let proof = null;
@@ -112,7 +112,7 @@
         if (withProof && tx) {
           proof = await fetch(`${base}/api/v1/ledger/proof/${tx}`).then(async (r) => {
             const t = await r.text();
-            if (!r.ok) throw new Error(t || r.status);
+            if (!r.ok) throw new Error(Finix.friendlyError(t || r.status));
             return JSON.parse(t);
           });
           merkle = await verifyMerkle(proof);
@@ -128,8 +128,9 @@
         out.textContent = JSON.stringify({ chain: verify, proof, merkle }, null, 2);
         Finix.toast(ok ? "Verification passed" : "Verification failed", ok ? "ok" : "err");
       } catch (e) {
-        banner("err", "Could not reach ledger", String(e.message || e));
-        out.textContent = String(e);
+        const msg = Finix.friendlyError(e);
+        banner("err", "Could not reach ledger", msg);
+        out.textContent = msg;
         Finix.toast("Ledger API offline", "err");
       }
     }

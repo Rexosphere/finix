@@ -298,9 +298,12 @@
     const text = await res.text();
     if (!res.ok) {
       voucher.status = "rejected";
-      voucher.error = text;
+      const msg = (typeof Finix !== "undefined" && Finix.friendlyError)
+        ? Finix.friendlyError(text || res.status)
+        : (text || "reconcile failed");
+      voucher.error = msg;
       await idbPut("outbox", voucher);
-      throw new Error(text || "reconcile failed");
+      throw new Error(msg);
     }
     voucher.status = "settled";
     voucher.server = text;
