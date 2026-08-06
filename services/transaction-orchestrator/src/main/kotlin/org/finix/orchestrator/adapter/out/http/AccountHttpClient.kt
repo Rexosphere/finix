@@ -22,6 +22,7 @@ class AccountHttpClient(
         callDownstream(DEPENDENCY) {
             client.post()
                 .uri("/api/v1/accounts/{id}/reserves", accountId)
+                .withIdempotencyKey()
                 .bodyValue(ReserveFundsBody(amount = amount, holdId = holdId))
                 .retrieve()
                 .toBodilessEntity()
@@ -33,6 +34,7 @@ class AccountHttpClient(
         callDownstream(DEPENDENCY) {
             client.post()
                 .uri("/api/v1/accounts/{id}/reserves/{holdId}/commit", accountId, holdId)
+                .withIdempotencyKey()
                 .retrieve()
                 .toBodilessEntity()
                 .block(DOWNSTREAM_TIMEOUT)
@@ -43,6 +45,7 @@ class AccountHttpClient(
         callDownstream(DEPENDENCY) {
             client.post()
                 .uri("/api/v1/accounts/{id}/reserves/{holdId}/release", accountId, holdId)
+                .withIdempotencyKey()
                 .retrieve()
                 .toBodilessEntity()
                 .block(DOWNSTREAM_TIMEOUT)
@@ -53,6 +56,7 @@ class AccountHttpClient(
         callDownstream(DEPENDENCY) {
             client.post()
                 .uri("/api/v1/accounts/{id}/credits", accountId)
+                .withIdempotencyKey()
                 .bodyValue(CreditBody(amount = amount, reference = reference))
                 .retrieve()
                 .toBodilessEntity()

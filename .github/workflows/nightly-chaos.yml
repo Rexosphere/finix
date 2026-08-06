@@ -1,0 +1,100 @@
+name: Nightly chaos
+
+# The saga-compensation test exists (tests/chaos/ledger-down.sh) but has only
+# ever been run by hand, which means "the orchestrator compensates correctly"
+# was last true on the day someone checked. This runs it against a real stack
+# every night and on demand.
+#
+# Scheduled rather than per-PR: it starts the whole compose stack and takes
+# several minutes, which is too slow for a PR gate but exactly right for a
+# regression that would otherwise be found in production.
+
+on:
+  schedule:
+    # 02:30 UTC — after the day's merges, before anyone looks at the demo.
+    - cron: "30 2 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  chaos:
+    name: Saga compensation under ledger outage
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Generate secrets
+        run: ./scripts/gen-secrets.sh
+
+      - name: Build the money-path services
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon \
+            :identity-service:bootJar \
+            :account-service:bootJar \
+            :ledger-service:bootJar \
+            :transaction-orchestrator:bootJar \
+            :vault-service:bootJar \
+            :enclave-runtime:bootJar \
+            :ussd-gateway:bootJar \
+            :loan-service:bootJar \
+            :compliance-service:bootJar
+
+      - name: Start the stack
+        run: docker compose -f infra/compose/docker-compose.yml --profile core up -d --build
+
+      # Every image carries a HEALTHCHECK now, so waiting is a matter of asking
+      # Docker rather than polling ports.
+      - name: Wait for health
+        run: |
+          deadline=$((SECONDS + 600))
+          while :; do
+            pending=0
+            for cid in $(docker compose -f infra/compose/docker-compose.yml --profile core ps -q); do
+              status=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$cid")
+              case "$status" in
+                healthy|running) ;;
+                *) pending=$((pending + 1)) ;;
+              esac
+            done
+            [ "$pending" -eq 0 ] && break
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              docker compose -f infra/compose/docker-compose.yml --profile core ps
+              docker compose -f infra/compose/docker-compose.yml --profile core logs --tail=100
+              echo "::error::stack did not become healthy"
+              exit 1
+            fi
+            sleep 10
+          done
+
+      - name: Seed personas
+        run: ./scripts/seed.sh
+
+      - name: Chaos — ledger outage mid-saga
+        env:
+          FROM_ACCOUNT: a2222222-2222-4222-8222-222222222201
+          TO_ACCOUNT: a2222222-2222-4222-8222-222222222202
+        run: bash tests/chaos/ledger-down.sh
+
+      - name: Smoke after recovery
+        run: bash tests/e2e/smoke.sh
+
+      - name: Ledger chain still verifiable
+        run: ./scripts/verify-ledger.sh
+
+      - name: Logs on failure
+        if: failure()
+        run: docker compose -f infra/compose/docker-compose.yml --profile core logs --tail=200
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f infra/compose/docker-compose.yml --profile core down -v

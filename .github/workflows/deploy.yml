@@ -1,13 +1,23 @@
 name: Deploy
 
-# Runs only after CI has passed on master/main — never deploys code that
-# failed ./gradlew verify or the compose-config check.
+# Last link in the chain: CI -> Publish images -> Deploy.
+#
+# Deploy now waits for *Publish images*, not for CI, because the thing being
+# deployed is the image set — waiting on CI alone could ship a commit whose
+# images had not been built yet (or had failed to build). The commit SHA travels
+# the whole way, so the running containers, the compose files and the app assets
+# are all one revision.
 on:
   workflow_run:
-    workflows: [CI]
+    workflows: [Publish images]
     types: [completed]
     branches: [master, main]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit SHA to deploy (default: current origin/HEAD on the server)"
+        required: false
+        type: string
 
 concurrency:
   group: deploy-production
@@ -23,6 +33,10 @@ jobs:
     timeout-minutes: 30
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     environment: production
+    env:
+      # Empty for a manual run with no input: deploy.sh then falls back to
+      # origin/HEAD on the server.
+      TARGET_SHA: ${{ github.event.inputs.sha || github.event.workflow_run.head_sha }}
     steps:
       - name: Write SSH key and known_hosts
         run: |
@@ -32,26 +46,38 @@ jobs:
           printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
-      # Runs /opt/finix/deploy.sh on the server: git pull, rebuild the JVM
-      # jars, `docker compose up -d --build`, wait for health, seed.
-      # deploy.sh has `set -euo pipefail`, so any failure there exits
-      # non-zero — nothing here pipes that through anything (e.g. tee)
-      # that would swallow the exit code, so a remote failure fails this
-      # step and the job goes red.
+      # Runs the tracked infra/deploy/deploy.sh on the server: checkout the exact
+      # commit, pull its sha-<short> images from GHCR, start, wait for every
+      # container to report healthy, seed. No build happens on the server.
+      #
+      # deploy.sh has `set -euo pipefail` and rolls back to the previous good
+      # release before exiting non-zero, so a failed deploy leaves production on
+      # the last working revision *and* turns this job red.
       - name: Run deploy.sh on server
+        id: deploy
         run: |
+          # The checkout is fast-forwarded *before* the script runs, because the
+          # script lives inside it: on the first deploy after this workflow
+          # changed, /opt/finix/app is still at an older commit that has no
+          # infra/deploy/deploy.sh, and invoking it by path would fail before it
+          # could check anything out. deploy.sh then does its own detached
+          # checkout of the same SHA, so this is a bootstrap, not a duplicate.
           ssh -i ~/.ssh/deploy_key \
             -o UserKnownHostsFile=~/.ssh/known_hosts \
             -o StrictHostKeyChecking=yes \
             -o ServerAliveInterval=30 \
             -o ServerAliveCountMax=6 \
             "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
-            "bash /opt/finix/deploy.sh"
+            "set -e
+             if [ -d /opt/finix/app/.git ]; then
+               git -C /opt/finix/app fetch --prune origin
+               git -C /opt/finix/app checkout --force --detach ${TARGET_SHA:-origin/HEAD}
+             fi
+             bash /opt/finix/app/infra/deploy/deploy.sh ${TARGET_SHA}"
 
-      # deploy.sh only checks health from localhost on the server itself.
-      # Independently verify the public front doors actually respond from
-      # the outside — catches proxy/firewall/DNS regressions deploy.sh
-      # can't see, so the job fails if the site isn't really reachable.
+      # deploy.sh only checks health from inside the server. Independently verify
+      # the public front doors respond from the outside — catches proxy, firewall
+      # and DNS regressions deploy.sh cannot see.
       - name: Verify public endpoints
         run: |
           check() {
@@ -69,6 +95,20 @@ jobs:
           check https://admin.roboti.qzz.io 200 || status=1
           check https://auth.roboti.qzz.io 302 || status=1
           exit $status
+
+      # Only when deploy.sh itself succeeded: containers were healthy but the
+      # public doors are not, so deploy.sh's own rollback never fired. Guarded on
+      # steps.deploy.outcome because a failed deploy.sh has already rolled back —
+      # rolling back again here would step one release too far.
+      - name: Roll back on public-endpoint failure
+        if: failure() && steps.deploy.outcome == 'success'
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            -o StrictHostKeyChecking=yes \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "bash /opt/finix/app/infra/deploy/rollback.sh" || \
+            echo "::warning::automatic rollback failed — inspect the server"
 
       - name: Clean up SSH key
         if: always()

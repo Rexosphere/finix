@@ -1,4 +1,4 @@
-from app.rules import decide, Decision, rules_engine
+from app.rules import Decision, decide, rules_engine
 
 
 def test_decide_thresholds():

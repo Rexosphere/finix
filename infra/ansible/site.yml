@@ -1,0 +1,29 @@
+---
+# FINIX host provisioning. Converges the server to the described state; safe to
+# re-run at any time, unlike the cloud-init script this replaces.
+#
+#   make provision          apply
+#   make provision-check    dry run (--check --diff)
+- name: Provision the FINIX host
+  hosts: all
+  gather_facts: true
+
+  roles:
+    - role: base
+      tags: [base]
+    - role: docker
+      tags: [docker]
+    - role: firewall
+      tags: [firewall]
+    - role: caddy
+      tags: [caddy]
+    - role: finix
+      tags: [finix]
+
+  post_tasks:
+    - name: Summary
+      ansible.builtin.debug:
+        msg:
+          - "Host provisioned. The application itself is deployed by infra/deploy/deploy.sh"
+          - "(triggered by the Deploy workflow), not by this playbook — see ADR-0007."
+          - "Console logins: {{ finix_app_dir }}/scripts/gen-secrets.sh --show"

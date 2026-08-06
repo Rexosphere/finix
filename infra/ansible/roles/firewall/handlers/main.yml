@@ -1,0 +1,5 @@
+---
+- name: Restart docker for ufw
+  ansible.builtin.systemd:
+    name: docker
+    state: restarted

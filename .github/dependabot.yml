@@ -1,0 +1,69 @@
+# Keeps every dependency surface moving: base images and actions are pinned by
+# digest/SHA precisely so they cannot drift silently — Dependabot is what makes
+# that pinning maintainable rather than a slow rot.
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      spring:
+        patterns: ["org.springframework*", "io.micrometer*"]
+      test:
+        patterns: ["io.kotest*", "org.testcontainers*", "io.mockk*", "com.ninja-squad*"]
+
+  - package-ecosystem: gomod
+    directory: /services/payment-hub
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /services/notification-service
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: pip
+    directory: /services/risk-ai-service
+    schedule:
+      interval: weekly
+
+  # Base image digests in the Dockerfiles.
+  - package-ecosystem: docker
+    directories:
+      - /services/identity-service
+      - /services/account-service
+      - /services/ledger-service
+      - /services/transaction-orchestrator
+      - /services/vault-service
+      - /services/enclave-runtime
+      - /services/ussd-gateway
+      - /services/loan-service
+      - /services/compliance-service
+      - /services/risk-ai-service
+      - /services/payment-hub
+      - /services/notification-service
+    schedule:
+      interval: weekly
+    groups:
+      base-images:
+        patterns: ["*"]
+
+  # Third-party images in the compose stack (postgres, keycloak, grafana, …).
+  - package-ecosystem: docker-compose
+    directory: /infra/compose
+    schedule:
+      interval: weekly
+    groups:
+      stack-images:
+        patterns: ["*"]

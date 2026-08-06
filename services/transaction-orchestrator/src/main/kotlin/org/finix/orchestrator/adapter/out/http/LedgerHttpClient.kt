@@ -27,6 +27,7 @@ class LedgerHttpClient(
         callDownstream(DEPENDENCY) {
             client.post()
                 .uri("/api/v1/ledger/journals")
+                .withIdempotencyKey()
                 .bodyValue(body)
                 .retrieve()
                 .toBodilessEntity()

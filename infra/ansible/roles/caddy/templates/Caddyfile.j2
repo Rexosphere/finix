@@ -1,0 +1,25 @@
+{# Managed by Ansible (infra/ansible/roles/caddy) — edits on the server are
+   overwritten on the next provision run. #}
+{
+  email {{ finix_acme_email }}
+}
+
+# The four public doors. Everything else — postgres, redis, redpanda, vault, opa
+# and every backend service on 8082-8093 — is reachable only from the host
+# itself, enforced by ufw-docker rather than by compose port bindings.
+{{ finix_domain }} {
+  reverse_proxy 127.0.0.1:3000
+}
+
+{{ finix_admin_domain }} {
+  reverse_proxy 127.0.0.1:3001
+}
+
+{{ finix_auth_domain }} {
+  reverse_proxy 127.0.0.1:8081
+}
+
+# Grafana binds 127.0.0.1:3002 only; this is its sole public door.
+{{ finix_grafana_domain }} {
+  reverse_proxy 127.0.0.1:3002
+}

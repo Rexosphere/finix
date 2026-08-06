@@ -1,0 +1,28 @@
+# Review routing. Ownership here is about who must look at a change, not about
+# who is allowed to make one.
+#
+# Requires "Require review from Code Owners" on the protected branch to have
+# teeth — see scripts/setup-branch-protection.sh.
+
+# Default owner for anything not matched below.
+*                           @SuhasDissa
+
+# The money path. A defect here is a wrong balance, not a broken page.
+/services/ledger-service/    @SuhasDissa
+/services/account-service/   @SuhasDissa
+/services/transaction-orchestrator/ @SuhasDissa
+
+# Anything that decides who may do what, or that holds key material.
+/services/identity-service/  @SuhasDissa
+/services/vault-service/     @SuhasDissa
+/services/enclave-runtime/   @SuhasDissa
+/policies/                   @SuhasDissa
+
+# Deployment, secrets and the pipeline itself: a change here can leak a
+# credential or ship an unverified artifact.
+/.github/workflows/          @SuhasDissa
+/infra/                      @SuhasDissa
+/scripts/gen-secrets.sh      @SuhasDissa
+
+# Decisions are reviewed as decisions.
+/docs/adr/                   @SuhasDissa

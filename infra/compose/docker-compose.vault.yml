@@ -1,0 +1,41 @@
+# Vault-backed credentials overlay (ADR-0006).
+#
+# Without this overlay, services read their datasource password from the mounted
+# Docker secret. With it, they authenticate to Vault with an AppRole and read the
+# password from secret/finix/<service> — the same value, because vault-bootstrap
+# seeded Vault from those same secret files.
+#
+# Local:      docker compose -f docker-compose.yml -f docker-compose.vault.yml --profile full up -d
+#             (or `make vault-demo`)
+# Production: included by infra/deploy/deploy.sh alongside docker-compose.prod.yml
+#
+# Only identity-service and vault-service are wired: they hold the credentials
+# worth protecting. payment-hub, notification-service and risk-ai-service hold no
+# credentials at all, so giving them a Vault client would be decoration.
+
+services:
+  identity-service:
+    environment:
+      FINIX_VAULT_ENABLED: "true"
+      FINIX_VAULT_URI: http://vault:8200
+      # Order matters: the AppRole configtree must be imported before vault://,
+      # because it supplies the credentials that resolve it.
+      SPRING_CONFIG_IMPORT: >-
+        optional:configtree:/run/secrets/,optional:configtree:/run/vault-approle/,optional:vault://secret/finix/identity-service
+    volumes:
+      - approle-identity:/run/vault-approle:ro
+    depends_on:
+      vault-bootstrap:
+        condition: service_completed_successfully
+
+  vault-service:
+    environment:
+      FINIX_VAULT_ENABLED: "true"
+      FINIX_VAULT_URI: http://vault:8200
+      SPRING_CONFIG_IMPORT: >-
+        optional:configtree:/run/secrets/,optional:configtree:/run/vault-approle/,optional:vault://secret/finix/vault-service
+    volumes:
+      - approle-vault-service:/run/vault-approle:ro
+    depends_on:
+      vault-bootstrap:
+        condition: service_completed_successfully

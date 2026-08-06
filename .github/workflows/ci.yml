@@ -1,5 +1,12 @@
 name: CI
 
+# The gate every other workflow hangs off: Publish images runs only after this
+# succeeds, and Deploy only after Publish. Nothing reaches production that did
+# not pass every job below.
+#
+# Actions are pinned to commit SHAs, not tags — a tag can be moved, a commit
+# cannot. Dependabot (.github/dependabot.yml) proposes the bumps.
+
 on:
   push:
     branches: [master, main]
@@ -20,13 +27,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
         with:
           distribution: temurin
           java-version: "21"
           cache: gradle
+
+      # Verifies the checked-in gradle-wrapper.jar against Gradle's published
+      # checksums — a tampered wrapper would otherwise execute arbitrary code
+      # with the full CI token.
+      - uses: gradle/actions/wrapper-validation@cc4fc85e6b35bafd578d5ffbc76a5518407e1af0 # v4.2.1
 
       - name: Grant Gradle wrapper
         run: chmod +x gradlew
@@ -48,16 +60,261 @@ jobs:
 
       - name: Upload detekt SARIF
         if: always() && hashFiles('build/detekt-sarif/*.sarif') != ''
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@7e3036b9cd87fc26dd06747b7aa4b96c27aaef3a # codeql-bundle-v2.20.3
         with:
           sarif_file: build/detekt-sarif
           wait-for-processing: false
         continue-on-error: true
 
+  # The three jobs below cover code that shipped to production untested: the Go,
+  # Python and Node services all had test suites that no workflow ever ran.
+  go:
+    name: Go — payment-hub
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: services/payment-hub
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
+        with:
+          go-version: "1.22"
+          cache-dependency-path: services/payment-hub/go.sum
+
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "::error::gofmt would change: $unformatted"
+            gofmt -d .
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test
+        run: go test -race -coverprofile=coverage.out ./...
+
+      - name: Coverage summary
+        run: go tool cover -func=coverage.out | tail -1
+
+  python:
+    name: Python — risk-ai-service
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: services/risk-ai-service
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/risk-ai-service/requirements.txt
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff pytest
+
+      - name: ruff
+        run: ruff check .
+
+      - name: pytest
+        run: python -m pytest -q
+
+  node:
+    name: Node — notification-service
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: services/notification-service
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: services/notification-service/package-lock.json
+
+      # ci, not install: the lockfile is the contract, and the Dockerfile uses
+      # the same command so the image matches what was tested here.
+      - name: npm ci
+        run: npm ci
+
+      - name: npm test
+        run: npm test
+
   compose-config:
     name: Compose config
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - name: Validate compose file
-        run: docker compose -f infra/compose/docker-compose.yml --profile core config --quiet
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      # Compose resolves `secrets: file:` sources at config time, so the files
+      # must exist. They are generated, never committed.
+      - name: Generate secrets
+        run: ./scripts/gen-secrets.sh
+
+      - name: Validate compose files
+        run: |
+          for profile in core full monitoring; do
+            docker compose -f infra/compose/docker-compose.yml --profile "$profile" config --quiet
+          done
+          docker compose \
+            -f infra/compose/docker-compose.yml \
+            -f infra/compose/docker-compose.vault.yml \
+            --profile full config --quiet
+          docker compose \
+            -f infra/compose/docker-compose.yml \
+            -f infra/compose/docker-compose.prod.yml \
+            --profile full config --quiet
+
+      # The whole point of the secrets rework: a credential must never come back
+      # into a tracked file. Fails the build if one does.
+      - name: Assert no credentials in compose
+        run: |
+          if grep -nE '^\s+[A-Z_]*(PASSWORD|TOKEN|SECRET):\s*\S' infra/compose/docker-compose.yml \
+             | grep -vE '_FILE:|__FILE:|\$\{'; then
+            echo "::error::literal credential found in docker-compose.yml"
+            exit 1
+          fi
+          echo "no literal credentials in compose"
+
+  commit-lint:
+    name: Conventional commits
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      # A regex rather than commitlint + a node_modules tree: the rule is one
+      # line long and the repo already follows it by hand.
+      - name: Check commit subjects
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9 ,./-]+\))?!?: .+'
+          status=0
+          while IFS= read -r subject; do
+            [ -n "$subject" ] || continue
+            # Merge commits are generated, not authored.
+            case "$subject" in "Merge "*) continue ;; esac
+            if ! printf '%s' "$subject" | grep -Eq "$pattern"; then
+              echo "::error::not a conventional commit: $subject"
+              status=1
+            fi
+          done < <(git log --no-merges --format=%s "$BASE..$HEAD")
+          [ "$status" -eq 0 ] && echo "all commit subjects follow Conventional Commits"
+          exit $status
+
+  ansible:
+    name: Ansible syntax
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: "3.12"
+
+      # ansible-core only: the playbook deliberately uses no collections, so a
+      # bare host needs nothing extra to provision itself.
+      - name: Install ansible-core
+        run: pip install ansible-core
+
+      - name: Syntax check
+        working-directory: infra/ansible
+        run: |
+          for inv in inventory/production.yml inventory/localhost.yml; do
+            ansible-playbook --syntax-check -i "$inv" site.yml
+          done
+
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          # Full history: a credential deleted in the tip commit is still a
+          # leaked credential.
+          fetch-depth: 0
+
+      - uses: gitleaks/gitleaks-action@83373cf2f8c4db6e24b41c1a9b086bb9619e9cd3 # v2.3.7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependency-scan:
+    name: Dependency CVEs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      # Covers all four ecosystems at once: Gradle, go.mod, requirements.txt and
+      # package-lock.json.
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scanners: vuln,secret,misconfig
+          format: sarif
+          output: trivy-fs.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
+      - name: Upload Trivy SARIF
+        if: always() && hashFiles('trivy-fs.sarif') != ''
+        uses: github/codeql-action/upload-sarif@7e3036b9cd87fc26dd06747b7aa4b96c27aaef3a # codeql-bundle-v2.20.3
+        with:
+          sarif_file: trivy-fs.sarif
+          wait-for-processing: false
+
+  codeql:
+    name: CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # The JVM code is covered by detekt SARIF in the jvm job; these three are
+        # the languages that had no static analysis at all.
+        language: [go, python, javascript]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: github/codeql-action/init@7e3036b9cd87fc26dd06747b7aa4b96c27aaef3a # codeql-bundle-v2.20.3
+        with:
+          languages: ${{ matrix.language }}
+
+      - uses: github/codeql-action/analyze@7e3036b9cd87fc26dd06747b7aa4b96c27aaef3a # codeql-bundle-v2.20.3
+        with:
+          category: /language:${{ matrix.language }}
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      # Blocks a PR that introduces a dependency with a known high CVE, before
+      # it is ever merged.
+      - uses: actions/dependency-review-action@3b139cfc5fae8b618d3eae3675e383bb1769c019 # v4.5.0
+        with:
+          fail-on-severity: high

@@ -1,0 +1,51 @@
+# Alertmanager — routing and de-duplication for the rules in
+# ../prometheus/rules/finix.yml, which until now fired into nothing.
+#
+# What this gives even without a paging destination: grouping (one notification
+# per incident instead of one per target), inhibition (a down service stops
+# spamming latency alerts about itself), and a single place where a real
+# destination is one block away.
+
+global:
+  resolve_timeout: 5m
+
+route:
+  # Alerts about the same service arrive together rather than as a storm.
+  group_by: [alertname, service]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: default
+
+  routes:
+    - matchers: [severity = "critical"]
+      receiver: critical
+      # Critical pages faster and repeats sooner.
+      group_wait: 10s
+      repeat_interval: 1h
+
+inhibit_rules:
+  # A service that is down will also breach latency and error-rate thresholds.
+  # Report the cause, not the three symptoms.
+  - source_matchers: [alertname = "TargetDown"]
+    target_matchers: [severity =~ "warning|info"]
+    equal: [service]
+
+  - source_matchers: [severity = "critical"]
+    target_matchers: [severity = "warning"]
+    equal: [alertname, service]
+
+receivers:
+  # No destination is configured on purpose: this is a hackathon demo with no
+  # on-call rotation, and a webhook pointing at a dead URL would be worse than
+  # an honest no-op. Alerts are visible in Alertmanager (:9093) and in Grafana's
+  # Alerting view. To page for real, replace the body of `critical` with, e.g.:
+  #
+  #   slack_configs:
+  #     - api_url: https://hooks.slack.com/services/...
+  #       channel: "#finix-alerts"
+  #       title: "{{ .CommonLabels.alertname }} — {{ .CommonLabels.service }}"
+  #
+  # Nothing else in this file, and no alert rule, has to change.
+  - name: default
+  - name: critical

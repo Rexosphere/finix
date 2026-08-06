@@ -123,7 +123,6 @@
         </div>
 
         <div id="result" class="status-banner hidden" style="margin-top:1.25rem"></div>
-        <pre class="pre hidden" id="raw" style="margin-top:0.75rem"></pre>
       </section>
     </main>
 
@@ -171,8 +170,9 @@
       const el = document.getElementById("result");
       el.className = "status-banner " + kind;
       el.classList.remove("hidden");
+      const safe = Finix.friendlyError(detail || "");
       el.innerHTML = `<span class="material-symbols-outlined">${kind === "ok" ? "check_circle" : kind === "warn" ? "pending" : "error"}</span>
-        <div><strong>${title}</strong><div class="data-md" style="margin-top:0.25rem">${detail || ""}</div></div>`;
+        <div><strong>${title}</strong><div class="data-md" style="margin-top:0.25rem">${safe}</div></div>`;
     }
 
     document.getElementById("send").onclick = async () => {
@@ -192,11 +192,9 @@
           newDevice: document.getElementById("newDevice").checked,
           velocity1h: document.getElementById("highRisk").checked ? 8 : 0,
         });
-        document.getElementById("raw").classList.remove("hidden");
-        document.getElementById("raw").textContent = JSON.stringify(res, null, 2);
 
         if (res.state === "COMPLETED") {
-          showResult("ok", "Transfer completed", res.transferId);
+          showResult("ok", "Transfer completed", "Transfer " + (res.transferId || "").toString().slice(0, 8) + "…");
           Finix.toast("Transfer completed", "ok");
         } else if (res.state === "AWAITING_STEP_UP") {
           pendingId = res.transferId;
@@ -205,6 +203,9 @@
         } else if (res.state === "BLOCKED") {
           showResult("err", "Transfer blocked", res.failureReason || res.riskDecision || "Risk AI blocked this payment");
           Finix.toast("Transfer blocked", "err");
+        } else if (res.state === "FAILED" || res.state === "COMPENSATED") {
+          showResult("err", "Transfer failed", res.failureReason || res.state);
+          Finix.toast(Finix.friendlyError(res.failureReason || res.state), "err");
         } else {
           showResult("warn", res.state, res.failureReason || "");
         }
@@ -225,10 +226,12 @@
       try {
         const res = await Finix.stepUp(pendingId, document.getElementById("otp").value.trim() || "123456");
         document.getElementById("otpModal").classList.add("hidden");
-        document.getElementById("raw").textContent = JSON.stringify(res, null, 2);
         if (res.state === "COMPLETED") {
-          showResult("ok", "Step-up complete · transfer settled", res.transferId);
+          showResult("ok", "Step-up complete · transfer settled", "Transfer " + (res.transferId || "").toString().slice(0, 8) + "…");
           Finix.toast("Transfer completed after OTP", "ok");
+        } else if (res.state === "FAILED" || res.state === "COMPENSATED") {
+          showResult("err", "Transfer failed", res.failureReason || res.state);
+          Finix.toast(Finix.friendlyError(res.failureReason || res.state), "err");
         } else {
           showResult("warn", res.state, res.failureReason || "");
         }

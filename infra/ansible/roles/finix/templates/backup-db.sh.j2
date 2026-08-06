@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+{# Managed by Ansible (infra/ansible/roles/finix). #}
+# Nightly logical backup of every FINIX database, run by finix-backup.timer.
+#
+# pg_dumpall inside the running container, so no Postgres client is needed on
+# the host and the credentials never leave the container: the superuser password
+# is read from the mounted Docker secret.
+#
+# Restore: {{ finix_app_dir }}/scripts/restore-db.sh <dump.sql.gz>
+set -euo pipefail
+
+BACKUP_DIR="{{ finix_state_dir }}/backups"
+RETENTION_DAYS={{ finix_backup_retention_days }}
+CONTAINER="${FINIX_PG_CONTAINER:-finix-postgres-1}"
+
+mkdir -p "$BACKUP_DIR"
+stamp=$(date -u +%Y%m%dT%H%M%SZ)
+out="$BACKUP_DIR/finix-$stamp.sql.gz"
+
+if ! docker inspect "$CONTAINER" >/dev/null 2>&1; then
+  echo "Postgres container $CONTAINER is not running — nothing to back up" >&2
+  exit 1
+fi
+
+docker exec "$CONTAINER" sh -c \
+  'PGPASSWORD=$(cat /run/secrets/postgres_superuser_password) pg_dumpall -U finix' \
+  | gzip -9 > "$out.partial"
+
+# Rename only after a complete dump, so a truncated file is never mistaken for a
+# usable backup.
+mv "$out.partial" "$out"
+echo "wrote $out ($(du -h "$out" | cut -f1))"
+
+find "$BACKUP_DIR" -name 'finix-*.sql.gz' -mtime "+$RETENTION_DAYS" -print -delete
+find "$BACKUP_DIR" -name '*.partial' -mtime +1 -print -delete

@@ -11,20 +11,20 @@ import (
 
 // Document is a simplified ISO 20022 pacs.008.001.08 credit-transfer message.
 type Document struct {
-	XMLName xml.Name `xml:"Document"`
-	Xmlns   string   `xml:"xmlns,attr"`
+	XMLName xml.Name                     `xml:"Document"`
+	Xmlns   string                       `xml:"xmlns,attr"`
 	FIToFI  FIToFICustomerCreditTransfer `xml:"FIToFICstmrCdtTrf"`
 }
 
 type FIToFICustomerCreditTransfer struct {
 	GrpHdr GroupHeader      `xml:"GrpHdr"`
-	CdtTrf  CreditTransferTx `xml:"CdtTrfTxInf"`
+	CdtTrf CreditTransferTx `xml:"CdtTrfTxInf"`
 }
 
 type GroupHeader struct {
-	MsgID   string `xml:"MsgId"`
-	CreDtTm string `xml:"CreDtTm"`
-	NbOfTxs string `xml:"NbOfTxs"`
+	MsgID   string         `xml:"MsgId"`
+	CreDtTm string         `xml:"CreDtTm"`
+	NbOfTxs string         `xml:"NbOfTxs"`
 	Sttlm   SettlementInfo `xml:"SttlmInf"`
 }
 
@@ -33,14 +33,14 @@ type SettlementInfo struct {
 }
 
 type CreditTransferTx struct {
-	PmtID   PaymentIdentification `xml:"PmtId"`
-	IntrBk  Amount                `xml:"IntrBkSttlmAmt"`
-	ChrgBr  string                `xml:"ChrgBr"`
-	Dbtr    Party                 `xml:"Dbtr"`
-	DbtrAcct Account              `xml:"DbtrAcct"`
-	CdtrAgt Agent                 `xml:"CdtrAgt"`
-	Cdtr    Party                 `xml:"Cdtr"`
-	CdtrAcct Account              `xml:"CdtrAcct"`
+	PmtID    PaymentIdentification `xml:"PmtId"`
+	IntrBk   Amount                `xml:"IntrBkSttlmAmt"`
+	ChrgBr   string                `xml:"ChrgBr"`
+	Dbtr     Party                 `xml:"Dbtr"`
+	DbtrAcct Account               `xml:"DbtrAcct"`
+	CdtrAgt  Agent                 `xml:"CdtrAgt"`
+	Cdtr     Party                 `xml:"Cdtr"`
+	CdtrAcct Account               `xml:"CdtrAcct"`
 }
 
 type PaymentIdentification struct {
@@ -94,12 +94,12 @@ func Generate(p domain.Payment) ([]byte, error) {
 					EndToEndID: p.EndToEndId,
 					TxID:       p.ID,
 				},
-				IntrBk: Amount{Ccy: p.Currency, Value: major},
-				ChrgBr: "SLEV",
-				Dbtr:   Party{Nm: "FINIX Debtor"},
+				IntrBk:   Amount{Ccy: p.Currency, Value: major},
+				ChrgBr:   "SLEV",
+				Dbtr:     Party{Nm: "FINIX Debtor"},
 				DbtrAcct: Account{ID: AccountID{Othr: OtherAccount{ID: p.DebtorAccount}}},
-				CdtrAgt: Agent{FinInstnID: FinancialInstitution{Nm: schemeAgent(p.Scheme)}},
-				Cdtr:    Party{Nm: "FINIX Creditor"},
+				CdtrAgt:  Agent{FinInstnID: FinancialInstitution{Nm: schemeAgent(p.Scheme)}},
+				Cdtr:     Party{Nm: "FINIX Creditor"},
 				CdtrAcct: Account{ID: AccountID{Othr: OtherAccount{ID: p.CreditorAccount}}},
 			},
 		},

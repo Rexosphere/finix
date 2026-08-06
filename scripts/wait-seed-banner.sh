@@ -33,11 +33,15 @@ done
 
 ./scripts/seed.sh
 
+echo
+echo "FINIX is up."
+echo
+# Generated per machine by scripts/gen-secrets.sh — printed here so the demo is
+# still one command, but never stored in the repository.
+printf '  Keycloak admin   http://localhost:8081  (admin / %s)\n' \
+  "$(cat infra/compose/secrets/keycloak_admin_password)"
+
 cat <<'EOF'
-
-FINIX is up.
-
-  Keycloak admin   http://localhost:8081  (admin / admin)
   Identity         http://localhost:8082
   Account          http://localhost:8083
   Ledger           http://localhost:8084

@@ -48,11 +48,53 @@ bash tests/e2e/smoke.sh
 
 **Pass:** personas seeded; smoke has `ok > 0`; ledger verify valid (empty or fresh chain).
 
+## Drill D — Restore from backup
+
+Production takes a nightly `pg_dumpall` (systemd timer `finix-backup.timer`, installed by
+`infra/ansible/roles/finix`, kept 7 days in `/opt/finix/backups`). A backup nobody has restored is a
+hypothesis, so drill it:
+
+```bash
+# On the server
+systemctl start finix-backup.service          # take a fresh dump now
+ls -lh /opt/finix/backups
+
+# Stop the writers, restore, restart
+docker compose -f /opt/finix/app/infra/compose/docker-compose.yml --profile full stop \
+  identity-service account-service ledger-service transaction-orchestrator \
+  vault-service loan-service compliance-service
+/opt/finix/app/scripts/restore-db.sh --latest
+docker compose -f /opt/finix/app/infra/compose/docker-compose.yml --profile full start \
+  identity-service account-service ledger-service transaction-orchestrator \
+  vault-service loan-service compliance-service
+```
+
+**Pass:** every service returns to healthy, `bash tests/e2e/smoke.sh` passes, and
+`./scripts/verify-ledger.sh` still reports a valid chain — a restore that breaks the hash chain is a
+failed restore, not a partial one.
+
+## Drill E — Release rollback
+
+A bad release is the most likely incident, and the fastest to undo: the previous images are still in
+GHCR under their `sha-` tag, so a rollback is a pull (ADR-0007).
+
+```bash
+/opt/finix/app/infra/deploy/rollback.sh --list     # release history
+/opt/finix/app/infra/deploy/rollback.sh            # back to the previous release
+/opt/finix/app/infra/deploy/rollback.sh <sha>      # back to a specific one
+```
+
+**Pass:** `docker compose ps` shows the older image tag and every container healthy, within ~2 min.
+A deploy that fails its own health gate performs this automatically before exiting non-zero.
+
 ## RPO notes
 
-- Demo Postgres is a **single volume**. Destroying it loses journals, sagas, vouchers.
+- Postgres is a **single volume**, but no longer a single copy: the nightly dump bounds data loss to
+  24 hours (RPO ≤ 24h), against the previous RPO of "everything".
 - Outbox + Redpanda are best-effort on one node — not a cross-AZ commit log.
-- Phase-3 backlog: streaming backup, multi-AZ Postgres, Fabric/external anchor for cross-site proof.
+- Phase-3 backlog: streaming/WAL backup for minute-level RPO, multi-AZ Postgres, off-host backup
+  storage (today's dumps live on the same disk as the database they protect), Fabric/external anchor
+  for cross-site proof.
 
 ## Record template
 

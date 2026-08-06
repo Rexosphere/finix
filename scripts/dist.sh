@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 # Build the graded submission zip (source only — no .git, build caches, or secrets).
+#
+# infra/compose/secrets/ is excluded explicitly: those files are generated per
+# machine (ADR-0006) and exist in every working copy, so an unfiltered zip would
+# ship this machine's database and admin passwords. infra/compose/.env.example is
+# kept — it is documentation and holds no credential.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${ROOT}/dist"
@@ -32,9 +37,11 @@ zip -r "$ZIP" . \
   -x '**/.cache/pip/**' \
   -x 'dist/*' \
   -x '**/.env' \
-  -x '**/.env.*' \
+  -x '**/.env.local' \
   -x '**/*.pem' \
   -x '**/*.key' \
+  -x 'infra/compose/secrets/*' \
+  -x 'infra/compose/secrets/**' \
   -x '**/coverage/*' \
   -x '**/.next/*' \
   -x '**/target/*'

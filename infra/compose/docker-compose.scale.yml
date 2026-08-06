@@ -1,0 +1,25 @@
+# Horizontal scaling overlay.
+#
+#   make scale SERVICE=payment-hub N=3
+#
+# Why this file has to exist: compose *concatenates* list-type keys like `ports`
+# across -f files, so an overlay cannot remove a published binding by restating
+# it. Two replicas of a service that publishes 8092:8092 would then fight over
+# one host port and the second would fail to start. `!reset` (Compose >= 2.24)
+# is the documented escape hatch — it drops the key instead of merging it.
+#
+# The replicas stay reachable: nginx in apps/web and apps/admin resolves its
+# upstreams at request time through Docker's embedded DNS (commit 68c7ae9), so
+# `risk-ai-service` resolving to three container IPs is round-robined for free.
+# These three services are the stateless ones — they hold no database and no
+# session state, so a request can land on any replica.
+
+services:
+  payment-hub:
+    ports: !reset []
+
+  notification-service:
+    ports: !reset []
+
+  risk-ai-service:
+    ports: !reset []

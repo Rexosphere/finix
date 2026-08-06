@@ -1,0 +1,19 @@
+# Inventory for `ansible-pull` running on the server itself — the path cloud-init
+# takes at first boot. Same roles, same variables, no SSH involved.
+all:
+  hosts:
+    localhost:
+      ansible_connection: local
+  vars:
+    finix_domain: roboti.qzz.io
+    finix_admin_domain: admin.roboti.qzz.io
+    finix_auth_domain: auth.roboti.qzz.io
+    finix_grafana_domain: grafana.roboti.qzz.io
+    finix_acme_email: suhasdissa@gmail.com
+
+    finix_repo_url: https://github.com/Rexosphere/finix.git
+    finix_app_dir: /opt/finix/app
+    finix_state_dir: /opt/finix
+
+    finix_backup_hour: "03:00"
+    finix_backup_retention_days: 7

@@ -1,0 +1,24 @@
+# Production inventory. Every environment-specific value lives here, so the
+# roles themselves contain no hostnames, emails or paths for one deployment.
+#
+# Override the connection details without editing this file:
+#   ansible-playbook site.yml -e finix_host=1.2.3.4 -e ansible_user=ubuntu
+all:
+  hosts:
+    finix-prod:
+      ansible_host: "{{ finix_host | default('roboti.qzz.io') }}"
+      ansible_user: "{{ finix_ssh_user | default('root') }}"
+  vars:
+    finix_domain: roboti.qzz.io
+    finix_admin_domain: admin.roboti.qzz.io
+    finix_auth_domain: auth.roboti.qzz.io
+    finix_grafana_domain: grafana.roboti.qzz.io
+    finix_acme_email: suhasdissa@gmail.com
+
+    finix_repo_url: https://github.com/Rexosphere/finix.git
+    finix_app_dir: /opt/finix/app
+    finix_state_dir: /opt/finix
+
+    # Nightly pg_dump, kept for a week.
+    finix_backup_hour: "03:00"
+    finix_backup_retention_days: 7
