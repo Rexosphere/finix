@@ -6,7 +6,6 @@
   <title>FINIX — Banking Operations Dashboard</title>
   <meta name="description" content="FINIX read-only banking operations dashboard: live mesh health, risk AI, vault ceremony, compliance, loans, payment hub and notifications." />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/theme.css" />
   <style>
     /* judge.html-scoped additions — the shared design system does the heavy lifting. */
@@ -210,12 +209,72 @@
   </style>
 </head>
 <body class="mesh-grid">
+  <!-- FINIX icon sprite. Inline on purpose: no icon font, no CDN, so icons
+       still render with the network down and stay crisp at projector scale.
+       Source of truth mirrored in /js/finix.js (Finix.icon) for dynamic markup. -->
+  <svg class="icon-sprite" aria-hidden="true" focusable="false" width="0" height="0" style="position:absolute">
+    <symbol id="i-account_balance" viewBox="0 0 24 24"><path d="M3 10h18M5 10v8M10 10v8M14 10v8M19 10v8M2 21h20M12 3 2.5 8h19L12 3Z"/></symbol>
+    <symbol id="i-account_tree" viewBox="0 0 24 24"><path d="M8 4h6a2 2 0 0 1 2 2v1M8 4v3M8 4H5a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h3M16 7h3a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-3a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1ZM8 8v9a2 2 0 0 0 2 2h1M16 16h3a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-3a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1Z"/></symbol>
+    <symbol id="i-accessibility_new" viewBox="0 0 24 24"><path d="M12 4.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM4.5 8 12 9.5 19.5 8M12 9.5V15M12 15l-3 6.5M12 15l3 6.5"/></symbol>
+    <symbol id="i-agriculture" viewBox="0 0 24 24"><path d="M7 20h10M10 20c5.5-2.5.8-6.4 3-10M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8ZM14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2Z"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4.5 13.5H11l-1 8.5 9-11.5H12.5L13 2Z"/></symbol>
+    <symbol id="i-call" viewBox="0 0 24 24"><path d="M6.5 3h-2A1.5 1.5 0 0 0 3 4.6C3.4 12.6 11.4 20.6 19.4 21a1.5 1.5 0 0 0 1.6-1.5v-2a1.5 1.5 0 0 0-1.2-1.47l-2.6-.52a1.5 1.5 0 0 0-1.45.53l-1 1.2a14.5 14.5 0 0 1-6.5-6.5l1.2-1a1.5 1.5 0 0 0 .53-1.45l-.52-2.6A1.5 1.5 0 0 0 6.5 3Z"/></symbol>
+    <symbol id="i-check_circle" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3.6-7.2M8.5 11.5 11.5 14.5 21 5.5"/></symbol>
+    <symbol id="i-chevron_right" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="i-cloud_off" viewBox="0 0 24 24"><path d="M3 3l18 18M8 7.5A5 5 0 0 1 17 10a4 4 0 0 1 2.9 6.7M17.5 19H7a4 4 0 0 1-.9-7.9"/></symbol>
+    <symbol id="i-content_copy" viewBox="0 0 24 24"><path d="M9 9h9a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 18 21H9a1.5 1.5 0 0 1-1.5-1.5v-9A1.5 1.5 0 0 1 9 9ZM4.5 15H4a1.5 1.5 0 0 1-1.5-1.5v-9A1.5 1.5 0 0 1 4 3h9A1.5 1.5 0 0 1 14.5 4.5V5"/></symbol>
+    <symbol id="i-currency_exchange" viewBox="0 0 24 24"><path d="M4 7h10.5M4 7l3-3M4 7l3 3M20 17H9.5M20 17l-3-3M20 17l-3 3"/></symbol>
+    <symbol id="i-database" viewBox="0 0 24 24"><path d="M4 6c0-1.66 3.58-3 8-3s8 1.34 8 3-3.58 3-8 3-8-1.34-8-3ZM4 6v12c0 1.66 3.58 3 8 3s8-1.34 8-3V6M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/></symbol>
+    <symbol id="i-dialpad" viewBox="0 0 24 24"><path d="M7 5.5h.01M12 5.5h.01M17 5.5h.01M7 11h.01M12 11h.01M17 11h.01M7 16.5h.01M12 16.5h.01M17 16.5h.01M12 21.5h.01"/></symbol>
+    <symbol id="i-enhanced_encryption" viewBox="0 0 24 24"><path d="M6 10.5h12a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 18 21.5H6A1.5 1.5 0 0 1 4.5 20v-8A1.5 1.5 0 0 1 6 10.5ZM8 10.5V7a4 4 0 0 1 8 0v3.5M12 14v4M10 16h4"/></symbol>
+    <symbol id="i-error" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM12 7.5v5.5M12 16.5h.01"/></symbol>
+    <symbol id="i-explore" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM15.5 8.5l-2 5-5 2 2-5 5-2Z"/></symbol>
+    <symbol id="i-forum" viewBox="0 0 24 24"><path d="M7 15H5.5A1.5 1.5 0 0 1 4 13.5v-8A1.5 1.5 0 0 1 5.5 4h10A1.5 1.5 0 0 1 17 5.5V7M8.5 8h10A1.5 1.5 0 0 1 20 9.5v8a1.5 1.5 0 0 1-1.5 1.5H17v3l-3.5-3H8.5A1.5 1.5 0 0 1 7 17.5v-8A1.5 1.5 0 0 1 8.5 8Z"/></symbol>
+    <symbol id="i-gavel" viewBox="0 0 24 24"><path d="m14.5 12.5-8 8a2.12 2.12 0 1 1-3-3l8-8M16 16l6-6M8 8l6-6M9 7l8 8M21 11l-8-8"/></symbol>
+    <symbol id="i-help_center" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM9.8 9.5a2.2 2.2 0 1 1 3 2.05c-.5.2-.8.7-.8 1.25v.7M12 16.5h.01"/></symbol>
+    <symbol id="i-hub" viewBox="0 0 24 24"><path d="M12 6.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM12 21.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM4.5 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM19.5 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM12 6.5v11M10.4 8.9 6.1 11M13.6 8.9l4.3 2.1M6.2 11.6l4.4 5M17.8 11.6l-4.4 5"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M4 13h4l1.5 3h5L16 13h4M4 13 6 5h12l2 8v6a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19v-6Z"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM12 11v5.5M12 7.5h.01"/></symbol>
+    <symbol id="i-insights" viewBox="0 0 24 24"><path d="M4 20V9M9 20v-6M14 20V6M19 20v-9M3.5 11.5 8 7l5 4 6.5-6"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><path d="M2 15.5a5.5 5.5 0 1 0 11 0 5.5 5.5 0 0 0-11 0ZM11.4 11.6 21 2M15.5 7.5l2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/></symbol>
+    <symbol id="i-lan" viewBox="0 0 24 24"><path d="M5 3.5h4a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1ZM15 3.5h4a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1ZM10 16.5h4a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1ZM7 7.5v3.5h10V7.5M12 11v5.5"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a4 4 0 0 0 5.7.3l2.6-2.6a4 4 0 1 0-5.7-5.7L11.2 6.4M14 11a4 4 0 0 0-5.7-.3l-2.6 2.6a4 4 0 1 0 5.7 5.7l1.4-1.4"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><path d="M6 10.5h12a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 18 21.5H6A1.5 1.5 0 0 1 4.5 20v-8A1.5 1.5 0 0 1 6 10.5ZM8 10.5V7a4 4 0 0 1 8 0v3.5M12 15v2.5"/></symbol>
+    <symbol id="i-login" viewBox="0 0 24 24"><path d="M14 3.5h4A1.5 1.5 0 0 1 19.5 5v14a1.5 1.5 0 0 1-1.5 1.5h-4M4.5 12h10M11 8.5l3.5 3.5-3.5 3.5"/></symbol>
+    <symbol id="i-monitor_heart" viewBox="0 0 24 24"><path d="M3 5.5h18a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1ZM5 12h3l1.5-3 2.5 6 2-3h5"/></symbol>
+    <symbol id="i-neurology" viewBox="0 0 24 24"><path d="M12 4.5a3 3 0 0 0-3 3v.2a2.7 2.7 0 0 0-1.8 4.4A2.7 2.7 0 0 0 9 16.8V17a2.5 2.5 0 0 0 3 2.4M12 4.5a3 3 0 0 1 3 3v.2a2.7 2.7 0 0 1 1.8 4.4A2.7 2.7 0 0 1 15 16.8V17a2.5 2.5 0 0 1-3 2.4M12 4.5v15"/></symbol>
+    <symbol id="i-payments" viewBox="0 0 24 24"><path d="M6 8.5h13A1.5 1.5 0 0 1 20.5 10v6a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 16v-6A1.5 1.5 0 0 1 6 8.5ZM12.5 15a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM3.5 12v7A1.5 1.5 0 0 0 5 20.5h13"/></symbol>
+    <symbol id="i-progress_activity" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/></symbol>
+    <symbol id="i-qr_code_2" viewBox="0 0 24 24"><path d="M4 4h5v5H4V4ZM15 4h5v5h-5V4ZM4 15h5v5H4v-5ZM15 15h2v2h-2v-2ZM19 19h1v1h-1v-1ZM12 4v3M12 10h-2M12 13v3M12 20h3M19 12h1M15 11.5h1"/></symbol>
+    <symbol id="i-qr_code_scanner" viewBox="0 0 24 24"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16M4 12h16"/></symbol>
+    <symbol id="i-query_stats" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 16v-4M12 16V9M16 16v-6M19 13.5a3 3 0 1 0-6 0 3 3 0 0 0 6 0ZM18.5 15.5 21 18"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v4.5h-4.5"/></symbol>
+    <symbol id="i-science" viewBox="0 0 24 24"><path d="M9.5 3v6.2L4.7 17.6A2 2 0 0 0 6.4 20.5h11.2a2 2 0 0 0 1.7-2.9L14.5 9.2V3M8 3h8M6.8 14h10.4"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><path d="M17.5 10.75a6.75 6.75 0 1 1-13.5 0 6.75 6.75 0 0 1 13.5 0ZM16 15.5 21 20.5"/></symbol>
+    <symbol id="i-search_off" viewBox="0 0 24 24"><path d="M3 3l18 18M9 4.2a6.75 6.75 0 0 1 7.3 10.6M14.2 16.3A6.75 6.75 0 0 1 5.4 7.4M16 15.5 21 20.5"/></symbol>
+    <symbol id="i-security" viewBox="0 0 24 24"><path d="M12 2.5 20 6v6c0 4.8-3.4 8.6-8 9.5-4.6-.9-8-4.7-8-9.5V6l8-3.5Z"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M21 3 10.5 13.5M21 3l-6.75 18-3.75-7.5L3 9.75 21 3Z"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2.5 20 6v6c0 4.8-3.4 8.6-8 9.5-4.6-.9-8-4.7-8-9.5V6l8-3.5ZM9 12l2 2 4-4"/></symbol>
+    <symbol id="i-shield_person" viewBox="0 0 24 24"><path d="M12 2.5 20 6v6c0 4.8-3.4 8.6-8 9.5-4.6-.9-8-4.7-8-9.5V6l8-3.5ZM12 11.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM8.5 16.8a4 4 0 0 1 7 0"/></symbol>
+    <symbol id="i-speed" viewBox="0 0 24 24"><path d="M3.34 19a10 10 0 1 1 17.32 0M12 14l4-4"/></symbol>
+    <symbol id="i-storefront" viewBox="0 0 24 24"><path d="M4 10.5V19a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 19v-8.5M3 9l1.4-4.4A1.5 1.5 0 0 1 5.8 3.5h12.4a1.5 1.5 0 0 1 1.4 1.1L21 9a2.5 2.5 0 0 1-4.5 1.6A2.5 2.5 0 0 1 12 10.5a2.5 2.5 0 0 1-4.5.1A2.5 2.5 0 0 1 3 9ZM9.5 20.5v-5h5v5"/></symbol>
+    <symbol id="i-swap_horiz" viewBox="0 0 24 24"><path d="M4 9h13M14 6l3 3-3 3M20 15H7M10 12l-3 3 3 3"/></symbol>
+    <symbol id="i-sync" viewBox="0 0 24 24"><path d="M20 11.5A8 8 0 0 0 6.3 6.3M20 4v4.5h-4.5M4 12.5a8 8 0 0 0 13.7 5.2M4 20v-4.5h4.5"/></symbol>
+    <symbol id="i-translate" viewBox="0 0 24 24"><path d="M3 5.5h9M7.5 3.5v2M9.5 5.5c0 4-2.6 7.5-6 9M5 9.5c1 2.2 3.4 4.2 6 5M12.5 20.5l4-10 4 10M14 17.5h5"/></symbol>
+    <symbol id="i-verified" viewBox="0 0 24 24"><path d="m12 2.2 2.2 2.1 3-.4.9 2.9 2.8 1.2-1.2 2.8 1.2 2.8-2.8 1.2-.9 2.9-3-.4L12 19.4l-2.2-2.1-3 .4-.9-2.9-2.8-1.2 1.2-2.8L3.1 8l2.8-1.2.9-2.9 3 .4L12 2.2ZM9 11.5l2 2 4-4"/></symbol>
+    <symbol id="i-verified_user" viewBox="0 0 24 24"><path d="M12 2.5 20 6v6c0 4.8-3.4 8.6-8 9.5-4.6-.9-8-4.7-8-9.5V6l8-3.5ZM9 12l2 2 4-4"/></symbol>
+    <symbol id="i-visibility" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12ZM14.5 12a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Z"/></symbol>
+    <symbol id="i-visibility_off" viewBox="0 0 24 24"><path d="M3 3l18 18M10.2 6a9.6 9.6 0 0 1 1.8-.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-3.2 4M6.3 8.1A17 17 0 0 0 2.5 12S6 18.5 12 18.5c1.2 0 2.2-.2 3.2-.6M10.2 10.2a2.5 2.5 0 0 0 3.5 3.5"/></symbol>
+    <symbol id="i-warning" viewBox="0 0 24 24"><path d="M10.6 3.9 2.5 18a1.6 1.6 0 0 0 1.4 2.4h16.2a1.6 1.6 0 0 0 1.4-2.4L13.4 3.9a1.6 1.6 0 0 0-2.8 0ZM12 9v4.5M12 17h.01"/></symbol>
+    <symbol id="i-wifi_off" viewBox="0 0 24 24"><path d="M3 3l18 18M9 17.5 12 20.5l3-3a4.2 4.2 0 0 0-6 0ZM6 14a8.5 8.5 0 0 1 2.4-1.7M18 14a8.5 8.5 0 0 0-5.6-2.4M2.5 10.2A13 13 0 0 1 7 7.4M21.5 10.2a13 13 0 0 0-9.5-3.7"/></symbol>
+    <symbol id="i-workspaces" viewBox="0 0 24 24"><path d="M12 8.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 21.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM18 21.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM9.6 10.4 7.4 14.1M14.4 10.4l2.2 3.7M8.8 18.5h6.4"/></symbol>
+  </svg>
   <div class="shell">
     <header class="topbar">
       <div class="container topbar-inner">
         <a class="brand" href="/judge.html">FINIX <span style="color:var(--on-surface);font-weight:500;font-size:0.65em">Operations</span></a>
         <div class="topbar-actions">
-          <span class="badge-soft" title="This dashboard issues GET requests only."><span class="material-symbols-outlined" style="font-size:0.95rem">visibility</span> Read-only</span>
+          <span class="badge-soft" title="This dashboard issues GET requests only."><svg class="icon" style="font-size:0.95rem" aria-hidden="true"><use href="#i-visibility"/></svg> Read-only</span>
           <span class="mesh-pill" id="meshStatus"><span class="dot"></span> Institutional</span>
           <a class="btn btn-secondary" href="/index.html" style="min-height:40px;padding:0.4rem 0.8rem">Ops console</a>
         </div>
@@ -244,7 +303,7 @@
       <section class="jv-hero" id="overview">
         <div>
           <p class="label-caps jv-eyebrow" style="margin:0 0 0.55rem">
-            <span class="material-symbols-outlined" style="font-size:1rem;color:var(--primary)">hub</span>
+            <svg class="icon" style="font-size:1rem;color:var(--primary)" aria-hidden="true"><use href="#i-hub"/></svg>
             Resilient Inclusive Banking Fabric
           </p>
           <h1 class="headline-xl">Banking operations, live across the mesh.</h1>
@@ -263,7 +322,7 @@
           </div>
           <div class="actions">
             <button class="btn btn-primary" id="refreshNow" type="button">
-              <span class="material-symbols-outlined">refresh</span> Refresh now
+              <svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg> Refresh now
             </button>
             <a class="btn btn-secondary" href="#demo">Demo navigation</a>
           </div>
@@ -287,7 +346,7 @@
             <div class="jv-stat"><span class="label-caps">Messages sent</span><span class="v" data-hero="notify">—</span><span class="sub" data-hero="notifySub">outbox</span></div>
           </div>
           <p class="jv-note" style="margin:1rem 0 0">
-            <span class="material-symbols-outlined">lock</span>
+            <svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg>
             <span>Counters are derived from read-only endpoints proxied same-origin by the admin edge. A dash means that service did not answer in time.</span>
           </p>
         </div>
@@ -297,7 +356,7 @@
       <section class="jv-section" id="health">
         <div class="jv-section-head">
           <div>
-            <p class="label-caps jv-eyebrow"><span class="material-symbols-outlined" style="font-size:1rem;color:var(--primary)">monitor_heart</span> Live service health</p>
+            <p class="label-caps jv-eyebrow"><svg class="icon" style="font-size:1rem;color:var(--primary)" aria-hidden="true"><use href="#i-monitor_heart"/></svg> Live service health</p>
             <h2 class="headline-lg">Seven services, probed continuously</h2>
             <p class="lede">Each card is a live health probe through the same-origin edge proxy, with client-measured round-trip latency. Independent failure is expected — the mesh degrades, it does not collapse.</p>
           </div>
@@ -314,7 +373,7 @@
       <section class="jv-section" id="risk">
         <div class="jv-section-head">
           <div>
-            <p class="label-caps jv-eyebrow"><span class="material-symbols-outlined" style="font-size:1rem;color:var(--tertiary)">neurology</span> Risk AI</p>
+            <p class="label-caps jv-eyebrow"><svg class="icon" style="font-size:1rem;color:var(--tertiary)" aria-hidden="true"><use href="#i-neurology"/></svg> Risk AI</p>
             <h2 class="headline-lg">Fraud scoring, AI shield &amp; federated learning</h2>
             <p class="lede">Rules dominate for explainability, the model nudges. Blocked transfers open a case automatically; the shield quarantines a service the moment its health signal degrades.</p>
           </div>
@@ -343,7 +402,7 @@
       <section class="jv-section" id="vault">
         <div class="jv-section-head">
           <div>
-            <p class="label-caps jv-eyebrow"><span class="material-symbols-outlined" style="font-size:1rem;color:var(--primary)">lock</span> Vault</p>
+            <p class="label-caps jv-eyebrow"><svg class="icon" style="font-size:1rem;color:var(--primary)" aria-hidden="true"><use href="#i-lock"/></svg> Vault</p>
             <h2 class="headline-lg">Master-key ceremony · Shamir 3-of-5</h2>
             <p class="lede">The master key is split across five custodian institutions. Three signatures authorise reconstruction — and reconstruction happens only inside the enclave, never in this process.</p>
           </div>
@@ -370,7 +429,7 @@
           </div>
         </div>
         <p class="jv-note" style="margin-top:1.1rem">
-          <span class="material-symbols-outlined">shield_person</span>
+          <svg class="icon" aria-hidden="true"><use href="#i-shield_person"/></svg>
           <span>Custodian approval and reconstruction are deliberately absent here — those are write operations and live in the <a href="/index.html">operator console</a> behind operator authority.</span>
         </p>
       </section>
@@ -379,7 +438,7 @@
       <section class="jv-section" id="compliance">
         <div class="jv-section-head">
           <div>
-            <p class="label-caps jv-eyebrow"><span class="material-symbols-outlined" style="font-size:1rem;color:var(--tertiary)">gavel</span> Compliance</p>
+            <p class="label-caps jv-eyebrow"><svg class="icon" style="font-size:1rem;color:var(--tertiary)" aria-hidden="true"><use href="#i-gavel"/></svg> Compliance</p>
             <h2 class="headline-lg">AML · sanctions · SAR register</h2>
             <p class="lede">Every case that the mesh opened — whether raised by a screening hit, a risk-AI block, or an analyst — with its severity and current disposition.</p>
           </div>
@@ -394,7 +453,7 @@
       <section class="jv-section" id="loans">
         <div class="jv-section-head">
           <div>
-            <p class="label-caps jv-eyebrow"><span class="material-symbols-outlined" style="font-size:1rem;color:var(--primary)">account_balance</span> Loans</p>
+            <p class="label-caps jv-eyebrow"><svg class="icon" style="font-size:1rem;color:var(--primary)" aria-hidden="true"><use href="#i-account_balance"/></svg> Loans</p>
             <h2 class="headline-lg">SME micro-lending book</h2>
             <p class="lede">Applications scored against the shared credit model, with repayment schedules generated on decision. Amounts are read straight from the loan service.</p>
           </div>
@@ -409,7 +468,7 @@
       <section class="jv-section" id="payments">
         <div class="jv-section-head">
           <div>
-            <p class="label-caps jv-eyebrow"><span class="material-symbols-outlined" style="font-size:1rem;color:var(--primary)">swap_horiz</span> Payment hub</p>
+            <p class="label-caps jv-eyebrow"><svg class="icon" style="font-size:1rem;color:var(--primary)" aria-hidden="true"><use href="#i-swap_horiz"/></svg> Payment hub</p>
             <h2 class="headline-lg">LankaPay · Visa · CBDC, ISO 20022 native</h2>
             <p class="lede">The Go payment hub speaks three schemes behind one connector interface and emits pacs.008 for every accepted instruction. Traffic below is read from its Prometheus scrape.</p>
           </div>
@@ -426,7 +485,7 @@
               <div class="jv-lookup">
                 <input id="payLookupId" type="text" inputmode="text" spellcheck="false" placeholder="payment id" aria-label="Payment id" />
                 <button class="btn btn-secondary" id="payLookupBtn" type="button">
-                  <span class="material-symbols-outlined">search</span> Inspect
+                  <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg> Inspect
                 </button>
               </div>
               <div id="payLookupOut" style="margin-top:0.9rem"></div>
@@ -453,7 +512,7 @@
       <section class="jv-section" id="notifications">
         <div class="jv-section-head">
           <div>
-            <p class="label-caps jv-eyebrow"><span class="material-symbols-outlined" style="font-size:1rem;color:var(--primary)">forum</span> Notifications</p>
+            <p class="label-caps jv-eyebrow"><svg class="icon" style="font-size:1rem;color:var(--primary)" aria-hidden="true"><use href="#i-forum"/></svg> Notifications</p>
             <h2 class="headline-lg">Trilingual outbox — English · සිංහල · தமிழ்</h2>
             <p class="lede">Inclusion is a delivery problem as much as a product one. Every customer-facing message renders in all three national languages across SMS, email, push and voice.</p>
           </div>
@@ -475,49 +534,49 @@
       <section class="jv-section" id="capabilities">
         <div class="jv-section-head">
           <div>
-            <p class="label-caps jv-eyebrow"><span class="material-symbols-outlined" style="font-size:1rem;color:var(--primary)">workspaces</span> Enterprise capabilities</p>
+            <p class="label-caps jv-eyebrow"><svg class="icon" style="font-size:1rem;color:var(--primary)" aria-hidden="true"><use href="#i-workspaces"/></svg> Enterprise capabilities</p>
             <h2 class="headline-lg">What makes this a fabric, not an app</h2>
             <p class="lede">Ten services, four languages, one contract discipline. The properties below are architectural commitments, not features toggled per deployment.</p>
           </div>
         </div>
         <div class="jv-grid wide">
           <article class="jv-cap mesh-glow">
-            <span class="material-symbols-outlined">lan</span>
+            <svg class="icon" aria-hidden="true"><use href="#i-lan"/></svg>
             <h3>Polyglot service mesh</h3>
             <p>Kotlin core for the money-moving domain, Go for the payment rails, Python for risk models, Node for messaging. Each language sits where it earns its keep.</p>
           </article>
           <article class="jv-cap mesh-glow">
-            <span class="material-symbols-outlined">account_tree</span>
+            <svg class="icon" aria-hidden="true"><use href="#i-account_tree"/></svg>
             <h3>Saga orchestration</h3>
             <p>Transfers run as compensating sagas across account, ledger and risk. A partial failure unwinds deterministically instead of leaving torn state.</p>
           </article>
           <article class="jv-cap mesh-glow">
-            <span class="material-symbols-outlined">database</span>
+            <svg class="icon" aria-hidden="true"><use href="#i-database"/></svg>
             <h3>Database per service</h3>
             <p>No shared schema, no cross-service joins. A compromised service reaches its own PostgreSQL instance and nothing else.</p>
           </article>
           <article class="jv-cap mesh-glow">
-            <span class="material-symbols-outlined">verified</span>
+            <svg class="icon" aria-hidden="true"><use href="#i-verified"/></svg>
             <h3>Tamper-evident ledger</h3>
             <p>Append-only hash chain, Merkle-anchored and signed on a fixed cadence. Any retroactive edit breaks verification publicly.</p>
           </article>
           <article class="jv-cap mesh-glow">
-            <span class="material-symbols-outlined">wifi_off</span>
+            <svg class="icon" aria-hidden="true"><use href="#i-wifi_off"/></svg>
             <h3>Offline-first inclusion</h3>
             <p>Signed offline vouchers, a sub-50 KB low-data page, and USSD <code>*334#</code> for feature phones. Connectivity is a preference, not a requirement.</p>
           </article>
           <article class="jv-cap mesh-glow">
-            <span class="material-symbols-outlined">enhanced_encryption</span>
+            <svg class="icon" aria-hidden="true"><use href="#i-enhanced_encryption"/></svg>
             <h3>Post-quantum ready</h3>
             <p>ML-KEM-768 key encapsulation and ML-DSA-65 signatures on the trust anchor, chosen against a long-horizon threat model.</p>
           </article>
           <article class="jv-cap mesh-glow">
-            <span class="material-symbols-outlined">bolt</span>
+            <svg class="icon" aria-hidden="true"><use href="#i-bolt"/></svg>
             <h3>Idempotent write path</h3>
             <p>Every state-changing call carries an idempotency key, so a retried transfer settles once regardless of network behaviour.</p>
           </article>
           <article class="jv-cap mesh-glow">
-            <span class="material-symbols-outlined">insights</span>
+            <svg class="icon" aria-hidden="true"><use href="#i-insights"/></svg>
             <h3>Uniform observability</h3>
             <p>Micrometer-shaped Prometheus metrics from every runtime — JVM, Go and Node alike — so one dashboard query covers the whole mesh.</p>
           </article>
@@ -528,7 +587,7 @@
       <section class="jv-section" id="security">
         <div class="jv-section-head">
           <div>
-            <p class="label-caps jv-eyebrow"><span class="material-symbols-outlined" style="font-size:1rem;color:var(--tertiary)">security</span> Security architecture</p>
+            <p class="label-caps jv-eyebrow"><svg class="icon" style="font-size:1rem;color:var(--tertiary)" aria-hidden="true"><use href="#i-security"/></svg> Security architecture</p>
             <h2 class="headline-lg">Six layers, no implicit trust</h2>
             <p class="lede">Every hop is authenticated and every privileged action is split across parties. The layers below map one-to-one onto the deployed topology.</p>
           </div>
@@ -560,7 +619,7 @@
           </div>
         </div>
         <p class="jv-note" style="margin-top:1.1rem">
-          <span class="material-symbols-outlined">visibility_off</span>
+          <svg class="icon" aria-hidden="true"><use href="#i-visibility_off"/></svg>
           <span>This dashboard is a layer-1 consumer. It reads through the admin edge proxy on the same origin and holds no credentials, no key material and no write capability.</span>
         </p>
       </section>
@@ -569,7 +628,7 @@
       <section class="jv-section" id="demo">
         <div class="jv-section-head">
           <div>
-            <p class="label-caps jv-eyebrow"><span class="material-symbols-outlined" style="font-size:1rem;color:var(--primary)">explore</span> Demo navigation</p>
+            <p class="label-caps jv-eyebrow"><svg class="icon" style="font-size:1rem;color:var(--primary)" aria-hidden="true"><use href="#i-explore"/></svg> Demo navigation</p>
             <h2 class="headline-lg">Where to go next</h2>
             <p class="lede">Operator surfaces are same-origin. Customer surfaces live on the public web host and are resolved from the current address at runtime.</p>
           </div>
@@ -577,22 +636,22 @@
         <h3 class="label-caps" style="margin:0 0 0.6rem;color:var(--on-surface)">Operator</h3>
         <div class="tile-grid" style="margin-bottom:1.5rem">
           <a class="tile" href="/index.html">
-            <span class="material-symbols-outlined" style="color:var(--primary)">lock</span>
+            <svg class="icon" style="color:var(--primary)" aria-hidden="true"><use href="#i-lock"/></svg>
             <strong>Vault ceremony</strong>
             <span class="code-hint">Seed · approve 3/5 · reconstruct</span>
           </a>
           <a class="tile" href="/index.html">
-            <span class="material-symbols-outlined" style="color:var(--tertiary)">shield</span>
+            <svg class="icon" style="color:var(--tertiary)" aria-hidden="true"><use href="#i-shield"/></svg>
             <strong>Risk &amp; shield</strong>
             <span class="code-hint">Quarantine · release · cases</span>
           </a>
           <a class="tile" href="/index.html">
-            <span class="material-symbols-outlined" style="color:var(--primary)">gavel</span>
+            <svg class="icon" style="color:var(--primary)" aria-hidden="true"><use href="#i-gavel"/></svg>
             <strong>Compliance desk</strong>
             <span class="code-hint">Open and triage cases</span>
           </a>
           <a class="tile" href="/index.html">
-            <span class="material-symbols-outlined" style="color:var(--primary)">payments</span>
+            <svg class="icon" style="color:var(--primary)" aria-hidden="true"><use href="#i-payments"/></svg>
             <strong>Payments &amp; notify</strong>
             <span class="code-hint">pacs.008 · trilingual outbox</span>
           </a>
@@ -708,7 +767,7 @@
     function failure(label, result) {
       var reason = result && result.error ? result.error : "unavailable";
       return '<div class="status-banner err" role="status">' +
-        '<span class="material-symbols-outlined">cloud_off</span>' +
+        '<svg class="icon" aria-hidden="true"><use href="#i-cloud_off"/></svg>' +
         '<span><strong>' + esc(label) + ' unavailable</strong><br />' +
         '<span style="font-size:0.85rem;color:var(--on-surface-variant)">' + esc(reason) +
         ' — the rest of the mesh keeps reporting.</span></span></div>';
@@ -870,7 +929,7 @@
                 '<span class="pill bad">' + (r.active ? "QUARANTINED" : "RELEASED") + "</span></div>" +
                 '<p class="jv-li-body" style="margin:0">' + esc(r.reason) + " · " + esc(clockTime(r.at)) + "</p></li>";
             }).join("") + "</ul>"
-          : '<div class="status-banner ok"><span class="material-symbols-outlined">verified_user</span>' +
+          : '<div class="status-banner ok"><svg class="icon" aria-hidden="true"><use href="#i-verified_user"/></svg>' +
             "<span>No service is quarantined. All health signals are inside tolerance.</span></div>";
       }
 
@@ -888,7 +947,7 @@
               (weights.length ? weights.map(function (w) { return Number(w).toFixed(3); }).join(" · ") : "—") +
             "</dd></div>" +
           "</dl>" +
-          '<p class="jv-note" style="margin-top:0.8rem"><span class="material-symbols-outlined">science</span>' +
+          '<p class="jv-note" style="margin-top:0.8rem"><svg class="icon" aria-hidden="true"><use href="#i-science"/></svg>' +
           "<span>" + esc(f.note || "Weights are averaged across nodes; raw customer data never leaves its bank.") + "</span></p>";
       }
     }
@@ -1115,7 +1174,7 @@
       var metrics = await readGet(API.pay + "/metrics", { raw: true, accept: "text/plain" });
       if (metrics.status === 404) {
         // Older hub builds do not expose the scrape endpoint — that is not an outage.
-        $("payMetrics").innerHTML = '<div class="status-banner warn"><span class="material-symbols-outlined">query_stats</span>' +
+        $("payMetrics").innerHTML = '<div class="status-banner warn"><svg class="icon" aria-hidden="true"><use href="#i-query_stats"/></svg>' +
           "<span>This payment-hub build does not expose a Prometheus scrape endpoint, so per-endpoint volume is unavailable.</span></div>";
         return;
       }
@@ -1140,7 +1199,7 @@
       var id = String($("payLookupId").value || "").trim();
       var out = $("payLookupOut");
       if (!id) {
-        out.innerHTML = '<div class="status-banner warn"><span class="material-symbols-outlined">info</span>' +
+        out.innerHTML = '<div class="status-banner warn"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>' +
           "<span>Enter a payment id first.</span></div>";
         return;
       }
@@ -1149,7 +1208,7 @@
       var record = await readGet(API.pay + "/v1/payments/" + encoded);
       if (!record.ok) {
         out.innerHTML = record.status === 404
-          ? '<div class="status-banner warn"><span class="material-symbols-outlined">search_off</span>' +
+          ? '<div class="status-banner warn"><svg class="icon" aria-hidden="true"><use href="#i-search_off"/></svg>' +
             "<span>No payment with that id. The hub keeps its store in memory, so ids do not survive a restart.</span></div>"
           : failure("Payment lookup", record);
         return;
@@ -1211,7 +1270,7 @@
           ? '<div class="jv-chips">' + names.map(function (n) {
               return '<span class="jv-chip mint">' + esc(n) + "</span>";
             }).join("") + "</div>" +
-            '<p class="jv-note" style="margin-top:0.9rem"><span class="material-symbols-outlined">translate</span>' +
+            '<p class="jv-note" style="margin-top:0.9rem"><svg class="icon" aria-hidden="true"><use href="#i-translate"/></svg>' +
             "<span>Each template renders in English, Sinhala and Tamil across SMS, email, push and voice.</span></p>"
           : empty("No templates registered.");
       }

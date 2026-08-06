@@ -33,6 +33,66 @@
   </style>
 </head>
 <body>
+  <!-- FINIX icon sprite. Inline on purpose: no icon font, no CDN, so icons
+       still render with the network down and stay crisp at projector scale.
+       Source of truth mirrored in /js/finix.js (Finix.icon) for dynamic markup. -->
+  <svg class="icon-sprite" aria-hidden="true" focusable="false" width="0" height="0" style="position:absolute">
+    <symbol id="i-account_balance" viewBox="0 0 24 24"><path d="M3 10h18M5 10v8M10 10v8M14 10v8M19 10v8M2 21h20M12 3 2.5 8h19L12 3Z"/></symbol>
+    <symbol id="i-account_tree" viewBox="0 0 24 24"><path d="M8 4h6a2 2 0 0 1 2 2v1M8 4v3M8 4H5a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h3M16 7h3a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-3a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1ZM8 8v9a2 2 0 0 0 2 2h1M16 16h3a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-3a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1Z"/></symbol>
+    <symbol id="i-accessibility_new" viewBox="0 0 24 24"><path d="M12 4.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM4.5 8 12 9.5 19.5 8M12 9.5V15M12 15l-3 6.5M12 15l3 6.5"/></symbol>
+    <symbol id="i-agriculture" viewBox="0 0 24 24"><path d="M7 20h10M10 20c5.5-2.5.8-6.4 3-10M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8ZM14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2Z"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4.5 13.5H11l-1 8.5 9-11.5H12.5L13 2Z"/></symbol>
+    <symbol id="i-call" viewBox="0 0 24 24"><path d="M6.5 3h-2A1.5 1.5 0 0 0 3 4.6C3.4 12.6 11.4 20.6 19.4 21a1.5 1.5 0 0 0 1.6-1.5v-2a1.5 1.5 0 0 0-1.2-1.47l-2.6-.52a1.5 1.5 0 0 0-1.45.53l-1 1.2a14.5 14.5 0 0 1-6.5-6.5l1.2-1a1.5 1.5 0 0 0 .53-1.45l-.52-2.6A1.5 1.5 0 0 0 6.5 3Z"/></symbol>
+    <symbol id="i-check_circle" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3.6-7.2M8.5 11.5 11.5 14.5 21 5.5"/></symbol>
+    <symbol id="i-chevron_right" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="i-cloud_off" viewBox="0 0 24 24"><path d="M3 3l18 18M8 7.5A5 5 0 0 1 17 10a4 4 0 0 1 2.9 6.7M17.5 19H7a4 4 0 0 1-.9-7.9"/></symbol>
+    <symbol id="i-content_copy" viewBox="0 0 24 24"><path d="M9 9h9a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 18 21H9a1.5 1.5 0 0 1-1.5-1.5v-9A1.5 1.5 0 0 1 9 9ZM4.5 15H4a1.5 1.5 0 0 1-1.5-1.5v-9A1.5 1.5 0 0 1 4 3h9A1.5 1.5 0 0 1 14.5 4.5V5"/></symbol>
+    <symbol id="i-currency_exchange" viewBox="0 0 24 24"><path d="M4 7h10.5M4 7l3-3M4 7l3 3M20 17H9.5M20 17l-3-3M20 17l-3 3"/></symbol>
+    <symbol id="i-database" viewBox="0 0 24 24"><path d="M4 6c0-1.66 3.58-3 8-3s8 1.34 8 3-3.58 3-8 3-8-1.34-8-3ZM4 6v12c0 1.66 3.58 3 8 3s8-1.34 8-3V6M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/></symbol>
+    <symbol id="i-dialpad" viewBox="0 0 24 24"><path d="M7 5.5h.01M12 5.5h.01M17 5.5h.01M7 11h.01M12 11h.01M17 11h.01M7 16.5h.01M12 16.5h.01M17 16.5h.01M12 21.5h.01"/></symbol>
+    <symbol id="i-enhanced_encryption" viewBox="0 0 24 24"><path d="M6 10.5h12a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 18 21.5H6A1.5 1.5 0 0 1 4.5 20v-8A1.5 1.5 0 0 1 6 10.5ZM8 10.5V7a4 4 0 0 1 8 0v3.5M12 14v4M10 16h4"/></symbol>
+    <symbol id="i-error" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM12 7.5v5.5M12 16.5h.01"/></symbol>
+    <symbol id="i-explore" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM15.5 8.5l-2 5-5 2 2-5 5-2Z"/></symbol>
+    <symbol id="i-forum" viewBox="0 0 24 24"><path d="M7 15H5.5A1.5 1.5 0 0 1 4 13.5v-8A1.5 1.5 0 0 1 5.5 4h10A1.5 1.5 0 0 1 17 5.5V7M8.5 8h10A1.5 1.5 0 0 1 20 9.5v8a1.5 1.5 0 0 1-1.5 1.5H17v3l-3.5-3H8.5A1.5 1.5 0 0 1 7 17.5v-8A1.5 1.5 0 0 1 8.5 8Z"/></symbol>
+    <symbol id="i-gavel" viewBox="0 0 24 24"><path d="m14.5 12.5-8 8a2.12 2.12 0 1 1-3-3l8-8M16 16l6-6M8 8l6-6M9 7l8 8M21 11l-8-8"/></symbol>
+    <symbol id="i-help_center" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM9.8 9.5a2.2 2.2 0 1 1 3 2.05c-.5.2-.8.7-.8 1.25v.7M12 16.5h.01"/></symbol>
+    <symbol id="i-hub" viewBox="0 0 24 24"><path d="M12 6.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM12 21.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM4.5 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM19.5 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM12 6.5v11M10.4 8.9 6.1 11M13.6 8.9l4.3 2.1M6.2 11.6l4.4 5M17.8 11.6l-4.4 5"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M4 13h4l1.5 3h5L16 13h4M4 13 6 5h12l2 8v6a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19v-6Z"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM12 11v5.5M12 7.5h.01"/></symbol>
+    <symbol id="i-insights" viewBox="0 0 24 24"><path d="M4 20V9M9 20v-6M14 20V6M19 20v-9M3.5 11.5 8 7l5 4 6.5-6"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><path d="M2 15.5a5.5 5.5 0 1 0 11 0 5.5 5.5 0 0 0-11 0ZM11.4 11.6 21 2M15.5 7.5l2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/></symbol>
+    <symbol id="i-lan" viewBox="0 0 24 24"><path d="M5 3.5h4a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1ZM15 3.5h4a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1ZM10 16.5h4a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1ZM7 7.5v3.5h10V7.5M12 11v5.5"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a4 4 0 0 0 5.7.3l2.6-2.6a4 4 0 1 0-5.7-5.7L11.2 6.4M14 11a4 4 0 0 0-5.7-.3l-2.6 2.6a4 4 0 1 0 5.7 5.7l1.4-1.4"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><path d="M6 10.5h12a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 18 21.5H6A1.5 1.5 0 0 1 4.5 20v-8A1.5 1.5 0 0 1 6 10.5ZM8 10.5V7a4 4 0 0 1 8 0v3.5M12 15v2.5"/></symbol>
+    <symbol id="i-login" viewBox="0 0 24 24"><path d="M14 3.5h4A1.5 1.5 0 0 1 19.5 5v14a1.5 1.5 0 0 1-1.5 1.5h-4M4.5 12h10M11 8.5l3.5 3.5-3.5 3.5"/></symbol>
+    <symbol id="i-monitor_heart" viewBox="0 0 24 24"><path d="M3 5.5h18a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1ZM5 12h3l1.5-3 2.5 6 2-3h5"/></symbol>
+    <symbol id="i-neurology" viewBox="0 0 24 24"><path d="M12 4.5a3 3 0 0 0-3 3v.2a2.7 2.7 0 0 0-1.8 4.4A2.7 2.7 0 0 0 9 16.8V17a2.5 2.5 0 0 0 3 2.4M12 4.5a3 3 0 0 1 3 3v.2a2.7 2.7 0 0 1 1.8 4.4A2.7 2.7 0 0 1 15 16.8V17a2.5 2.5 0 0 1-3 2.4M12 4.5v15"/></symbol>
+    <symbol id="i-payments" viewBox="0 0 24 24"><path d="M6 8.5h13A1.5 1.5 0 0 1 20.5 10v6a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 16v-6A1.5 1.5 0 0 1 6 8.5ZM12.5 15a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM3.5 12v7A1.5 1.5 0 0 0 5 20.5h13"/></symbol>
+    <symbol id="i-progress_activity" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/></symbol>
+    <symbol id="i-qr_code_2" viewBox="0 0 24 24"><path d="M4 4h5v5H4V4ZM15 4h5v5h-5V4ZM4 15h5v5H4v-5ZM15 15h2v2h-2v-2ZM19 19h1v1h-1v-1ZM12 4v3M12 10h-2M12 13v3M12 20h3M19 12h1M15 11.5h1"/></symbol>
+    <symbol id="i-qr_code_scanner" viewBox="0 0 24 24"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16M4 12h16"/></symbol>
+    <symbol id="i-query_stats" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 16v-4M12 16V9M16 16v-6M19 13.5a3 3 0 1 0-6 0 3 3 0 0 0 6 0ZM18.5 15.5 21 18"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v4.5h-4.5"/></symbol>
+    <symbol id="i-science" viewBox="0 0 24 24"><path d="M9.5 3v6.2L4.7 17.6A2 2 0 0 0 6.4 20.5h11.2a2 2 0 0 0 1.7-2.9L14.5 9.2V3M8 3h8M6.8 14h10.4"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><path d="M17.5 10.75a6.75 6.75 0 1 1-13.5 0 6.75 6.75 0 0 1 13.5 0ZM16 15.5 21 20.5"/></symbol>
+    <symbol id="i-search_off" viewBox="0 0 24 24"><path d="M3 3l18 18M9 4.2a6.75 6.75 0 0 1 7.3 10.6M14.2 16.3A6.75 6.75 0 0 1 5.4 7.4M16 15.5 21 20.5"/></symbol>
+    <symbol id="i-security" viewBox="0 0 24 24"><path d="M12 2.5 20 6v6c0 4.8-3.4 8.6-8 9.5-4.6-.9-8-4.7-8-9.5V6l8-3.5Z"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M21 3 10.5 13.5M21 3l-6.75 18-3.75-7.5L3 9.75 21 3Z"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2.5 20 6v6c0 4.8-3.4 8.6-8 9.5-4.6-.9-8-4.7-8-9.5V6l8-3.5ZM9 12l2 2 4-4"/></symbol>
+    <symbol id="i-shield_person" viewBox="0 0 24 24"><path d="M12 2.5 20 6v6c0 4.8-3.4 8.6-8 9.5-4.6-.9-8-4.7-8-9.5V6l8-3.5ZM12 11.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM8.5 16.8a4 4 0 0 1 7 0"/></symbol>
+    <symbol id="i-speed" viewBox="0 0 24 24"><path d="M3.34 19a10 10 0 1 1 17.32 0M12 14l4-4"/></symbol>
+    <symbol id="i-storefront" viewBox="0 0 24 24"><path d="M4 10.5V19a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 19v-8.5M3 9l1.4-4.4A1.5 1.5 0 0 1 5.8 3.5h12.4a1.5 1.5 0 0 1 1.4 1.1L21 9a2.5 2.5 0 0 1-4.5 1.6A2.5 2.5 0 0 1 12 10.5a2.5 2.5 0 0 1-4.5.1A2.5 2.5 0 0 1 3 9ZM9.5 20.5v-5h5v5"/></symbol>
+    <symbol id="i-swap_horiz" viewBox="0 0 24 24"><path d="M4 9h13M14 6l3 3-3 3M20 15H7M10 12l-3 3 3 3"/></symbol>
+    <symbol id="i-sync" viewBox="0 0 24 24"><path d="M20 11.5A8 8 0 0 0 6.3 6.3M20 4v4.5h-4.5M4 12.5a8 8 0 0 0 13.7 5.2M4 20v-4.5h4.5"/></symbol>
+    <symbol id="i-translate" viewBox="0 0 24 24"><path d="M3 5.5h9M7.5 3.5v2M9.5 5.5c0 4-2.6 7.5-6 9M5 9.5c1 2.2 3.4 4.2 6 5M12.5 20.5l4-10 4 10M14 17.5h5"/></symbol>
+    <symbol id="i-verified" viewBox="0 0 24 24"><path d="m12 2.2 2.2 2.1 3-.4.9 2.9 2.8 1.2-1.2 2.8 1.2 2.8-2.8 1.2-.9 2.9-3-.4L12 19.4l-2.2-2.1-3 .4-.9-2.9-2.8-1.2 1.2-2.8L3.1 8l2.8-1.2.9-2.9 3 .4L12 2.2ZM9 11.5l2 2 4-4"/></symbol>
+    <symbol id="i-verified_user" viewBox="0 0 24 24"><path d="M12 2.5 20 6v6c0 4.8-3.4 8.6-8 9.5-4.6-.9-8-4.7-8-9.5V6l8-3.5ZM9 12l2 2 4-4"/></symbol>
+    <symbol id="i-visibility" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12ZM14.5 12a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Z"/></symbol>
+    <symbol id="i-visibility_off" viewBox="0 0 24 24"><path d="M3 3l18 18M10.2 6a9.6 9.6 0 0 1 1.8-.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-3.2 4M6.3 8.1A17 17 0 0 0 2.5 12S6 18.5 12 18.5c1.2 0 2.2-.2 3.2-.6M10.2 10.2a2.5 2.5 0 0 0 3.5 3.5"/></symbol>
+    <symbol id="i-warning" viewBox="0 0 24 24"><path d="M10.6 3.9 2.5 18a1.6 1.6 0 0 0 1.4 2.4h16.2a1.6 1.6 0 0 0 1.4-2.4L13.4 3.9a1.6 1.6 0 0 0-2.8 0ZM12 9v4.5M12 17h.01"/></symbol>
+    <symbol id="i-wifi_off" viewBox="0 0 24 24"><path d="M3 3l18 18M9 17.5 12 20.5l3-3a4.2 4.2 0 0 0-6 0ZM6 14a8.5 8.5 0 0 1 2.4-1.7M18 14a8.5 8.5 0 0 0-5.6-2.4M2.5 10.2A13 13 0 0 1 7 7.4M21.5 10.2a13 13 0 0 0-9.5-3.7"/></symbol>
+    <symbol id="i-workspaces" viewBox="0 0 24 24"><path d="M12 8.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 21.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM18 21.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM9.6 10.4 7.4 14.1M14.4 10.4l2.2 3.7M8.8 18.5h6.4"/></symbol>
+  </svg>
   <h1>FINIX</h1>
   <p>Low-data balance check. No JavaScript. Under 50&nbsp;KB.</p>
   <form action="/lite/balance" method="get">
