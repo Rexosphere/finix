@@ -38,7 +38,7 @@ SMOKE_STRICT="${PHASE3_SMOKE_STRICT:-0}"
 
 # Paths are discovered from this repository, not invented. Both are asserted before use.
 COMPOSE_FILE="$ROOT/infra/compose/docker-compose.yml"
-SMOKE_SCRIPT="$ROOT/tests/e2e/smoke.sh"
+SMOKE_SCRIPT="$ROOT/tests/e2e/finix-smoke.sh"
 
 # Mirrors the Makefile so `config` resolves the same project the deploy created. Non-secret, and
 # only set when the operator has not already exported a value.
@@ -250,13 +250,10 @@ if [[ ! -f "$SMOKE_SCRIPT" ]]; then
   skip 'FINIX read-only smoke'
 else
   note "script $SMOKE_SCRIPT"
-  note 'contract: this script takes NO arguments and NO URL environment variables — it probes the'
-  note 'stack over localhost service ports, so it is meaningful only ON the production host. Its'
-  note "only knob is FINIX_SMOKE_STRICT. Edge URLs are covered by sections [4/6] and [5/6] above."
-  note "invocation FINIX_SMOKE_STRICT=$SMOKE_STRICT bash $SMOKE_SCRIPT"
-  note 'every check inside it is a bare `curl -sf` GET against /actuator/health or /health.'
+  note 'run with --read-only: the harness issues nothing but GET/HEAD and cannot move money.'
+  note "invocation bash $SMOKE_SCRIPT $CUSTOMER_URL --admin-url $ADMIN_URL --read-only"
   smoke_rc=0
-  smoke_out="$(FINIX_SMOKE_STRICT="$SMOKE_STRICT" bash "$SMOKE_SCRIPT" 2>&1)" || smoke_rc=$?
+  smoke_out="$(bash "$SMOKE_SCRIPT" "$CUSTOMER_URL" --admin-url "$ADMIN_URL" --read-only --no-color 2>&1)" || smoke_rc=$?
   printf '%s\n' "$smoke_out" | sed 's/^/        /'
   smoke_summary="$(printf '%s\n' "$smoke_out" | grep -E '^Summary:' | tail -1 || true)"
   if [[ "$smoke_rc" -eq 0 ]]; then
