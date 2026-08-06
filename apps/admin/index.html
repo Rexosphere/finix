@@ -185,12 +185,19 @@
       };
     });
 
+    /** API returns approvals as custodian id strings, e.g. ["CENTRAL_BANK","GOVT_DR"]. */
+    function approvedSet(approvals) {
+      return new Set(
+        (approvals || []).map((a) => (typeof a === "string" ? a : a.custodianId || a.id || a.name)).filter(Boolean),
+      );
+    }
+
     function renderCustodians(approvals) {
       const ids = ["CENTRAL_BANK","GOVT_DR","IEEE_VAULT","CLOUD_HSM_A","CLOUD_HSM_B"];
       const names = ["Central Bank","Govt DR","IEEE Vault","Cloud HSM A","Cloud HSM B"];
+      const approved = approvedSet(approvals);
       $("custodians").innerHTML = names.map((n, i) => {
-        const a = (approvals || [])[i];
-        const ok = a && (a.approved || a.status === "APPROVED" || a.approvedAt);
+        const ok = approved.has(ids[i]);
         return `<div class="custodian ${ok ? "approved" : ""}">
           <div style="display:flex;justify-content:space-between;gap:0.5rem;margin-bottom:0.65rem">
             <div>
@@ -224,8 +231,9 @@
         const status = await vault("/api/v1/vault/ceremony");
         const c = status.ceremony || status;
         const approvals = c.approvals || status.approvals || [];
-        const approvedCount = approvals.filter((a) => a.approved === true || a.status === "APPROVED" || a.approvedAt).length;
-        $("count").textContent = `${approvedCount}/5`;
+        const approvedCount = approvedSet(approvals).size;
+        const threshold = c.threshold || status.threshold || 3;
+        $("count").textContent = `${approvedCount}/${threshold}`;
         $("state").textContent = c.state || status.state || "?";
         renderCustodians(approvals);
         try {
@@ -241,7 +249,7 @@
 
     $("seed").onclick = async () => {
       try {
-        await vault("/api/v1/vault/admin/seed", "POST");
+        await vault("/api/v1/vault/admin/seed?force=true", "POST");
         $("clog").textContent = "Seeded";
         $("clog").className = "log ok";
         Finix.toast("Ceremony seeded", "ok");

@@ -26,7 +26,7 @@ class ReconstructSessionTest : StringSpec({
         val shares = ShamirSplit.split(masterKey, n = 5, k = 3)
         val sealedInputs = shares.take(3).map { share ->
             val feldmanPad = ByteArray(HybridSeal.FELDMAN_SCALAR_BYTES) { 0x11 }
-            val payload = HybridSeal.packSharePayload(share.y, feldmanPad)
+            val payload = HybridSeal.packSharePayload(share.x, share.y, feldmanPad)
             try {
                 val sealed = HybridSeal.seal(payload, mlKem.public, x25519.public)
                 ReconstructSession.SealedShareInput(share.x, sealed)
@@ -72,11 +72,11 @@ class ReconstructSessionTest : StringSpec({
             HybridSeal.openWithRawKey(ByteArray(4), ByteArray(32))
         }
         shouldThrow<IllegalArgumentException> {
-            HybridSeal.packSharePayload(byteArrayOf(1), ByteArray(8))
+            HybridSeal.packSharePayload(1, byteArrayOf(1), ByteArray(8))
         }
         val y = byteArrayOf(1, 2, 3)
         val feldman = ByteArray(HybridSeal.FELDMAN_SCALAR_BYTES) { 1 }
-        val packed = HybridSeal.packSharePayload(y, feldman)
+        val packed = HybridSeal.packSharePayload(1, y, feldman)
         val (outY, outF) = HybridSeal.unpackSharePayload(packed)
         outY.contentEquals(y) shouldBe true
         outF.contentEquals(feldman) shouldBe true

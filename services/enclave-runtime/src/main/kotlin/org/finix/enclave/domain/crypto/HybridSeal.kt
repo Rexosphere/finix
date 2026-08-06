@@ -152,14 +152,16 @@ object HybridSeal {
     }
 
     /**
-     * Vault packs Shamir ordinate + Feldman scalar before sealing.
-     * @see org.finix.vault.application.usecase.SplitMasterKeyUseCase.packSharePayload
+     * Must match vault `SplitMasterKeyUseCase.packSharePayload`:
+     * `shareIndex(1) || shamirLen(2) || shamirY || feldmanY`.
      */
-    fun packSharePayload(shamirY: ByteArray, feldmanY: ByteArray): ByteArray {
+    fun packSharePayload(shareIndex: Int, shamirY: ByteArray, feldmanY: ByteArray): ByteArray {
+        require(shareIndex in 1..255) { "shareIndex out of range" }
         require(feldmanY.size == FELDMAN_SCALAR_BYTES) {
             "Feldman ordinate must be $FELDMAN_SCALAR_BYTES bytes"
         }
-        return ByteBuffer.allocate(2 + shamirY.size + feldmanY.size)
+        return ByteBuffer.allocate(1 + 2 + shamirY.size + feldmanY.size)
+            .put(shareIndex.toByte())
             .putShort(shamirY.size.toShort())
             .put(shamirY)
             .put(feldmanY)
@@ -168,6 +170,8 @@ object HybridSeal {
 
     fun unpackSharePayload(payload: ByteArray): Pair<ByteArray, ByteArray> {
         val buf = ByteBuffer.wrap(payload)
+        // shareIndex is carried on the wire as SealedShareInput.x; still consume it here.
+        buf.get()
         val shamirLen = buf.short.toInt() and 0xffff
         val shamirY = ByteArray(shamirLen)
         buf.get(shamirY)

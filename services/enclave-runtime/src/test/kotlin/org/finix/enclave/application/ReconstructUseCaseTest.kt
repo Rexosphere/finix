@@ -44,7 +44,7 @@ class ReconstructUseCaseTest : StringSpec({
         val command = ReconstructUseCase.Command(
             sealedShares = shares.map { share ->
                 val feldmanPad = ByteArray(HybridSeal.FELDMAN_SCALAR_BYTES)
-                val payload = HybridSeal.packSharePayload(share.y, feldmanPad)
+                val payload = HybridSeal.packSharePayload(share.x, share.y, feldmanPad)
                 val sealed = try {
                     HybridSeal.seal(payload, kem.public, x.public)
                 } finally {
