@@ -11,7 +11,10 @@
   --surface-container-highest: #293243;
   --on-surface: #e8edf8;
   --on-surface-variant: #9eb0a8;
-  --outline: #7d8f86;
+  /* Lightened from #7d8f86: that tone fell to 4.38:1 on --surface-container-high,
+     under AA for the small mono hints it carries. #8fa197 holds >=4.7:1 on every
+     surface in the ramp, including --surface-container-highest. */
+  --outline: #8fa197;
   --outline-variant: #2f3d38;
 
   /* Brand — emerald signal, gold trust */
@@ -52,6 +55,63 @@
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --border-hairline: color-mix(in srgb, #ffffff 8%, transparent);
+
+  /* ---- Spacing scale ----------------------------------------------------
+     One 4px-based ramp so cards, stacks and grids share the same rhythm
+     instead of each surface inventing its own padding. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* ---- Elevation --------------------------------------------------------
+     Layered rather than single-blur: a tight contact shadow for the edge, a
+     wide ambient one for the lift, and an inset top highlight that reads as
+     light catching the card's rim. Shadows are tinted with the deep navy of
+     the page instead of pure black, so they sit in the palette. */
+  --edge-light: inset 0 1px 0 color-mix(in srgb, #ffffff 6%, transparent);
+  --shadow-xs: 0 1px 2px rgba(2, 8, 16, 0.4);
+  --shadow-sm:
+    0 1px 2px rgba(2, 8, 16, 0.5),
+    0 2px 6px rgba(2, 8, 16, 0.32);
+  --shadow-md:
+    0 2px 4px rgba(2, 8, 16, 0.45),
+    0 8px 20px rgba(2, 8, 16, 0.38);
+  --shadow-lg:
+    0 4px 8px rgba(2, 8, 16, 0.45),
+    0 18px 44px rgba(2, 8, 16, 0.5);
+  --shadow-brand: 0 10px 34px rgba(11, 159, 106, 0.16);
+
+  /* ---- Gradients --------------------------------------------------------
+     Kept low-contrast on purpose: a gradient should imply a light source,
+     not draw attention to itself. */
+  --grad-panel: linear-gradient(
+    168deg,
+    color-mix(in srgb, var(--primary) 5%, var(--slate-charcoal)) 0%,
+    var(--slate-charcoal) 55%
+  );
+  --grad-raised: linear-gradient(
+    168deg,
+    var(--surface-container-high) 0%,
+    var(--surface-container) 60%
+  );
+  --grad-brand: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
+  --grad-brand-soft: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--primary) 14%, transparent) 0%,
+    color-mix(in srgb, var(--primary) 4%, transparent) 100%
+  );
+  --grad-hairline: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, #ffffff 12%, transparent) 50%,
+    transparent 100%
+  );
 }
 
 *,
@@ -269,32 +329,46 @@ a.brand:hover { color: var(--primary-fixed); }
 
 /* Panels / cards */
 .panel {
-  background: linear-gradient(165deg, color-mix(in srgb, var(--primary) 4%, var(--slate-charcoal)) 0%, var(--slate-charcoal) 48%);
-  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border-hairline));
+  position: relative;
+  background: var(--grad-panel);
+  border: 1px solid color-mix(in srgb, var(--primary) 16%, var(--border-hairline));
   border-radius: var(--radius-xl);
-  padding: 1.35rem;
-  box-shadow: 0 1px 0 color-mix(in srgb, #ffffff 4%, transparent) inset;
+  padding: var(--space-6);
+  box-shadow: var(--edge-light), var(--shadow-md);
+}
+
+/* A 1px gradient seam along the top edge. Reads as a specular highlight and
+   keeps the card from looking like a flat rectangle of fill. */
+.panel::after,
+.panel-muted::after {
+  content: "";
+  position: absolute;
+  inset-inline: var(--radius-xl);
+  top: 0;
+  height: 1px;
+  background: var(--grad-hairline);
+  pointer-events: none;
 }
 
 .panel-muted {
-  background: var(--surface-container);
+  position: relative;
+  background: var(--grad-raised);
   border: 1px solid var(--border-hairline);
   border-radius: var(--radius-xl);
-  padding: 1.35rem;
+  padding: var(--space-6);
+  box-shadow: var(--edge-light), var(--shadow-sm);
 }
 
 .mesh-glow {
-  box-shadow:
-    0 1px 0 color-mix(in srgb, #ffffff 4%, transparent) inset,
-    0 0 0 0 transparent;
-  transition: box-shadow 0.28s var(--ease-out), border-color 0.28s var(--ease-out), transform 0.28s var(--ease-out);
+  transition:
+    box-shadow 0.28s var(--ease-out),
+    border-color 0.28s var(--ease-out),
+    transform 0.28s var(--ease-out);
 }
 
 .mesh-glow:hover,
 .mesh-glow:focus-within {
-  box-shadow:
-    0 1px 0 color-mix(in srgb, #ffffff 5%, transparent) inset,
-    0 8px 28px rgba(11, 159, 106, 0.12);
+  box-shadow: var(--edge-light), var(--shadow-lg), var(--shadow-brand);
   border-color: color-mix(in srgb, var(--primary) 42%, transparent);
 }
 
@@ -441,13 +515,18 @@ textarea::placeholder {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1rem;
-  padding: 0.8rem 0.9rem;
+  gap: var(--space-4);
+  padding: 0.8rem 0.95rem;
   border-radius: var(--radius-lg);
   background: var(--surface-container-low);
   border: 1px solid var(--border-hairline);
+  color: var(--on-surface-variant);
   transition: border-color 0.2s ease, background 0.2s ease;
 }
+
+/* The right-hand cell of a definition row is the value — give it the
+   emphasis, and let the label stay quiet. */
+.list-item > :last-child { color: var(--on-surface); }
 
 .list-item:hover {
   border-color: color-mix(in srgb, var(--primary) 28%, transparent);
@@ -542,31 +621,65 @@ textarea::placeholder {
 }
 
 .tile {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  padding: 1.05rem;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-4) var(--space-4);
   border-radius: var(--radius-xl);
-  background: var(--surface-container);
+  background: var(--grad-raised);
   border: 1px solid var(--border-hairline);
   color: inherit;
   text-decoration: none;
-  min-height: 96px;
-  transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+  min-height: 108px;
+  box-shadow: var(--edge-light), var(--shadow-xs);
+  overflow: hidden;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s var(--ease-out),
+    transform 0.18s var(--ease-out);
+}
+
+/* Brand wash that fades in on hover — the lift is felt, not announced. */
+.tile::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--grad-brand-soft);
+  opacity: 0;
+  transition: opacity 0.22s var(--ease-out);
+  pointer-events: none;
 }
 
 .tile:hover {
   border-color: color-mix(in srgb, var(--primary) 40%, transparent);
-  background: var(--surface-container-high);
   color: inherit;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: var(--edge-light), var(--shadow-md), var(--shadow-brand);
+}
+
+.tile:hover::before { opacity: 1; }
+
+.tile > * { position: relative; }
+
+.tile .tile-icon {
+  color: var(--primary);
+  margin-bottom: var(--space-1);
+}
+
+.tile strong {
+  font-size: 0.975rem;
+  letter-spacing: -0.01em;
+  color: var(--on-surface);
 }
 
 .tile .code-hint {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   color: var(--outline);
   letter-spacing: 0.04em;
+  margin-top: auto;
 }
 
 /* Layout helpers */
