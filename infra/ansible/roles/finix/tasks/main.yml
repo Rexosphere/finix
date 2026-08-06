@@ -1,29 +1,48 @@
 ---
+- name: Check for an existing application checkout
+  ansible.builtin.stat:
+    path: "{{ finix_app_dir }}/.git"
+  register: finix_checkout
+
 - name: Create state directory
   ansible.builtin.file:
     path: "{{ finix_state_dir }}"
     state: directory
     mode: "0755"
 
-- name: Clone or update the application checkout
+- name: Ensure the application checkout exists
   ansible.builtin.git:
     repo: "{{ finix_repo_url }}"
     dest: "{{ finix_app_dir }}"
     version: HEAD
-    # deploy.sh checks out a specific commit and treats the tree as a build
-    # artifact, so local state here is always disposable.
     force: true
-  # A deploy may have left the checkout detached at an older release; that is
-  # correct, and provisioning must not silently roll it forward.
-  changed_when: false
+  become_user: "{{ finix_user }}"
+  # Only clones when the directory is absent. A provisioned host is normally
+  # detached at a released commit (deploy.sh puts it there), and provisioning
+  # must not silently roll production forward to a newer master.
+  when: not finix_checkout.stat.exists
 
 # Credentials are generated on the host and never leave it (ADR-0006). The
 # script only creates what is missing, so re-running the playbook cannot
 # invalidate the Postgres roles created from these files.
+#
+# Generated as the deploy user, not root: deploy.sh runs unprivileged over SSH
+# and checks these files before it will start anything, so a root-owned 0700
+# directory makes every deploy fail with "Missing secrets".
 - name: Generate any missing secrets
   ansible.builtin.command: "{{ finix_app_dir }}/scripts/gen-secrets.sh"
+  become_user: "{{ finix_user }}"
   register: gen_secrets
   changed_when: "'Generated' in gen_secrets.stdout"
+
+- name: Ensure the secrets directory belongs to the deploy user
+  ansible.builtin.file:
+    path: "{{ finix_app_dir }}/infra/compose/secrets"
+    state: directory
+    owner: "{{ finix_user }}"
+    group: "{{ finix_user }}"
+    mode: "0700"
+    recurse: false
 
 - name: Write the environment file consumed by compose
   ansible.builtin.template:

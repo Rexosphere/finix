@@ -11,6 +11,9 @@ all:
     finix_grafana_domain: grafana.roboti.qzz.io
     finix_acme_email: suhasdissa@gmail.com
 
+    # The unprivileged account that owns the checkout, the generated secrets and
+    # the deploy — deploy.sh runs over SSH as this user, never as root.
+    finix_user: finix
     finix_repo_url: https://github.com/Rexosphere/finix.git
     finix_app_dir: /opt/finix/app
     finix_state_dir: /opt/finix
