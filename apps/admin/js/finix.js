@@ -226,7 +226,8 @@
     return (
       '<svg class="' +
       cls +
-      '" aria-hidden="true" focusable="false"><use href="#i-' +
+      '" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+      '<use href="#i-' +
       id +
       '"></use></svg>'
     );
