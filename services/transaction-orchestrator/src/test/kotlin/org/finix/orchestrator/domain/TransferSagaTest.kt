@@ -99,14 +99,140 @@ class TransferSagaTest {
     }
 
     @Test
-    fun `credit-applied can begin compensate`() {
+    fun `ledger-posted can begin compensate and keeps the posted flag`() {
+        val saga = TransferSaga.initiate(from, to, 25.lkr(), at)
+            .markReserved(at)
+            .markLedgerPosted(at)
+            .beginCompensate("downstream timeout", at)
+        saga.state shouldBe SagaState.COMPENSATING
+        saga.ledgerPosted shouldBe true
+    }
+
+    @Test
+    fun `credit-applied cannot begin compensate because the recipient already has the money`() {
         val saga = TransferSaga.initiate(from, to, 25.lkr(), at)
             .markReserved(at)
             .markLedgerPosted(at)
             .markCreditApplied(at)
-            .beginCompensate("downstream timeout", at)
+        val ex = shouldThrow<DomainException> { saga.beginCompensate("downstream timeout", at) }
+        ex.error.shouldBeInstanceOf<DomainError.Conflict>()
+    }
+
+    @Test
+    fun `committing the hold records the final debit without changing state`() {
+        val saga = TransferSaga.initiate(from, to, 25.lkr(), at)
+            .markReserved(at)
+            .markLedgerPosted(at)
+            .markHoldCommitted(at)
+        saga.state shouldBe SagaState.LEDGER_POSTED
+        saga.holdCommitted shouldBe true
+        // The fact has to outlive the transition into compensation, like ledgerPosted does.
+        saga.beginCompensate("credit refused", at).holdCommitted shouldBe true
+    }
+
+    @Test
+    fun `markHoldCommitted rejects a saga that has not posted its journal`() {
+        val saga = TransferSaga.initiate(from, to, 25.lkr(), at).markReserved(at)
+        val ex = shouldThrow<DomainException> { saga.markHoldCommitted(at) }
+        ex.error.shouldBeInstanceOf<DomainError.Conflict>()
+    }
+
+    @Test
+    fun `an unknown credit outcome is recorded as an explicit flag, not a reason string`() {
+        val saga = TransferSaga.initiate(from, to, 25.lkr(), at)
+            .markReserved(at)
+            .markLedgerPosted(at)
+            .markHoldCommitted(at)
+            .markCreditOutcomeUnknown("account-service is unreachable (credit outcome unknown)", at)
+
+        saga.creditOutcomeUnknown shouldBe true
+        saga.state shouldBe SagaState.LEDGER_POSTED
+        saga.holdCommitted shouldBe true
+        saga.failureReason shouldBe "account-service is unreachable (credit outcome unknown)"
+    }
+
+    @Test
+    fun `markCreditOutcomeUnknown rejects a saga that never reached the credit step`() {
+        val saga = TransferSaga.initiate(from, to, 25.lkr(), at).markReserved(at)
+        val ex = shouldThrow<DomainException> { saga.markCreditOutcomeUnknown("x", at) }
+        ex.error.shouldBeInstanceOf<DomainError.Conflict>()
+    }
+
+    @Test
+    fun `markCreditOutcomeUnknown rejects a saga whose hold is still open`() {
+        // Freezing here would block releaseHold, which is the correct idempotent way to refund.
+        val saga = TransferSaga.initiate(from, to, 25.lkr(), at)
+            .markReserved(at)
+            .markLedgerPosted(at)
+        saga.holdCommitted shouldBe false
+        val ex = shouldThrow<DomainException> { saga.markCreditOutcomeUnknown("x", at) }
+        ex.error.shouldBeInstanceOf<DomainError.Conflict>()
+    }
+
+    @Test
+    fun `an unknown refund outcome can be recorded while compensating`() {
+        val saga = TransferSaga.initiate(from, to, 25.lkr(), at)
+            .markReserved(at)
+            .markLedgerPosted(at)
+            .markHoldCommitted(at)
+            .beginCompensate("credit refused", at)
+            .markCreditOutcomeUnknown("credit refused; refund outcome unknown: timeout", at)
+
         saga.state shouldBe SagaState.COMPENSATING
-        saga.ledgerPosted shouldBe true
+        saga.creditOutcomeUnknown shouldBe true
+    }
+
+    @Test
+    fun `a refused credit is recorded as proof and survives into compensation`() {
+        val saga = TransferSaga.initiate(from, to, 25.lkr(), at)
+            .markReserved(at)
+            .markLedgerPosted(at)
+            .markHoldCommitted(at)
+            .markCreditRefused("account-service refused the request", at)
+
+        saga.creditRefused shouldBe true
+        saga.state shouldBe SagaState.LEDGER_POSTED
+        // The permission to reverse has to outlive the transition, like holdCommitted does.
+        saga.beginCompensate("credit refused", at).creditRefused shouldBe true
+    }
+
+    @Test
+    fun `markCreditRefused rejects a saga whose hold is not committed`() {
+        val saga = TransferSaga.initiate(from, to, 25.lkr(), at)
+            .markReserved(at)
+            .markLedgerPosted(at)
+        val ex = shouldThrow<DomainException> { saga.markCreditRefused("x", at) }
+        ex.error.shouldBeInstanceOf<DomainError.Conflict>()
+    }
+
+    @Test
+    fun `a refund attempt can only be recorded while compensating a committed hold`() {
+        val compensating = TransferSaga.initiate(from, to, 25.lkr(), at)
+            .markReserved(at)
+            .markLedgerPosted(at)
+            .markHoldCommitted(at)
+            .markCreditRefused("credit refused", at)
+            .beginCompensate("credit refused", at)
+
+        compensating.markRefundAttempted(at).refundAttempted shouldBe true
+
+        // Before compensation begins there is nothing to refund, so the marker would be a lie.
+        val tooEarly = TransferSaga.initiate(from, to, 25.lkr(), at)
+            .markReserved(at)
+            .markLedgerPosted(at)
+            .markHoldCommitted(at)
+        val ex = shouldThrow<DomainException> { tooEarly.markRefundAttempted(at) }
+        ex.error.shouldBeInstanceOf<DomainError.Conflict>()
+    }
+
+    @Test
+    fun `a failed compensation stays COMPENSATING and keeps the reason`() {
+        val saga = TransferSaga.initiate(from, to, 25.lkr(), at)
+            .markReserved(at)
+            .beginCompensate("ledger down", at)
+            .withCompensationFailure("ledger down; compensation failed: account-service unreachable", at)
+        saga.state shouldBe SagaState.COMPENSATING
+        saga.failureReason shouldBe "ledger down; compensation failed: account-service unreachable"
     }
 
     @Test

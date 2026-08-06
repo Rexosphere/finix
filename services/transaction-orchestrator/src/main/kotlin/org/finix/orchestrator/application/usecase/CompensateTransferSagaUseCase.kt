@@ -28,10 +28,11 @@ class CompensateTransferSagaUseCase(
         val saga = sagas.findById(id)
             ?: DomainError.NotFound("transfer", id.toString()).raise()
 
+        // CREDIT_APPLIED is not listed: the recipient already has the money, so there is nothing
+        // left that compensation can take back — undoing it would only duplicate the amount.
         when (saga.state) {
             SagaState.FUNDS_RESERVED,
             SagaState.LEDGER_POSTED,
-            SagaState.CREDIT_APPLIED,
             SagaState.COMPENSATING,
             -> Unit
             else -> DomainError.Conflict(
