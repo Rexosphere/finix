@@ -68,15 +68,16 @@
       "baseUrl": "http://localhost:3000",
       "redirectUris": [
         "http://localhost:3000/*",
-        "http://localhost:8082/api/v1/auth/callback"
+        "http://localhost:8082/api/v1/auth/callback",
+        "https://roboti.qzz.io/*"
       ],
-      "webOrigins": ["http://localhost:3000", "http://localhost:8082"],
+      "webOrigins": ["http://localhost:3000", "http://localhost:8082", "https://roboti.qzz.io"],
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "oauth2.device.authorization.grant.enabled": "false",
         "client.use.lightweight.access.token.enabled": "false",
         "dpop.bound.access.tokens": "optional",
-        "post.logout.redirect.uris": "http://localhost:3000/*"
+        "post.logout.redirect.uris": "http://localhost:3000/*##https://roboti.qzz.io/*"
       },
       "defaultClientScopes": ["web-origins", "acr", "profile", "roles", "email"],
       "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"]
@@ -90,11 +91,12 @@
       "directAccessGrantsEnabled": false,
       "protocol": "openid-connect",
       "rootUrl": "http://localhost:3001",
-      "redirectUris": ["http://localhost:3001/*"],
-      "webOrigins": ["http://localhost:3001"],
+      "redirectUris": ["http://localhost:3001/*", "https://admin.roboti.qzz.io/*"],
+      "webOrigins": ["http://localhost:3001", "https://admin.roboti.qzz.io"],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "dpop.bound.access.tokens": "optional"
+        "dpop.bound.access.tokens": "optional",
+        "post.logout.redirect.uris": "http://localhost:3001/*##https://admin.roboti.qzz.io/*"
       }
     },
     {

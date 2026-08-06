@@ -70,6 +70,22 @@
     group: "{{ finix_user }}"
     mode: "0640"
 
+- name: Create the release log
+  ansible.builtin.file:
+    path: "{{ finix_state_dir }}/releases.log"
+    state: touch
+    # Appended by deploy.sh as the deploy user once a release passes health.
+    # The state directory itself is root-owned, so without this the append
+    # fails: the deploy goes red after a successful rollout, and — worse — the
+    # log stays empty, leaving rollback with no known-good revision to return
+    # to. Owned like finix.env, for the same reason.
+    owner: "{{ finix_user }}"
+    group: "{{ finix_user }}"
+    mode: "0644"
+    # `touch` is otherwise unconditionally "changed" on every provision run.
+    modification_time: preserve
+    access_time: preserve
+
 - name: Install the Postgres backup script
   ansible.builtin.template:
     src: backup-db.sh.j2
