@@ -75,18 +75,27 @@
     if (raw == null) return "Request failed";
     if (raw instanceof Error) {
       if (raw.data && typeof raw.data === "object") {
-        return raw.data.detail || raw.data.title || raw.data.message || friendlyError(raw.message);
+        return friendlyError(raw.data.detail || raw.data.title || raw.data.message || raw.message);
       }
       return friendlyError(raw.message);
     }
     if (typeof raw === "object") {
-      return raw.detail || raw.title || raw.message || JSON.stringify(raw);
+      return friendlyError(raw.detail || raw.title || raw.message || JSON.stringify(raw));
     }
     const text = String(raw).replace(/^Error:\s*/, "");
+    // Nested problem+json sometimes appears inside a plain failureReason string.
+    const nested = text.match(/\{[\s\S]*"detail"\s*:\s*"((?:\\.|[^"\\])*)"/);
+    if (nested) {
+      try {
+        return JSON.parse('"' + nested[1] + '"');
+      } catch (_) {
+        return nested[1].replace(/\\"/g, '"');
+      }
+    }
     try {
       const j = JSON.parse(text);
       if (j && typeof j === "object") {
-        return j.detail || j.title || j.message || text;
+        return friendlyError(j.detail || j.title || j.message || text);
       }
     } catch (_) {}
     return text || "Request failed";
