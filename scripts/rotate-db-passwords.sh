@@ -23,7 +23,15 @@ SECRETS="$ROOT/infra/compose/secrets"
 CONTAINER="${FINIX_PG_CONTAINER:-finix-postgres-1}"
 
 # role:secret-file
+#
+# The superuser is included: POSTGRES_PASSWORD_FILE only takes effect when the
+# volume is initialised, so on an existing database the superuser keeps whatever
+# password it was created with while postgres-exporter and backup-db.sh start
+# reading the generated one. psql below connects over the container's local
+# socket, which the official image trusts, so this works even when the current
+# password is unknown.
 ROLES="
+finix:postgres_superuser_password
 identity:db_identity_password
 account:db_account_password
 ledger:db_ledger_password
