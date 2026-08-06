@@ -40,7 +40,7 @@ HELPER="$SCRIPT_DIR/lib/finix_smoke_helper.py"
 # ---------------------------------------------------------------------------
 BASE_URL="${FINIX_BASE_URL:-}"
 ADMIN_URL="${FINIX_ADMIN_URL:-}"
-READ_ONLY=0
+READ_ONLY=1  # read-only unless --mutate is passed
 STRICT=0
 RESTORE=1
 CONNECT_TIMEOUT="${FINIX_CONNECT_TIMEOUT:-5}"
@@ -76,7 +76,8 @@ OPTIONS
   --base-url URL        Main web application origin (or pass it positionally).
   --admin-url URL       Admin application origin. Enables the vault / risk / compliance
                         / loan / notification / payment-hub checks behind its proxy.
-  --read-only           Run READ-ONLY checks only. Issues no request other than GET/HEAD.
+  --read-only           Default. READ-ONLY checks only; no request other than GET/HEAD.
+  --mutate              Opt in to the demo-data mutating checks (moves LKR 1.00 and back).
   --strict              Treat every failure as critical (any FAIL then exits 1).
   --no-restore          Skip the closing transfer that returns the demo money moved.
   --timeout SECONDS     Per-request total timeout (default $MAX_TIME).
@@ -124,6 +125,7 @@ while (( $# )); do
     --base-url) [[ $# -ge 2 ]] || die_usage "--base-url needs a value"; BASE_URL="$2"; shift 2 ;;
     --admin-url) [[ $# -ge 2 ]] || die_usage "--admin-url needs a value"; ADMIN_URL="$2"; shift 2 ;;
     --read-only) READ_ONLY=1; shift ;;
+    --mutate) READ_ONLY=0; shift ;;
     --strict) STRICT=1; shift ;;
     --no-restore) RESTORE=0; shift ;;
     --timeout) [[ $# -ge 2 ]] || die_usage "--timeout needs a value"; MAX_TIME="$2"; shift 2 ;;

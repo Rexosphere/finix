@@ -205,7 +205,7 @@ head_ "4 · full demo run"
 start_mock
 farmer_before="$(mock_balance_of "$FARMER")"
 sme_before="$(mock_balance_of "$SME")"
-rc="$(run_harness "$WORK/full.txt" --json-report "$WORK/report.json")"
+rc="$(run_harness "$WORK/full.txt" --mutate --json-report "$WORK/report.json")"
 assert_exit 0 "$rc" "full run succeeds"
 for check in \
   "transfer.allow" "transfer.idempotent-replay" "idempotency.missing-key" \
@@ -229,7 +229,7 @@ fi
 
 # A second run against the same environment must be just as green — that is the
 # rerun-safety claim, tested rather than asserted.
-rc="$(run_harness "$WORK/full2.txt")"
+rc="$(run_harness "$WORK/full2.txt" --mutate)"
 assert_exit 0 "$rc" "second consecutive run also succeeds"
 assert_eq "$farmer_before" "$(mock_balance_of "$FARMER")" "balances still restored after a rerun"
 stop_mock
@@ -238,13 +238,13 @@ stop_mock
 head_ "5 · injected faults must fail the run"
 # ---------------------------------------------------------------------------
 start_mock ledger
-rc="$(run_harness "$WORK/break-ledger.txt")"
+rc="$(run_harness "$WORK/break-ledger.txt" --mutate)"
 assert_exit 1 "$rc" "a broken hash chain fails the run"
 assert_grep "$WORK/break-ledger.txt" "FAIL \[RO \].*ledger.verify.*INVALID" "the break is reported as a chain failure"
 stop_mock
 
 start_mock account-number
-rc="$(run_harness "$WORK/break-account.txt")"
+rc="$(run_harness "$WORK/break-account.txt" --mutate)"
 assert_exit 1 "$rc" "an account that is not the seeded demo account fails the run"
 assert_grep "$WORK/break-account.txt" "FAIL \[RO \].*account.balance.farmer.*mismatch" "the mismatch is reported"
 assert_grep "$WORK/break-account.txt" "SKIP \[MUT\].*transfer.allow.*refusing to move money" \
@@ -252,7 +252,7 @@ assert_grep "$WORK/break-account.txt" "SKIP \[MUT\].*transfer.allow.*refusing to
 stop_mock
 
 start_mock double-debit
-rc="$(run_harness "$WORK/break-dupe.txt")"
+rc="$(run_harness "$WORK/break-dupe.txt" --mutate)"
 assert_exit 1 "$rc" "a duplicate that debits twice fails the run"
 assert_grep "$WORK/break-dupe.txt" "FAIL \[MUT\].*balance.delta" "the double debit is caught by the balance delta"
 stop_mock
