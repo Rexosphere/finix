@@ -6,6 +6,7 @@ import org.finix.vault.application.usecase.ApproveCeremonyUseCase
 import org.finix.vault.application.usecase.GetCeremonyStatusUseCase
 import org.finix.vault.application.usecase.GetEgressLogUseCase
 import org.finix.vault.application.usecase.ReconstructMasterKeyUseCase
+import org.finix.vault.application.usecase.SeedVaultUseCase
 import org.finix.vault.application.usecase.StartCeremonyUseCase
 import org.finix.vault.domain.Ceremony
 import org.finix.vault.domain.CeremonyState
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import java.time.Instant
@@ -29,6 +31,7 @@ class VaultController(
     private val getCeremonyStatus: GetCeremonyStatusUseCase,
     private val reconstructMasterKey: ReconstructMasterKeyUseCase,
     private val getEgressLog: GetEgressLogUseCase,
+    private val seedVault: SeedVaultUseCase,
 ) {
 
     @PostMapping("/ceremony/start")
@@ -48,6 +51,10 @@ class VaultController(
     @GetMapping("/ceremony/egress-log")
     fun egressLog(): EgressLogResponse =
         EgressLogResponse(entries = getEgressLog.execute().map { EgressLogLine.from(it) })
+
+    @PostMapping("/admin/seed")
+    fun seed(@RequestParam(defaultValue = "false") force: Boolean): CeremonyResponse =
+        CeremonyResponse.from(seedVault.execute(force = force))
 }
 
 data class CeremonyResponse(

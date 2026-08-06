@@ -8,6 +8,7 @@ import org.finix.account.application.usecase.ListAccountsUseCase
 import org.finix.account.application.usecase.OpenAccountUseCase
 import org.finix.account.application.usecase.ReleaseHoldUseCase
 import org.finix.account.application.usecase.ReserveFundsUseCase
+import org.finix.account.application.usecase.SeedAccountsUseCase
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -29,6 +30,7 @@ class AccountController(
     private val commitHold: CommitHoldUseCase,
     private val releaseHold: ReleaseHoldUseCase,
     private val creditAccount: CreditAccountUseCase,
+    private val seedAccounts: SeedAccountsUseCase,
 ) {
 
     @PostMapping("/accounts")
@@ -71,4 +73,8 @@ class AccountController(
         @Valid @RequestBody body: CreditAccountRequest,
     ): AccountResponse =
         creditAccount.execute(id, body.amount, body.reference).toResponse()
+
+    @PostMapping("/admin/seed")
+    fun seed(): SeedAccountsResponse =
+        SeedAccountsResponse(accounts = seedAccounts.execute().map { it.toResponse() })
 }
