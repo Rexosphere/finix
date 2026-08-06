@@ -205,6 +205,14 @@ write_files:
       echo "==> Starting compose (full profile)"
       "${COMPOSE[@]}" up -d --build
 
+      # web/admin bind-mount a single nginx.conf file. `git reset --hard`
+      # replaces that file rather than editing it in place, so the container
+      # keeps the old inode and an nginx config change would silently never
+      # take effect. Compose will not recreate them on its own either, since
+      # the mount spec is unchanged.
+      echo "==> Recreating static app containers so nginx picks up config changes"
+      "${COMPOSE[@]}" up -d --force-recreate --no-deps web admin
+
       echo "==> Waiting for health"
       for entry in identity-service:8082 account-service:8083 ledger-service:8084 transaction-orchestrator:8085; do
         svc="${entry%%:*}"; port="${entry##*:}"
