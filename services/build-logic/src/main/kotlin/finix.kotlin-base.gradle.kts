@@ -158,3 +158,15 @@ val domainCoverage = tasks.register<JacocoCoverageVerification>("jacocoDomainCov
 tasks.named("check") {
     dependsOn(domainCoverage)
 }
+
+// Kotest 6.x carries a constraint on Spring Framework 7, while Boot 3.5.x supplies 6.2.x.
+// Gradle picks 7.0.1, and spring-web 6.2.x then fails at class-init on classes removed in 7
+// (MimeType$SpecificityComparator). Pin the framework to Boot's managed line.
+configurations.all {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "org.springframework" && requested.name.startsWith("spring-")) {
+            useVersion("6.2.19")
+            because("align Spring Framework with Spring Boot 3.5.x; Kotest 6 pulls 7.0.1")
+        }
+    }
+}
