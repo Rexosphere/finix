@@ -383,7 +383,7 @@
         <h1 class="brand">FINIX <span class="sub">Ops</span></h1>
         <div class="topbar-actions">
           <span class="mesh-pill" id="meshStatus" role="status" aria-live="polite"><span class="dot"></span> Institutional</span>
-          <a class="btn btn-secondary" href="http://localhost:3000/">Customer app</a>
+          <a class="btn btn-secondary" href="http://localhost:3000/" data-finix-link="web">Customer app</a>
         </div>
       </div>
     </header>
@@ -552,6 +552,8 @@
     </footer>
   </div>
 
+  <!-- Rendered by nginx from the container environment (see nginx.conf). -->
+  <script src="/env.js"></script>
   <script src="/js/finix.js"></script>
   <script>
     Finix.bindMeshStatus("#meshStatus");

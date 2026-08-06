@@ -24,7 +24,7 @@
           <nav class="nav-links">
             <a href="/transfer.html">Send</a>
             <a href="/offline.html">Offline</a>
-            <a href="http://localhost:3001/">Ops</a>
+            <a href="http://localhost:3001/" data-finix-link="admin">Ops</a>
             <a href="/">Switch</a>
           </nav>
         </div>
@@ -51,7 +51,7 @@
             <p class="label-caps" id="held" style="margin:-0.5rem 0 1rem">Held · —</p>
             <div class="actions" style="margin:0">
               <a class="btn btn-primary" href="/transfer.html?from=sme"><span class="material-symbols-outlined">payments</span> Pay supplier</a>
-              <a class="btn btn-secondary" href="http://localhost:3001/"><span class="material-symbols-outlined">account_balance</span> Ops desk</a>
+              <a class="btn btn-secondary" href="http://localhost:3001/" data-finix-link="admin"><span class="material-symbols-outlined">account_balance</span> Ops desk</a>
             </div>
             <div id="acctError" class="status-banner err hidden"></div>
           </section>
@@ -96,6 +96,8 @@
       <p class="label-caps" style="color:var(--on-surface);margin:0">FINIX Mesh · SME persona</p>
     </footer>
   </div>
+  <!-- Rendered by nginx from the container environment (see nginx.conf). -->
+  <script src="/env.js"></script>
   <script src="/js/finix.js"></script>
   <script>
     Finix.savePersona("sme");

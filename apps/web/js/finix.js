@@ -231,3 +231,23 @@
     skeleton,
   };
 })(window);
+
+// Cross-origin links (customer app <-> ops console) are the one thing a prebuilt
+// image cannot know: the two live on different origins in every environment.
+// nginx serves /env.js with the real URLs at runtime, so the image is built once
+// and configured per deploy. The href in the HTML stays as the localhost
+// default, which is what `make demo` uses.
+(function applyEnvLinks(global) {
+  function apply() {
+    var links = global.FINIX_LINKS || {};
+    document.querySelectorAll("[data-finix-link]").forEach(function (a) {
+      var url = links[a.getAttribute("data-finix-link")];
+      if (url) a.setAttribute("href", url);
+    });
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", apply);
+  } else {
+    apply();
+  }
+})(window);

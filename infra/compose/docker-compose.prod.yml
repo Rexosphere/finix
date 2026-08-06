@@ -1,0 +1,65 @@
+# Production overlay — the tracked replacement for the untracked
+# /opt/finix/docker-compose.override.yml that used to live only on the server.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile full up -d
+#
+# Everything environment-specific is a variable with a local-friendly default,
+# so `docker compose config` works in CI without a production env file. The real
+# values come from /opt/finix/finix.env, written by the Ansible `finix` role.
+#
+# Ports are deliberately not touched here. Compose concatenates list-type keys
+# across -f files rather than replacing them, so an override cannot remove the
+# published bindings from the base file. Exposure is handled where it actually
+# works: ufw-docker on the host (infra/ansible/roles/firewall).
+
+services:
+  keycloak:
+    environment:
+      KC_HOSTNAME: ${FINIX_AUTH_URL:-http://localhost:8081}
+      KC_PROXY_HEADERS: xforwarded
+
+  identity-service:
+    environment:
+      FINIX_KEYCLOAK_PUBLIC_BASE_URL: ${FINIX_AUTH_URL:-http://localhost:8081}
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${FINIX_AUTH_URL:-http://localhost:8081}/realms/finix
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI: ${FINIX_AUTH_URL:-http://localhost:8081}/realms/finix
+
+  account-service:
+    environment:
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${FINIX_AUTH_URL:-http://localhost:8081}/realms/finix
+
+  ledger-service:
+    environment:
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${FINIX_AUTH_URL:-http://localhost:8081}/realms/finix
+
+  transaction-orchestrator:
+    environment:
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${FINIX_AUTH_URL:-http://localhost:8081}/realms/finix
+
+  vault-service:
+    environment:
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${FINIX_AUTH_URL:-http://localhost:8081}/realms/finix
+
+  ussd-gateway:
+    environment:
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${FINIX_AUTH_URL:-http://localhost:8081}/realms/finix
+
+  loan-service:
+    environment:
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${FINIX_AUTH_URL:-http://localhost:8081}/realms/finix
+
+  compliance-service:
+    environment:
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${FINIX_AUTH_URL:-http://localhost:8081}/realms/finix
+
+  # The cross-app links that the old deploy.sh produced by sed-ing tracked HTML.
+  # Now they are configuration, and the image stays untouched.
+  web:
+    environment:
+      FINIX_WEB_URL: ${FINIX_WEB_URL:-http://localhost:3000}
+      FINIX_ADMIN_URL: ${FINIX_ADMIN_URL:-http://localhost:3001}
+
+  admin:
+    environment:
+      FINIX_WEB_URL: ${FINIX_WEB_URL:-http://localhost:3000}
+      FINIX_ADMIN_URL: ${FINIX_ADMIN_URL:-http://localhost:3001}
