@@ -219,6 +219,19 @@
     el.classList.toggle("is-loading", !!on);
   }
 
+  /** Inline SVG from the page sprite (`#i-<name>`). No icon-font CDN. */
+  function icon(name, extraClass) {
+    var id = String(name || "info").replace(/^i-/, "");
+    var cls = "icon" + (extraClass ? " " + extraClass : "");
+    return (
+      '<svg class="' +
+      cls +
+      '" aria-hidden="true" focusable="false"><use href="#i-' +
+      id +
+      '"></use></svg>'
+    );
+  }
+
   global.Finix = {
     PERSONAS,
     API,
@@ -238,6 +251,7 @@
     bindMeshStatus,
     setText,
     skeleton,
+    icon,
   };
 })(window);
 

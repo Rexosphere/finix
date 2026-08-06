@@ -219,6 +219,11 @@
       background: color-mix(in srgb, var(--primary) 16%, transparent);
       color: var(--primary);
     }
+    .cust-avatar .icon {
+      inline-size: 1.25rem;
+      block-size: 1.25rem;
+      color: inherit;
+    }
 
     .cust-id { min-width: 0; display: grid; gap: 0.1rem; }
     .cust-name {
@@ -716,7 +721,7 @@
         const ok = approved.has(ids[i]);
         return `<div class="custodian ${ok ? "approved" : ""}">
           <div class="cust-top">
-            <span class="cust-avatar"><span class="material-symbols-outlined" aria-hidden="true">${ok ? "verified_user" : "shield"}</span></span>
+            <span class="cust-avatar">${ok ? Finix.icon("verified_user") : Finix.icon("shield")}</span>
             <span class="cust-id">
               <span class="label-caps">Custodian</span>
               <span class="cust-name">${n}</span>

@@ -233,7 +233,7 @@
     }
 
     .persona-cta { display: grid; place-items: center; color: var(--outline); }
-    .persona-cta .material-symbols-outlined { font-size: 1.3rem; }
+    .persona-cta .icon { inline-size: 1.3rem; block-size: 1.3rem; }
     .persona-cta .tick { display: none; color: var(--primary); }
 
     .persona.is-selected {
@@ -250,7 +250,7 @@
       background: linear-gradient(180deg, var(--primary), var(--primary-container));
     }
     .persona.is-selected .persona-cta .chev { display: none; }
-    .persona.is-selected .persona-cta .tick { display: inline-block; }
+    .persona.is-selected .persona-cta .tick { display: block; }
     .persona.is-selected .persona-phone { color: var(--secondary); }
 
     /* Skeletons match the real card box exactly, so the swap never moves anything. */
@@ -298,22 +298,22 @@
       line-height: 1.4;
       transition: border-color 0.25s var(--ease-out), background 0.25s var(--ease-out), color 0.25s var(--ease-out);
     }
-    .api-status .material-symbols-outlined { font-size: 1.15rem; }
+    .api-status .icon { inline-size: 1.15rem; block-size: 1.15rem; }
     .api-status-text { min-width: 0; }
 
-    .api-status[data-state="loading"] .material-symbols-outlined { animation: spin 1.1s linear infinite; }
+    .api-status[data-state="loading"] .icon { animation: spin 1.1s linear infinite; }
     .api-status[data-state="ok"] {
       border-color: color-mix(in srgb, var(--primary) 35%, transparent);
       background: color-mix(in srgb, var(--primary) 7%, var(--surface-container-low));
       color: var(--on-surface);
     }
-    .api-status[data-state="ok"] .material-symbols-outlined { color: var(--primary); }
+    .api-status[data-state="ok"] .icon { color: var(--primary); }
     .api-status[data-state="err"] {
       border-color: color-mix(in srgb, var(--tertiary) 42%, transparent);
       background: color-mix(in srgb, var(--tertiary) 7%, var(--surface-container-low));
       color: color-mix(in srgb, var(--tertiary) 88%, white);
     }
-    .api-status[data-state="err"] .material-symbols-outlined { color: var(--tertiary); }
+    .api-status[data-state="err"] .icon { color: var(--tertiary); }
     .api-status code {
       font-family: var(--font-mono);
       font-size: 0.82em;
@@ -352,7 +352,7 @@
       .skel,
       .is-loading::after,
       .mesh-pill .dot,
-      .api-status .material-symbols-outlined,
+      .api-status .icon,
       .page-enter {
         animation: none !important;
       }
@@ -541,12 +541,12 @@
     (function () {
       const list = document.getElementById("personaList");
       const statusEl = document.getElementById("apiHint");
-      const statusIcon = document.getElementById("apiHintIcon");
       const statusText = document.getElementById("apiHintText");
 
-      function setStatus(state, icon, text) {
+      function setStatus(state, iconName, text) {
         statusEl.dataset.state = state;
-        statusIcon.textContent = icon;
+        const use = statusEl.querySelector("svg.icon use");
+        if (use) use.setAttribute("href", "#i-" + iconName);
         statusText.textContent = text;
       }
 
@@ -568,15 +568,15 @@
       list.innerHTML = Object.values(Finix.PERSONAS).map((p) => {
         const tone = p.key === "sme" ? "mint" : p.key === "elder" ? "gold" : "";
         return `<button type="button" class="persona mesh-glow" data-key="${p.key}" aria-pressed="false">
-          <span class="persona-icon ${tone}"><span class="material-symbols-outlined" aria-hidden="true">${p.icon}</span></span>
+          <span class="persona-icon ${tone}">${Finix.icon(p.icon)}</span>
           <span class="persona-main">
             <span class="persona-name">${p.label}</span>
             <span class="persona-blurb">${p.blurb}</span>
             <span class="persona-phone">${p.phone}</span>
           </span>
           <span class="persona-cta" aria-hidden="true">
-            <span class="material-symbols-outlined chev">chevron_right</span>
-            <span class="material-symbols-outlined tick">check_circle</span>
+            ${Finix.icon("chevron_right", "chev")}
+            ${Finix.icon("check_circle", "tick")}
           </span>
         </button>`;
       }).join("");

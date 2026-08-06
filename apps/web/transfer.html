@@ -173,7 +173,8 @@
       el.className = "status-banner " + kind;
       el.classList.remove("hidden");
       const safe = Finix.friendlyError(detail || "");
-      el.innerHTML = `<span class="material-symbols-outlined">${kind === "ok" ? "check_circle" : kind === "warn" ? "pending" : "error"}</span>
+      const glyph = kind === "ok" ? "check_circle" : kind === "warn" ? "progress_activity" : "error";
+      el.innerHTML = `${Finix.icon(glyph)}
         <div><strong>${title}</strong><div class="data-md" style="margin-top:0.25rem">${safe}</div></div>`;
     }
 

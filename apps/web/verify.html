@@ -154,7 +154,7 @@
       const status = document.getElementById("status");
       status.className = "status-banner " + kind;
       status.classList.remove("hidden");
-      status.innerHTML = `<span class="material-symbols-outlined">${kind === "ok" ? "verified" : "gpp_bad"}</span>
+      status.innerHTML = `${Finix.icon(kind === "ok" ? "verified" : "error")}
         <div><strong>${title}</strong><div style="margin-top:0.25rem">${detail || ""}</div></div>`;
     }
 
