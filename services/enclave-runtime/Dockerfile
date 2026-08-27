@@ -9,7 +9,7 @@
 # Do not add shells, curl, package managers, or debug aids to this image. The
 # HEALTHCHECK installs nothing: it calls the busybox wget the base already
 # ships, against the only endpoint this service exposes.
-FROM eclipse-temurin:21-jre-alpine@sha256:3f08b13888f595cc49edabea7250ba69499ba25602b267da591720769400e08c
+FROM eclipse-temurin:25-jre-alpine@sha256:3137541deb3cac6626b5d9a4a2187bc0d6a34312f858bd2c67dd01e732e6b682
 
 RUN addgroup -S finix && adduser -S -u 10001 -G finix finix
 WORKDIR /app
