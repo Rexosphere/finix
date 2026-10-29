@@ -2,14 +2,14 @@
 # Build from repo root:
 #   docker build -f services/notification-service/Dockerfile -t finix-notification-service .
 
-FROM node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS deps
+FROM node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4 AS deps
 WORKDIR /app
 # npm ci (not install) so the image is built from the committed lockfile —
 # same dependency tree here, in CI and on a contributor's machine.
 COPY services/notification-service/package.json services/notification-service/package-lock.json ./
 RUN npm ci --omit=dev
 
-FROM node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+FROM node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4
 WORKDIR /app
 RUN adduser -D -H -u 10001 finix
 COPY --from=deps /app/node_modules ./node_modules
