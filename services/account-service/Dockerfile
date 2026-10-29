@@ -1,6 +1,6 @@
 # Base pinned by digest so a rebuild of an old commit produces the same image.
 # Dependabot (docker ecosystem) proposes digest bumps; nothing floats silently.
-FROM eclipse-temurin:21-jre-alpine@sha256:3f08b13888f595cc49edabea7250ba69499ba25602b267da591720769400e08c
+FROM eclipse-temurin:25-jre-alpine@sha256:b7528962e65d43064d8a8b67ba175367896bc948363ea2d3fcd7f10d34e1f048
 
 # Runs as an unprivileged uid: the jar needs no write access outside /tmp.
 RUN addgroup -S finix && adduser -S -u 10001 -G finix finix
